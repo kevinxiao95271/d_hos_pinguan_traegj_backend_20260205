@@ -1,0 +1,46 @@
+server:
+  port: 6031
+
+spring:
+  application:
+    name: pinguan-backend
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: Asia/Shanghai
+
+app:
+  datasource:
+    active: ds1
+    ds1:
+      url: ${PINGUAN_DS1_URL}
+      username: ${PINGUAN_DS1_USER}
+      password: ${PINGUAN_DS1_PASSWORD}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+    ds2:
+      url: ${PINGUAN_DS2_URL}
+      username: ${PINGUAN_DS2_USER}
+      password: ${PINGUAN_DS2_PASSWORD}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+    ds3:
+      url: ${PINGUAN_DS3_URL}
+      username: ${PINGUAN_DS3_USER}
+      password: ${PINGUAN_DS3_PASSWORD}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+
+springdoc:
+  swagger-ui:
+    path: /swagger
+
+security:
+  jwt:
+    secret: ${PINGUAN_JWT_SECRET:pinguan-jwt-secret-20260205-abcdefghijklmnopqrstuvwxyz}
+    expireMinutes: ${PINGUAN_JWT_EXPIRE:720}
