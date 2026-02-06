@@ -1,0 +1,66 @@
+{
+  "login": {
+    "success": true,
+    "data": {
+      "id": 1,
+      "phone": "13800000009",
+      "name": "C",
+      "title": "C",
+      "role": "COMMITTEE",
+      "institutionId": null,
+      "institutionName": null,
+      "institutionCode": null,
+      "institutionUscc": null,
+      "expertBackground": null,
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwicm9sZSI6IkNPTU1JVFRFRSIsImlhdCI6MTc3MDM3NDM5MCwiZXhwIjoxNzcwNDE3NTkwfQ.0QBRlYqySUJcme3wp79aZDUAwZx0VJv5MEJwDfmPUhk"
+    },
+    "message": null
+  },
+  "institution_example": {
+    "id": 1,
+    "name": "浙江大学医学院附属第一医院",
+    "code": "INS-0001",
+    "uscc": "1233000047053349XG",
+    "region": null,
+    "createdAt": "2026-02-04T23:45:40"
+  },
+  "competition_example": {
+    "id": 21,
+    "name": "2026浙江品管大赛",
+    "stage": "BOOK_REVIEW",
+    "registerStart": "2026-02-01T00:00:00",
+    "registerEnd": "2026-02-20T23:59:59",
+    "bookReviewStart": "2026-02-21T00:00:00",
+    "bookReviewEnd": "2026-02-28T23:59:59",
+    "interviewStart": "2026-03-01T00:00:00",
+    "interviewEnd": "2026-03-05T23:59:59",
+    "finalStart": "2026-03-10T00:00:00",
+    "finalEnd": "2026-03-12T23:59:59",
+    "createdAt": "2026-02-05T10:05:06.699"
+  },
+  "reviewer_examples": [
+    {
+      "id": 3,
+      "phone": "13800000002",
+      "name": "Reviewer",
+      "title": "Title",
+      "institutionId": 2,
+      "institutionName": "浙江大学医学院附属第二医院",
+      "reviewerGroupCode": null,
+      "interviewGroupCode": null,
+      "expertBackground": null
+    },
+    {
+      "id": 6,
+      "phone": "13800000021",
+      "name": "Reviewer A",
+      "title": "Expert",
+      "institutionId": 2,
+      "institutionName": "浙江大学医学院附属第二医院",
+      "reviewerGroupCode": "A1",
+      "interviewGroupCode": "A1",
+      "expertBackground": "MEDICAL"
+    }
+  ],
+  "token_format": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiO..."
+}
