@@ -1,0 +1,117 @@
+================================================================================
+                    舟山医院参赛数据导入 - 快速参考
+================================================================================
+
+导入日期: 2026-02-07
+导入内容: 7个参赛项目及完整信息
+
+================================================================================
+一、快速导入（3步）
+================================================================================
+
+1️⃣  确认数据库连接
+   mysql -u root -p
+
+2️⃣  执行SQL脚本
+   mysql -u root -p pinguan_db < scripts/import_zhoushan_data.sql
+
+3️⃣  验证导入成功
+   查看脚本输出的统计信息
+
+================================================================================
+二、导入内容清单
+================================================================================
+
+✅ 机构名称: 舟山市人民医院 → 舟山医院 (ID=17)
+
+✅ 参赛者账号: 7个
+   陈蔚莉 - 19925000001 - 护理部主任
+   汪君燕 - 19925000002 - 急诊科主任
+   刘一宁 - 19925000003 - 静脉治疗专科护士
+   杨芳   - 19925000004 - ICU护士长
+   张依妮 - 19925000005 - 呼吸治疗师
+   夏舟备 - 19925000006 - 输血科主任
+   李利群 - 19925000007 - 康复科主任
+
+✅ 参赛项目: 7个
+   项目1: 适老化院内转运系统 (进阶组 A1)
+   项目2: 创伤患者急诊手术达标率 (综合组 B21)
+   项目3: 静脉输液规范使用 (综合组 B2)
+   项目4: 感染性休克集束化治疗 (综合组 B2)
+   项目5: 呼吸治疗管理体系 (进阶组 A1)
+   项目6: 自体输血率提升 (综合组 B6)
+   项目7: AECOPD肺康复模式 (综合组 B14)
+
+✅ 完整信息: 每个项目包含
+   - 基本信息 (registrations)
+   - 活动说明 (activity_infos) - 含品管工具
+   - 项目总结 (project_summaries)
+   - 团队成员 (registration_members) - 3人/项目
+
+================================================================================
+三、参赛者登录测试
+================================================================================
+
+API: POST http://localhost:6031/api/auth/login
+
+示例（陈蔚莉登录）:
+{
+  "phone": "19925000001",
+  "name": "陈蔚莉",
+  "title": "护理部主任",
+  "role": "CONTESTANT",
+  "institutionId": 17
+}
+
+✅ 所有参赛者都可以用手机号登录
+
+================================================================================
+四、验证查询
+================================================================================
+
+查看舟山医院所有项目:
+SELECT r.project_name, u.name, r.group_type, r.group_code
+FROM registrations r
+INNER JOIN user_accounts u ON r.applicant_id = u.id
+WHERE r.institution_id = 17 AND u.phone LIKE '19925%';
+
+查看参赛者账号:
+SELECT name, phone, title FROM user_accounts WHERE phone LIKE '19925%';
+
+================================================================================
+五、重要约束
+================================================================================
+
+✅ user_accounts.phone 有UNIQUE约束
+✅ institutions.code 有UNIQUE约束
+✅ institutions.uscc 有UNIQUE约束
+
+================================================================================
+六、如需重新导入
+================================================================================
+
+先执行清理SQL:
+DELETE FROM registration_members WHERE registration_id IN 
+  (SELECT r.id FROM registrations r INNER JOIN user_accounts u 
+   ON r.applicant_id = u.id WHERE u.phone LIKE '19925%');
+DELETE FROM project_summaries WHERE registration_id IN 
+  (SELECT r.id FROM registrations r INNER JOIN user_accounts u 
+   ON r.applicant_id = u.id WHERE u.phone LIKE '19925%');
+DELETE FROM activity_infos WHERE registration_id IN 
+  (SELECT r.id FROM registrations r INNER JOIN user_accounts u 
+   ON r.applicant_id = u.id WHERE u.phone LIKE '19925%');
+DELETE FROM registrations WHERE applicant_id IN 
+  (SELECT id FROM user_accounts WHERE phone LIKE '19925%');
+DELETE FROM user_accounts WHERE phone LIKE '19925%');
+
+然后重新执行导入脚本
+
+================================================================================
+七、文档位置
+================================================================================
+
+SQL脚本: scripts/import_zhoushan_data.sql
+完整文档: docs/舟山医院数据导入说明.md
+快速参考: docs/舟山医院导入-快速参考.txt (本文件)
+
+================================================================================
