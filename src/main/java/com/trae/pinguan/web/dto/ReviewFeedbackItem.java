@@ -20,6 +20,8 @@ public class ReviewFeedbackItem {
     private Long reviewerId;
     @Schema(example = "张评委")
     private String reviewerName;
+    @Schema(example = "主任医师")
+    private String reviewerTitle;
     @Schema(example = "85")
     private Integer total;
     @Schema(example = "结构清晰")

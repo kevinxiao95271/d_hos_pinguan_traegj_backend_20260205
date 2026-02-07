@@ -36,8 +36,35 @@ public class AdminInstitutionController {
         }
     }
 
+    @GetMapping
+    @Operation(summary = "机构列表查询（支持分页和筛选）",
+               description = "获取机构列表，支持多维度筛选和分页：\n" +
+                             "【筛选参数】\n" +
+                             "- region: 地区筛选（精确匹配）\n" +
+                             "- level: 等级筛选（精确匹配）\n" +
+                             "- name: 名称搜索（模糊匹配）\n" +
+                             "- unknownRegionOnly: 是否只显示未知地区\n\n" +
+                             "【分页参数】\n" +
+                             "- page: 页码（从1开始），不传则返回全部数据\n" +
+                             "- size: 每页数量，默认20\n\n" +
+                             "【返回格式】\n" +
+                             "- 不分页: 返回数组 []\n" +
+                             "- 分页: 返回对象 {content: [], pageNo: 1, pageSize: 20, totalCount: 100, ...}")
+    public ApiResponse<?> list(@RequestParam(required = false) String region,
+                               @RequestParam(required = false) String level,
+                               @RequestParam(required = false) String name,
+                               @RequestParam(required = false, defaultValue = "false") Boolean unknownRegionOnly,
+                               @RequestParam(required = false) Integer page,
+                               @RequestParam(required = false) Integer size) {
+        requireOpsRole();
+        return ApiResponse.ok(institutionService.listInstitutions(region, level, name, unknownRegionOnly, page, size));
+    }
+    
     @GetMapping("/export")
-    @Operation(summary = "导出机构列表")
+    @Operation(summary = "导出机构列表",
+               deprecated = true,
+               description = "⚠️ 已废弃：请使用 GET /api/admin/institutions 代替。新API支持更强大的筛选和分页功能。")
+    @Deprecated
     public ApiResponse<List<Institution>> export(@RequestParam(required = false, defaultValue = "false") Boolean unknownRegionOnly) {
         requireOpsRole();
         List<Institution> all = institutionService.listAll();

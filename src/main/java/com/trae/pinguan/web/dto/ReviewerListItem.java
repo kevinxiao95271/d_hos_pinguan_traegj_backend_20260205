@@ -12,6 +12,7 @@ public class ReviewerListItem {
     private String title;
     private Long institutionId;
     private String institutionName;
+    private String institutionLevel;
     private String reviewerGroupCode;
     private String interviewGroupCode;
     private String expertBackground;

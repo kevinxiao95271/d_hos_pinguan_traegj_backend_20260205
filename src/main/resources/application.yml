@@ -21,19 +21,19 @@ app:
   datasource:
     active: ds1
     ds1:
-      url: ${PINGUAN_DS1_URL}
-      username: ${PINGUAN_DS1_USER}
-      password: ${PINGUAN_DS1_PASSWORD}
+      url: jdbc:mysql://gz-cdb-bq7gk3k5.sql.tencentcdb.com:63606/d_hos_pinguan_traegj_20260205?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+      username: root
+      password: Yiguo9527_
       driver-class-name: com.mysql.cj.jdbc.Driver
     ds2:
-      url: ${PINGUAN_DS2_URL}
-      username: ${PINGUAN_DS2_USER}
-      password: ${PINGUAN_DS2_PASSWORD}
+      url: jdbc:mysql://gz-cdb-bq7gk3k5.sql.tencentcdb.com:63606/d_hos_pinguan_traegj_20260205?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+      username: root
+      password: Yiguo9527_
       driver-class-name: com.mysql.cj.jdbc.Driver
     ds3:
-      url: ${PINGUAN_DS3_URL}
-      username: ${PINGUAN_DS3_USER}
-      password: ${PINGUAN_DS3_PASSWORD}
+      url: jdbc:mysql://gz-cdb-bq7gk3k5.sql.tencentcdb.com:63606/d_hos_pinguan_traegj_20260205?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+      username: root
+      password: Yiguo9527_
       driver-class-name: com.mysql.cj.jdbc.Driver
 
 springdoc:

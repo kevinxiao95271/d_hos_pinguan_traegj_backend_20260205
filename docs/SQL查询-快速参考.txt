@@ -1,0 +1,224 @@
+================================================================================
+                          SQL查询 - 快速参考
+================================================================================
+
+注意：所有查询中的 competition_id = 21 需要替换为实际赛事ID
+
+================================================================================
+1. 查询未报名参赛的机构
+================================================================================
+
+SELECT i.id, i.name, i.code
+FROM institutions i
+WHERE NOT EXISTS (
+    SELECT 1 FROM registrations r 
+    WHERE r.institution_id = i.id AND r.competition_id = 21
+)
+ORDER BY i.name;
+
+================================================================================
+2. 查询报名的参赛项目
+================================================================================
+
+SELECT 
+    r.id, r.project_name, r.group_type, r.group_code,
+    i.name AS institution_name,
+    u.name AS applicant_name
+FROM registrations r
+INNER JOIN institutions i ON r.institution_id = i.id
+LEFT JOIN user_accounts u ON r.applicant_id = u.id
+WHERE r.competition_id = 21
+ORDER BY r.submitted_at DESC;
+
+================================================================================
+3. 查询书审阶段的参赛项目
+================================================================================
+
+SELECT 
+    r.id, r.project_name, i.name AS institution_name,
+    COUNT(rt.id) AS review_task_count,
+    AVG(rs.total) AS avg_score
+FROM registrations r
+INNER JOIN institutions i ON r.institution_id = i.id
+LEFT JOIN review_tasks rt ON rt.registration_id = r.id AND rt.stage = 'BOOK'
+LEFT JOIN review_scores rs ON rs.review_task_id = rt.id
+WHERE r.competition_id = 21
+GROUP BY r.id, r.project_name, i.name
+ORDER BY avg_score DESC;
+
+================================================================================
+4. 查询面谈阶段的参赛项目
+================================================================================
+
+SELECT 
+    r.id, r.project_name, i.name AS institution_name,
+    COUNT(rt.id) AS review_task_count,
+    AVG(rs.total) AS avg_score
+FROM registrations r
+INNER JOIN institutions i ON r.institution_id = i.id
+LEFT JOIN review_tasks rt ON rt.registration_id = r.id AND rt.stage = 'INTERVIEW'
+LEFT JOIN review_scores rs ON rs.review_task_id = rt.id
+WHERE r.competition_id = 21
+GROUP BY r.id, r.project_name, i.name
+ORDER BY avg_score DESC;
+
+================================================================================
+5. 查询书审阶段的评审得分
+================================================================================
+
+SELECT 
+    r.project_name,
+    i.name AS institution_name,
+    u.name AS reviewer_name,
+    u.title AS reviewer_title,
+    rs.plan, rs.problem, rs.action, rs.success, 
+    rs.review, rs.operation, rs.presentation,
+    rs.total,
+    rs.highlight,
+    rs.weakness,
+    rs.submitted_at
+FROM review_tasks rt
+INNER JOIN registrations r ON rt.registration_id = r.id
+INNER JOIN institutions i ON r.institution_id = i.id
+INNER JOIN user_accounts u ON rt.reviewer_id = u.id
+LEFT JOIN review_scores rs ON rs.review_task_id = rt.id
+WHERE r.competition_id = 21
+  AND rt.stage = 'BOOK'
+  AND rt.status = 'SCORED'
+ORDER BY r.project_name, rs.total DESC;
+
+================================================================================
+6. 查询面谈阶段的评审得分
+================================================================================
+
+SELECT 
+    r.project_name,
+    i.name AS institution_name,
+    u.name AS reviewer_name,
+    u.title AS reviewer_title,
+    rs.plan, rs.problem, rs.action, rs.success, 
+    rs.review, rs.operation, rs.presentation,
+    rs.total,
+    rs.highlight,
+    rs.weakness,
+    rs.submitted_at
+FROM review_tasks rt
+INNER JOIN registrations r ON rt.registration_id = r.id
+INNER JOIN institutions i ON r.institution_id = i.id
+INNER JOIN user_accounts u ON rt.reviewer_id = u.id
+LEFT JOIN review_scores rs ON rs.review_task_id = rt.id
+WHERE r.competition_id = 21
+  AND rt.stage = 'INTERVIEW'
+  AND rt.status = 'SCORED'
+ORDER BY r.project_name, rs.total DESC;
+
+================================================================================
+7. 查询决赛阶段的评审得分
+================================================================================
+
+SELECT 
+    r.project_name,
+    i.name AS institution_name,
+    u.name AS reviewer_name,
+    u.title AS reviewer_title,
+    rs.plan, rs.problem, rs.action, rs.success, 
+    rs.review, rs.operation, rs.presentation,
+    rs.total,
+    rs.highlight,
+    rs.weakness,
+    rs.submitted_at
+FROM review_tasks rt
+INNER JOIN registrations r ON rt.registration_id = r.id
+INNER JOIN institutions i ON r.institution_id = i.id
+INNER JOIN user_accounts u ON rt.reviewer_id = u.id
+LEFT JOIN review_scores rs ON rs.review_task_id = rt.id
+WHERE r.competition_id = 21
+  AND rt.stage = 'FINAL'
+  AND rt.status = 'SCORED'
+ORDER BY r.project_name, rs.total DESC;
+
+================================================================================
+8. 查询项目排名（某个阶段）
+================================================================================
+
+SELECT 
+    RANK() OVER (ORDER BY AVG(rs.total) DESC) AS ranking,
+    r.project_name,
+    i.name AS institution_name,
+    r.group_type,
+    AVG(rs.total) AS avg_score,
+    COUNT(rs.id) AS reviewer_count
+FROM registrations r
+INNER JOIN institutions i ON r.institution_id = i.id
+INNER JOIN review_tasks rt ON rt.registration_id = r.id
+INNER JOIN review_scores rs ON rs.review_task_id = rt.id
+WHERE r.competition_id = 21
+  AND rt.stage = 'BOOK'  -- 替换为 'INTERVIEW' 或 'FINAL'
+  AND rt.status = 'SCORED'
+GROUP BY r.id, r.project_name, i.name, r.group_type
+ORDER BY avg_score DESC;
+
+================================================================================
+9. 查询某个项目的所有评审得分
+================================================================================
+
+SELECT 
+    rt.stage,
+    u.name AS reviewer_name,
+    u.title AS reviewer_title,
+    rs.total,
+    rs.highlight,
+    rs.weakness,
+    rs.submitted_at
+FROM review_tasks rt
+INNER JOIN user_accounts u ON rt.reviewer_id = u.id
+LEFT JOIN review_scores rs ON rs.review_task_id = rt.id
+WHERE rt.registration_id = 106  -- 替换为实际项目ID
+  AND rt.status = 'SCORED'
+ORDER BY rt.stage, rs.total DESC;
+
+================================================================================
+10. 赛事评审进度统计
+================================================================================
+
+SELECT 
+    rt.stage,
+    COUNT(DISTINCT r.id) AS total_projects,
+    COUNT(rt.id) AS total_tasks,
+    SUM(CASE WHEN rt.status = 'SCORED' THEN 1 ELSE 0 END) AS scored,
+    SUM(CASE WHEN rt.status = 'PENDING' THEN 1 ELSE 0 END) AS pending,
+    ROUND(SUM(CASE WHEN rt.status = 'SCORED' THEN 1 ELSE 0 END) * 100.0 / COUNT(rt.id), 2) AS progress
+FROM registrations r
+LEFT JOIN review_tasks rt ON rt.registration_id = r.id
+WHERE r.competition_id = 21
+GROUP BY rt.stage;
+
+================================================================================
+重要参数说明
+================================================================================
+
+【赛事ID】competition_id = 21
+【项目ID】registration_id = 106
+【评审阶段】'BOOK' (书审) | 'INTERVIEW' (面谈) | 'FINAL' (决赛)
+【评审状态】'PENDING' (待评审) | 'SCORED' (已评分)
+
+================================================================================
+评分字段说明
+================================================================================
+
+plan         - 计划维度
+problem      - 问题维度
+action       - 行动维度
+success      - 成效维度
+review       - 回顾维度
+operation    - 运作维度
+presentation - 展示维度
+total        - 总分
+
+================================================================================
+详细文档
+================================================================================
+
+详见: docs/常用SQL查询语句.md
+
+================================================================================

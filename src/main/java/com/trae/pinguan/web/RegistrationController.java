@@ -5,6 +5,7 @@ import com.trae.pinguan.domain.entity.MaterialFile;
 import com.trae.pinguan.domain.entity.ProjectSummary;
 import com.trae.pinguan.domain.entity.Registration;
 import com.trae.pinguan.domain.entity.RegistrationMember;
+import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.service.MaterialService;
 import com.trae.pinguan.service.RegistrationService;
 import com.trae.pinguan.service.ReviewService;
@@ -101,6 +102,14 @@ public class RegistrationController {
         return ApiResponse.ok(reviewService.scoreSummaryByRegistration(id));
     }
 
+    @GetMapping("/{id}/reviewer-scores")
+    @Operation(summary = "报名的多评委评分详情")
+    public ApiResponse<List<ReviewerScoreDetail>> reviewerScores(
+            @PathVariable Long id,
+            @RequestParam(required = false) ReviewStage stage) {
+        return ApiResponse.ok(reviewService.getReviewerScoresByRegistration(id, stage));
+    }
+
     @GetMapping
     @Operation(summary = "按赛事查询报名列表")
     public ApiResponse<List<Registration>> list(@RequestParam Long competitionId) {
@@ -116,7 +125,7 @@ public class RegistrationController {
 
     @GetMapping("/my")
     @Operation(summary = "我的报名列表（参赛者端）")
-    public ApiResponse<List<Registration>> myRegistrations() {
+    public ApiResponse<List<com.trae.pinguan.web.dto.MyRegistrationItem>> myRegistrations() {
         // 从token中获取当前登录用户ID
         Long applicantId = getCurrentUserId();
         return ApiResponse.ok(registrationService.listByApplicant(applicantId));
@@ -124,7 +133,7 @@ public class RegistrationController {
 
     @GetMapping("/by-applicant")
     @Operation(summary = "按报名人查询报名（需要applicantId参数）")
-    public ApiResponse<List<Registration>> listByApplicant(@RequestParam Long applicantId) {
+    public ApiResponse<List<com.trae.pinguan.web.dto.MyRegistrationItem>> listByApplicant(@RequestParam Long applicantId) {
         return ApiResponse.ok(registrationService.listByApplicant(applicantId));
     }
     

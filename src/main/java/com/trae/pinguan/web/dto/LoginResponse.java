@@ -16,6 +16,8 @@ public class LoginResponse {
     private String institutionName;
     private String institutionCode;
     private String institutionUscc;
+    private String institutionRegion;
+    private String institutionLevel;
     private String expertBackground;
     private String token;
 }

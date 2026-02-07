@@ -11,6 +11,7 @@ public class RegistrationFilterItem {
     private Long registrationId;
     private String projectName;
     private String institutionName;
+    private String institutionLevel;
     private GroupType groupType;
     private String groupCode;
     private LocalDateTime submittedAt;

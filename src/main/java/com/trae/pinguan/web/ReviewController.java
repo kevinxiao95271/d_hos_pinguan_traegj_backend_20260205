@@ -68,6 +68,8 @@ public class ReviewController {
                             .projectName(reg != null ? reg.getProjectName() : null)
                             .institutionName(reg != null && reg.getInstitution() != null 
                                     ? reg.getInstitution().getName() : null)
+                            .institutionLevel(reg != null && reg.getInstitution() != null 
+                                    ? reg.getInstitution().getLevel() : null)
                             .stage(task.getStage())
                             .status(task.getStatus())
                             .createdAt(task.getCreatedAt())
@@ -100,11 +102,32 @@ public class ReviewController {
     }
 
     @GetMapping("/tasks/stage")
-    @Operation(summary = "按阶段查询评审任务")
-    public ApiResponse<List<ReviewTask>> listByStage(@RequestParam Long competitionId,
-                                                     @RequestParam ReviewStage stage,
-                                                     @RequestParam(required = false) ReviewStatus status) {
-        return ApiResponse.ok(reviewService.listTasksByStage(competitionId, stage, status));
+    @Operation(summary = "按阶段查询评审任务（支持分组、专家、品管工具筛选、分页）",
+               description = "获取指定赛事和阶段的评审任务，支持多维度筛选和分页：\n" +
+                             "【筛选维度】\n" +
+                             "1) 按状态筛选（待评审/已评审）\n" +
+                             "2) 按竞赛组别筛选（BASIC/COMPREHENSIVE/ADVANCED）\n" +
+                             "3) 按分组代码筛选（A1/B2等）\n" +
+                             "4) 按评委ID筛选（查看指定专家的任务）\n" +
+                             "5) 按品管工具代码筛选（qc_topic等）\n\n" +
+                             "【分页参数】\n" +
+                             "- page: 页码（从1开始），不传则返回全部数据\n" +
+                             "- size: 每页数量，默认20\n\n" +
+                             "【返回格式】\n" +
+                             "- 不分页: 返回数组 []\n" +
+                             "- 分页: 返回对象 {content: [], pageNo: 1, pageSize: 20, totalCount: 100, ...}")
+    public ApiResponse<?> listByStage(
+            @RequestParam Long competitionId,
+            @RequestParam ReviewStage stage,
+            @RequestParam(required = false) ReviewStatus status,
+            @RequestParam(required = false) GroupType groupType,
+            @RequestParam(required = false) String groupCode,
+            @RequestParam(required = false) Long reviewerId,
+            @RequestParam(required = false) String methodCode,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ApiResponse.ok(reviewService.listTasksByStage(
+                competitionId, stage, status, groupType, groupCode, reviewerId, methodCode, page, size));
     }
 
     @PostMapping("/scores")
@@ -129,10 +152,19 @@ public class ReviewController {
     }
 
     @GetMapping("/rankings")
-    @Operation(summary = "阶段评分排名")
-    public ApiResponse<List<ReviewRankingItem>> rankings(@RequestParam Long competitionId,
-                                                         @RequestParam ReviewStage stage,
-                                                         @RequestParam(required = false) GroupType groupType) {
-        return ApiResponse.ok(reviewService.rankingByStage(competitionId, stage, groupType));
+    @Operation(summary = "阶段评分排名（支持分页）",
+               description = "获取指定赛事和阶段的评分排名，支持分组筛选和分页：\n" +
+                             "【分页参数】\n" +
+                             "- page: 页码（从1开始），不传则返回全部数据\n" +
+                             "- size: 每页数量，默认20\n\n" +
+                             "【返回格式】\n" +
+                             "- 不分页: 返回数组 []\n" +
+                             "- 分页: 返回对象 {content: [], pageNo: 1, pageSize: 20, totalCount: 100, ...}")
+    public ApiResponse<?> rankings(@RequestParam Long competitionId,
+                                   @RequestParam ReviewStage stage,
+                                   @RequestParam(required = false) GroupType groupType,
+                                   @RequestParam(required = false) Integer page,
+                                   @RequestParam(required = false) Integer size) {
+        return ApiResponse.ok(reviewService.rankingByStage(competitionId, stage, groupType, page, size));
     }
 }

@@ -206,6 +206,7 @@ public class RegistrationService {
                     .code(inst.getCode())
                     .uscc(inst.getUscc())
                     .region(inst.getRegion())
+                    .level(inst.getLevel())
                     .build();
         }
         
@@ -258,15 +259,64 @@ public class RegistrationService {
         return registrationRepository.findByCompetitionIdAndStatus(competitionId, status);
     }
 
-    public List<Registration> listByApplicant(Long applicantId) {
-        return registrationRepository.findByApplicantId(applicantId);
+    @Transactional(readOnly = true)
+    public List<com.trae.pinguan.web.dto.MyRegistrationItem> listByApplicant(Long applicantId) {
+        List<Registration> registrations = registrationRepository.findByApplicantId(applicantId);
+        return registrations.stream()
+                .map(reg -> com.trae.pinguan.web.dto.MyRegistrationItem.builder()
+                        .id(reg.getId())
+                        .competitionId(reg.getCompetitionId())
+                        .institutionId(reg.getInstitutionId())
+                        .institutionName(reg.getInstitution() != null ? reg.getInstitution().getName() : null)
+                        .institutionLevel(reg.getInstitution() != null ? reg.getInstitution().getLevel() : null)
+                        .applicantId(reg.getApplicantId())
+                        .projectName(reg.getProjectName())
+                        .groupType(reg.getGroupType())
+                        .groupCode(reg.getGroupCode())
+                        .status(reg.getStatus())
+                        .submittedAt(reg.getSubmittedAt())
+                        .createdAt(reg.getCreatedAt())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
     }
 
     public List<Registration> listByInstitution(Long institutionId) {
         return registrationRepository.findByInstitutionId(institutionId);
     }
 
-    public List<RegistrationFilterItem> filterRegistrations(Long competitionId,
+    /**
+     * 查询报名筛选列表（支持分页）
+     * 
+     * @param page 页码（从1开始），null表示不分页
+     * @param size 每页数量，默认20
+     * @return 不分页时返回List，分页时返回PageResult
+     */
+    public Object filterRegistrations(Long competitionId,
+                                     com.trae.pinguan.domain.enums.GroupType groupType,
+                                     String groupCode,
+                                     String projectName,
+                                     String institutionName,
+                                     String methodCode,
+                                     String methodLabel,
+                                     String subjectTypeCode,
+                                     String subjectTypeLabel,
+                                     Integer page,
+                                     Integer size) {
+        // 如果不分页，使用原有逻辑
+        if (page == null) {
+            return filterRegistrationsWithoutPagination(competitionId, groupType, groupCode, projectName,
+                    institutionName, methodCode, methodLabel, subjectTypeCode, subjectTypeLabel);
+        }
+        
+        // 分页查询
+        return filterRegistrationsWithPagination(competitionId, groupType, groupCode, projectName,
+                institutionName, methodCode, methodLabel, subjectTypeCode, subjectTypeLabel, page, size);
+    }
+    
+    /**
+     * 不分页查询（保留原有逻辑）
+     */
+    private List<RegistrationFilterItem> filterRegistrationsWithoutPagination(Long competitionId,
                                                             com.trae.pinguan.domain.enums.GroupType groupType,
                                                             String groupCode,
                                                             String projectName,
@@ -388,6 +438,116 @@ public class RegistrationService {
             }
         }
         return items;
+    }
+    
+    /**
+     * 分页查询（页码从1开始）
+     */
+    private com.trae.pinguan.web.dto.PageResult<RegistrationFilterItem> filterRegistrationsWithPagination(
+            Long competitionId,
+            com.trae.pinguan.domain.enums.GroupType groupType,
+            String groupCode,
+            String projectName,
+            String institutionName,
+            String methodCode,
+            String methodLabel,
+            String subjectTypeCode,
+            String subjectTypeLabel,
+            Integer page,
+            Integer size) {
+        
+        // 参数处理
+        int actualPage = page != null && page > 0 ? page : 1;  // 确保page至少为1
+        int pageNumber = actualPage - 1;  // 转换：1-based -> 0-based
+        int pageSize = size != null && size > 0 ? size : 20;  // 默认20条/页
+        
+        // 创建分页对象
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                pageNumber, pageSize,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "submittedAt")
+        );
+        
+        String groupCodeValue = groupCode == null || groupCode.trim().isEmpty() ? null : groupCode.trim();
+        String projectNameValue = projectName == null || projectName.trim().isEmpty() ? null : projectName.trim();
+        String institutionNameValue = institutionName == null || institutionName.trim().isEmpty() ? null : institutionName.trim();
+        
+        // 处理 methodLabel 转换
+        String methodCodeValue = methodCode;
+        if ((methodCodeValue == null || methodCodeValue.trim().isEmpty()) && methodLabel != null && !methodLabel.trim().isEmpty()) {
+            methodCodeValue = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("method", true)
+                    .stream()
+                    .filter(item -> methodLabel.trim().equals(item.getLabel()))
+                    .map(item -> item.getCode())
+                    .findFirst()
+                    .orElse(null);
+        }
+        methodCodeValue = methodCodeValue == null || methodCodeValue.trim().isEmpty() ? null : methodCodeValue.trim();
+        
+        // 处理 subjectTypeLabel 转换
+        String subjectTypeCodeValue = subjectTypeCode;
+        if ((subjectTypeCodeValue == null || subjectTypeCodeValue.trim().isEmpty()) && subjectTypeLabel != null && !subjectTypeLabel.trim().isEmpty()) {
+            subjectTypeCodeValue = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("subject_type", true)
+                    .stream()
+                    .filter(item -> subjectTypeLabel.trim().equals(item.getLabel()))
+                    .map(item -> item.getCode())
+                    .findFirst()
+                    .orElse(null);
+        }
+        subjectTypeCodeValue = subjectTypeCodeValue == null || subjectTypeCodeValue.trim().isEmpty() ? null : subjectTypeCodeValue.trim();
+        
+        // 分页查询
+        org.springframework.data.domain.Page<RegistrationFilterItem> itemPage = registrationRepository.filterRegistrationsPaged(
+                competitionId,
+                groupType,
+                groupCodeValue,
+                projectNameValue,
+                institutionNameValue,
+                methodCodeValue,
+                subjectTypeCodeValue,
+                pageable
+        );
+        
+        // 如果无数据，返回空分页结果
+        if (itemPage.isEmpty()) {
+            return com.trae.pinguan.web.dto.PageResult.<RegistrationFilterItem>builder()
+                    .content(new ArrayList<>())
+                    .pageNo(actualPage)
+                    .pageSize(pageSize)
+                    .totalCount(0L)
+                    .totalPages(0)
+                    .hasNext(false)
+                    .hasPrevious(false)
+                    .build();
+        }
+        
+        // 填充label
+        List<RegistrationFilterItem> items = itemPage.getContent();
+        Map<String, String> methodLabels = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("method", true)
+                .stream()
+                .collect(Collectors.toMap(item -> item.getCode(), item -> item.getLabel(), (a, b) -> a));
+        Map<String, String> subjectTypeLabels = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("subject_type", true)
+                .stream()
+                .collect(Collectors.toMap(item -> item.getCode(), item -> item.getLabel(), (a, b) -> a));
+        
+        for (RegistrationFilterItem item : items) {
+            if (item.getMethodCode() != null) {
+                item.setMethodLabel(methodLabels.get(item.getMethodCode()));
+            }
+            if (item.getSubjectTypeCode() != null) {
+                item.setSubjectTypeLabel(subjectTypeLabels.get(item.getSubjectTypeCode()));
+            }
+        }
+        
+        // 构造分页结果（页码转换回1-based）
+        return com.trae.pinguan.web.dto.PageResult.<RegistrationFilterItem>builder()
+                .content(items)
+                .pageNo(actualPage)
+                .pageSize(pageSize)
+                .totalCount(itemPage.getTotalElements())
+                .totalPages(itemPage.getTotalPages())
+                .hasNext(itemPage.hasNext())
+                .hasPrevious(itemPage.hasPrevious())
+                .build();
     }
 
     @Transactional

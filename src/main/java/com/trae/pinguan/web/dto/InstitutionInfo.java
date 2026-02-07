@@ -28,4 +28,7 @@ public class InstitutionInfo {
     
     @Schema(description = "地区", example = "浙江省杭州市")
     private String region;
+    
+    @Schema(description = "医院等级", example = "三级甲等")
+    private String level;
 }

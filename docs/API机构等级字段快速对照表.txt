@@ -1,0 +1,96 @@
+================================================================================
+                    API机构等级字段快速对照表
+================================================================================
+更新时间: 2026-02-07
+状态: ✅ 全部完成（需重启后端验证）
+
+================================================================================
+  已添加机构等级字段的API清单（12个）
+================================================================================
+
+【登录认证】
+API: POST /api/auth/login
+字段: data.institutionRegion (String)
+字段: data.institutionLevel (String)
+
+【参赛者端】
+API: GET /api/registrations/my
+字段: data[i].institutionName (String)
+字段: data[i].institutionLevel (String)
+
+API: GET /api/registrations/{id}
+字段: data.institution.level (String)
+
+【评审专家端】
+API: GET /api/reviews/my-tasks
+字段: data[i].institutionLevel (String)
+
+API: GET /api/reviews/tasks/stage
+字段: data[i].registrationId (Long)
+字段: data[i].projectName (String)
+字段: data[i].institutionName (String)
+字段: data[i].institutionLevel (String)
+
+【组委会端】
+API: GET /api/admin/registrations/filter
+字段: data[i].institutionLevel (String)
+
+API: GET /api/admin/reviews/rankings
+字段: data[i].institutionLevel (String)
+
+API: GET /api/admin/reviews/reviewers
+字段: data[i].institutionLevel (String)
+
+【机构管理】
+API: GET /api/institutions
+字段: data[i].level (String)
+
+API: GET /api/institutions/{id}
+字段: data.level (String)
+
+API: GET /api/admin/institutions/export
+字段: data[i].level (String)
+
+【统计信息】
+API: GET /api/registrations/{id}/review-results
+说明: 返回统计数据，不包含机构信息，无需institutionLevel
+
+================================================================================
+  字段值说明
+================================================================================
+
+字段类型: String
+可能的值:
+  - "三级甲等" (35家机构, 83.3%)
+  - "三级乙等" (7家机构, 16.7%)
+  - null (0家机构, 0%)
+
+数据完整性: 100% (42/42家机构都已填写等级)
+
+================================================================================
+  前端使用建议
+================================================================================
+
+虽然当前数据100%完整，仍建议处理空值：
+
+JavaScript:
+  const level = item.institutionLevel || '未填写';
+
+Vue:
+  {{ item.institutionLevel || '未填写' }}
+
+React:
+  {item.institutionLevel ?? '未填写'}
+
+================================================================================
+  重要提示
+================================================================================
+
+⚠️  需要重启后端服务才能生效
+⚠️  前端测试时请确保后端已重启
+⚠️  所有字段都可能为null，请做好空值处理
+
+重启命令:
+  mvn spring-boot:run
+
+================================================================================

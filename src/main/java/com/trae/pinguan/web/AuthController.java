@@ -34,6 +34,8 @@ public class AuthController {
                 user.getInstitution() == null ? null : user.getInstitution().getName(),
                 user.getInstitution() == null ? null : user.getInstitution().getCode(),
                 user.getInstitution() == null ? null : user.getInstitution().getUscc(),
+                user.getInstitution() == null ? null : user.getInstitution().getRegion(),
+                user.getInstitution() == null ? null : user.getInstitution().getLevel(),
                 user.getExpertBackground(),
                 jwtService.generateToken(user)
         ));

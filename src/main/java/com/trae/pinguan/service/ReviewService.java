@@ -12,6 +12,7 @@ import com.trae.pinguan.repository.ReviewScoreRepository;
 import com.trae.pinguan.repository.ReviewTaskRepository;
 import com.trae.pinguan.repository.SystemSettingRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
+import com.trae.pinguan.domain.entity.Institution;
 import com.trae.pinguan.web.dto.ReviewFeedbackItem;
 import com.trae.pinguan.web.dto.ReviewRankingItem;
 import com.trae.pinguan.web.dto.ReviewAutoAssignRequest;
@@ -22,6 +23,8 @@ import com.trae.pinguan.web.dto.ReviewSummaryItem;
 import com.trae.pinguan.web.dto.ReviewTaskAssignRequest;
 import com.trae.pinguan.web.dto.ReviewTaskStatusRequest;
 import com.trae.pinguan.web.dto.ReviewScoreReturnRequest;
+import com.trae.pinguan.web.dto.ReviewerScoreDetail;
+import com.trae.pinguan.web.dto.ScoreBreakdown;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -44,6 +47,8 @@ public class ReviewService {
     private final RegistrationRepository registrationRepository;
     private final UserAccountRepository userAccountRepository;
     private final SystemSettingRepository systemSettingRepository;
+    private final com.trae.pinguan.repository.ActivityInfoRepository activityInfoRepository;
+    private final com.trae.pinguan.repository.DictionaryItemRepository dictionaryItemRepository;
 
     @Transactional
     public ReviewTask assignTask(ReviewTaskAssignRequest request) {
@@ -103,11 +108,181 @@ public class ReviewService {
         return tasks.stream().filter(task -> task.getStatus() == status).collect(Collectors.toList());
     }
 
-    public List<ReviewTask> listTasksByStage(Long competitionId, ReviewStage stage, ReviewStatus status) {
-        if (status == null) {
-            return reviewTaskRepository.findByStageAndRegistrationCompetitionId(stage, competitionId);
+    /**
+     * 查询评审任务列表（支持分页）
+     * 
+     * @param competitionId 赛事ID
+     * @param stage 评审阶段
+     * @param status 任务状态
+     * @param groupType 竞赛组别
+     * @param groupCode 分组代码
+     * @param reviewerId 评委ID
+     * @param methodCode 品管工具代码
+     * @param page 页码（从1开始），null表示不分页
+     * @param size 每页数量，默认20
+     * @return 不分页时返回List，分页时返回PageResult
+     */
+    @Transactional(readOnly = true)
+    public Object listTasksByStage(
+            Long competitionId, 
+            ReviewStage stage, 
+            ReviewStatus status,
+            GroupType groupType,
+            String groupCode,
+            Long reviewerId,
+            String methodCode,
+            Integer page,
+            Integer size) {
+        
+        // 如果不分页，使用原有逻辑
+        if (page == null) {
+            return listTasksWithoutPagination(competitionId, stage, status, groupType, groupCode, reviewerId, methodCode);
         }
-        return reviewTaskRepository.findByStageAndStatusAndRegistrationCompetitionId(stage, status, competitionId);
+        
+        // 分页查询
+        return listTasksWithPagination(competitionId, stage, status, groupType, groupCode, reviewerId, methodCode, page, size);
+    }
+    
+    /**
+     * 不分页查询（返回全部数据）
+     */
+    private List<com.trae.pinguan.web.dto.ReviewTaskItem> listTasksWithoutPagination(
+            Long competitionId, ReviewStage stage, ReviewStatus status,
+            GroupType groupType, String groupCode, Long reviewerId, String methodCode) {
+        
+        // 使用新的复杂查询方法
+        List<ReviewTask> tasks = reviewTaskRepository.findTasksWithFilters(
+                competitionId, stage, status, groupType, groupCode, reviewerId);
+        
+        // 如果有 methodCode 筛选，需要额外过滤（因为 methodCode 在 ActivityInfo 表中）
+        if (methodCode != null && !methodCode.trim().isEmpty()) {
+            final String methodCodeTrimmed = methodCode.trim();
+            tasks = tasks.stream()
+                    .filter(task -> {
+                        com.trae.pinguan.domain.entity.ActivityInfo activityInfo = 
+                                activityInfoRepository.findByRegistrationId(task.getRegistration().getId()).orElse(null);
+                        return activityInfo != null && methodCodeTrimmed.equals(activityInfo.getMethodCode());
+                    })
+                    .collect(Collectors.toList());
+        }
+        
+        // 转换为 DTO
+        return tasks.stream()
+                .map(this::convertToReviewTaskItem)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 分页查询（返回PageResult）
+     * 页码规范：前端传入从1开始，后端转换为Spring Data的从0开始
+     */
+    private com.trae.pinguan.web.dto.PageResult<com.trae.pinguan.web.dto.ReviewTaskItem> listTasksWithPagination(
+            Long competitionId, ReviewStage stage, ReviewStatus status,
+            GroupType groupType, String groupCode, Long reviewerId, String methodCode,
+            Integer page, Integer size) {
+        
+        // 参数处理
+        int actualPage = page != null && page > 0 ? page : 1;  // 确保page至少为1
+        int pageNumber = actualPage - 1;  // 转换：1-based -> 0-based
+        int pageSize = size != null && size > 0 ? size : 20;  // 默认20条/页
+        
+        // 创建分页对象
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                pageNumber, pageSize, 
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+        );
+        
+        // 分页查询ID列表
+        org.springframework.data.domain.Page<Long> taskIdPage = reviewTaskRepository.findTaskIdsWithFilters(
+                competitionId, stage, status, groupType, groupCode, reviewerId, pageable);
+        
+        // 如果无数据，返回空分页结果
+        if (taskIdPage.isEmpty()) {
+            return com.trae.pinguan.web.dto.PageResult.<com.trae.pinguan.web.dto.ReviewTaskItem>builder()
+                    .content(new ArrayList<>())
+                    .pageNo(actualPage)
+                    .pageSize(pageSize)
+                    .totalCount(0L)
+                    .totalPages(0)
+                    .hasNext(false)
+                    .hasPrevious(false)
+                    .build();
+        }
+        
+        // 根据ID列表获取完整数据（带JOIN FETCH）
+        List<ReviewTask> tasks = reviewTaskRepository.findByIdsWithFetch(taskIdPage.getContent());
+        
+        // 如果有 methodCode 筛选，需要额外过滤
+        // 注意：这里会影响分页的准确性，建议后续优化到SQL层
+        if (methodCode != null && !methodCode.trim().isEmpty()) {
+            final String methodCodeTrimmed = methodCode.trim();
+            tasks = tasks.stream()
+                    .filter(task -> {
+                        com.trae.pinguan.domain.entity.ActivityInfo activityInfo = 
+                                activityInfoRepository.findByRegistrationId(task.getRegistration().getId()).orElse(null);
+                        return activityInfo != null && methodCodeTrimmed.equals(activityInfo.getMethodCode());
+                    })
+                    .collect(Collectors.toList());
+        }
+        
+        // 转换为 DTO
+        List<com.trae.pinguan.web.dto.ReviewTaskItem> items = tasks.stream()
+                .map(this::convertToReviewTaskItem)
+                .collect(Collectors.toList());
+        
+        // 构造分页结果（页码转换回1-based）
+        return com.trae.pinguan.web.dto.PageResult.<com.trae.pinguan.web.dto.ReviewTaskItem>builder()
+                .content(items)
+                .pageNo(actualPage)
+                .pageSize(pageSize)
+                .totalCount(taskIdPage.getTotalElements())
+                .totalPages(taskIdPage.getTotalPages())
+                .hasNext(taskIdPage.hasNext())
+                .hasPrevious(taskIdPage.hasPrevious())
+                .build();
+    }
+    
+    /**
+     * 将ReviewTask转换为ReviewTaskItem DTO（提取公共方法）
+     */
+    private com.trae.pinguan.web.dto.ReviewTaskItem convertToReviewTaskItem(ReviewTask task) {
+        Registration reg = task.getRegistration();
+        UserAccount reviewer = task.getReviewer();
+        
+        // 获取 ActivityInfo 来填充品管工具信息
+        com.trae.pinguan.domain.entity.ActivityInfo activityInfo = 
+                activityInfoRepository.findByRegistrationId(reg.getId()).orElse(null);
+        String method = activityInfo != null ? activityInfo.getMethodCode() : null;
+        
+        // 获取品管工具的 label
+        String methodLabelValue = null;
+        if (method != null) {
+            methodLabelValue = dictionaryItemRepository.findFirstByTypeAndCodeAndActiveTrue("method", method)
+                    .map(com.trae.pinguan.domain.entity.DictionaryItem::getLabel)
+                    .orElse(null);
+        }
+        
+        return com.trae.pinguan.web.dto.ReviewTaskItem.builder()
+                .id(task.getId())
+                .registrationId(reg != null ? reg.getId() : null)
+                .projectName(reg != null ? reg.getProjectName() : null)
+                .institutionName(reg != null && reg.getInstitution() != null 
+                        ? reg.getInstitution().getName() : null)
+                .institutionLevel(reg != null && reg.getInstitution() != null 
+                        ? reg.getInstitution().getLevel() : null)
+                .groupType(reg != null ? reg.getGroupType() : null)
+                .groupCode(reg != null ? reg.getGroupCode() : null)
+                .stage(task.getStage())
+                .status(task.getStatus())
+                .createdAt(task.getCreatedAt())
+                .reviewerId(reviewer != null ? reviewer.getId() : null)
+                .reviewerName(reviewer != null ? reviewer.getName() : null)
+                .reviewerTitle(reviewer != null ? reviewer.getTitle() : null)
+                .reviewerInstitutionName(reviewer != null && reviewer.getInstitution() != null 
+                        ? reviewer.getInstitution().getName() : null)
+                .methodCode(method)
+                .methodLabel(methodLabelValue)
+                .build();
     }
 
     @Transactional
@@ -371,6 +546,7 @@ public class ReviewService {
                     stage,
                     task.getReviewer() == null ? null : task.getReviewer().getId(),
                     task.getReviewer() == null ? null : task.getReviewer().getName(),
+                    task.getReviewer() == null ? null : task.getReviewer().getTitle(),
                     score.getTotal(),
                     score.getHighlight(),
                     score.getWeakness()
@@ -446,6 +622,7 @@ public class ReviewService {
                     acc.registrationId,
                     acc.projectName,
                     acc.institutionName,
+                    acc.institutionLevel,
                     acc.groupType,
                     stage,
                     acc.avg(),
@@ -456,7 +633,31 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReviewRankingItem> rankingByStage(Long competitionId, ReviewStage stage, GroupType groupType) {
+    /**
+     * 查询评分排名（支持分页）
+     * 
+     * @param competitionId 赛事ID
+     * @param stage 评审阶段
+     * @param groupType 竞赛组别
+     * @param page 页码（从1开始），null表示不分页
+     * @param size 每页数量，默认20
+     * @return 不分页时返回List，分页时返回PageResult
+     */
+    public Object rankingByStage(Long competitionId, ReviewStage stage, GroupType groupType, 
+                                 Integer page, Integer size) {
+        // 如果不分页，使用原有逻辑
+        if (page == null) {
+            return rankingByStageWithoutPagination(competitionId, stage, groupType);
+        }
+        
+        // 分页查询
+        return rankingByStageWithPagination(competitionId, stage, groupType, page, size);
+    }
+    
+    /**
+     * 不分页查询（保留原有逻辑）
+     */
+    private List<ReviewRankingItem> rankingByStageWithoutPagination(Long competitionId, ReviewStage stage, GroupType groupType) {
         List<ReviewSummaryItem> summary = summaryByStage(competitionId, stage);
         List<ReviewSummaryItem> filtered = summary.stream()
                 .filter(item -> groupType == null || item.getGroupType() == groupType)
@@ -470,6 +671,7 @@ public class ReviewService {
                     item.getRegistrationId(),
                     item.getProjectName(),
                     item.getInstitutionName(),
+                    item.getInstitutionLevel(),
                     item.getGroupType(),
                     item.getStage(),
                     item.getAvgTotal()
@@ -477,11 +679,112 @@ public class ReviewService {
         }
         return ranking;
     }
+    
+    /**
+     * 分页查询（页码从1开始）
+     */
+    private com.trae.pinguan.web.dto.PageResult<ReviewRankingItem> rankingByStageWithPagination(
+            Long competitionId, ReviewStage stage, GroupType groupType, Integer page, Integer size) {
+        
+        // 获取全部排名数据
+        List<ReviewRankingItem> allRankings = rankingByStageWithoutPagination(competitionId, stage, groupType);
+        
+        // 参数处理
+        int actualPage = page != null && page > 0 ? page : 1;
+        int pageSize = size != null && size > 0 ? size : 20;
+        
+        // 计算分页
+        int totalCount = allRankings.size();
+        int totalPages = (int) Math.ceil((double) totalCount / pageSize);
+        int startIndex = (actualPage - 1) * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, totalCount);
+        
+        // 如果页码超出范围，返回空结果
+        if (startIndex >= totalCount) {
+            return com.trae.pinguan.web.dto.PageResult.<ReviewRankingItem>builder()
+                    .content(new ArrayList<>())
+                    .pageNo(actualPage)
+                    .pageSize(pageSize)
+                    .totalCount((long) totalCount)
+                    .totalPages(totalPages)
+                    .hasNext(false)
+                    .hasPrevious(actualPage > 1)
+                    .build();
+        }
+        
+        // 提取当前页数据
+        List<ReviewRankingItem> pageData = allRankings.subList(startIndex, endIndex);
+        
+        // 构造分页结果
+        return com.trae.pinguan.web.dto.PageResult.<ReviewRankingItem>builder()
+                .content(pageData)
+                .pageNo(actualPage)
+                .pageSize(pageSize)
+                .totalCount((long) totalCount)
+                .totalPages(totalPages)
+                .hasNext(endIndex < totalCount)
+                .hasPrevious(actualPage > 1)
+                .build();
+    }
+    
+    /**
+     * 入围名单分页查询
+     */
+    public com.trae.pinguan.web.dto.PageResult<ReviewRankingItem> shortlistWithPagination(
+            Long competitionId, ReviewStage stage, GroupType groupType, 
+            Double minAvgTotal, Integer page, Integer size) {
+        
+        // 获取全部排名数据
+        List<ReviewRankingItem> allRankings = rankingByStageWithoutPagination(competitionId, stage, groupType);
+        
+        // 按分数线筛选
+        List<ReviewRankingItem> filtered = allRankings.stream()
+                .filter(item -> minAvgTotal == null || item.getAvgTotal() >= minAvgTotal)
+                .collect(Collectors.toList());
+        
+        // 参数处理
+        int actualPage = page != null && page > 0 ? page : 1;
+        int pageSize = size != null && size > 0 ? size : 20;
+        
+        // 计算分页
+        int totalCount = filtered.size();
+        int totalPages = (int) Math.ceil((double) totalCount / pageSize);
+        int startIndex = (actualPage - 1) * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, totalCount);
+        
+        // 如果页码超出范围，返回空结果
+        if (startIndex >= totalCount) {
+            return com.trae.pinguan.web.dto.PageResult.<ReviewRankingItem>builder()
+                    .content(new ArrayList<>())
+                    .pageNo(actualPage)
+                    .pageSize(pageSize)
+                    .totalCount((long) totalCount)
+                    .totalPages(totalPages)
+                    .hasNext(false)
+                    .hasPrevious(actualPage > 1)
+                    .build();
+        }
+        
+        // 提取当前页数据
+        List<ReviewRankingItem> pageData = filtered.subList(startIndex, endIndex);
+        
+        // 构造分页结果
+        return com.trae.pinguan.web.dto.PageResult.<ReviewRankingItem>builder()
+                .content(pageData)
+                .pageNo(actualPage)
+                .pageSize(pageSize)
+                .totalCount((long) totalCount)
+                .totalPages(totalPages)
+                .hasNext(endIndex < totalCount)
+                .hasPrevious(actualPage > 1)
+                .build();
+    }
 
     private static class SummaryAccumulator {
         private final Long registrationId;
         private final String projectName;
         private final String institutionName;
+        private final String institutionLevel;
         private final GroupType groupType;
         private int count;
         private int totalSum;
@@ -490,6 +793,7 @@ public class ReviewService {
             this.registrationId = task.getRegistration().getId();
             this.projectName = task.getRegistration().getProjectName();
             this.institutionName = task.getRegistration().getInstitution().getName();
+            this.institutionLevel = task.getRegistration().getInstitution().getLevel();
             this.groupType = task.getRegistration().getGroupType();
         }
 
@@ -504,5 +808,79 @@ public class ReviewService {
             }
             return (double) totalSum / count;
         }
+    }
+
+    /**
+     * 获取指定项目的评委评分详情
+     * @param registrationId 报名ID
+     * @param stage 评审阶段（可选）
+     * @return 评委评分详情列表
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewerScoreDetail> getReviewerScoresByRegistration(Long registrationId, ReviewStage stage) {
+        List<ReviewerScoreDetail> results = new ArrayList<>();
+        
+        // 构建查询条件
+        List<ReviewTask> tasks;
+        if (stage == null) {
+            tasks = reviewTaskRepository.findByRegistrationId(registrationId);
+        } else {
+            tasks = reviewTaskRepository.findByRegistrationIdAndStage(registrationId, stage);
+        }
+        
+        // 遍历评审任务
+        for (ReviewTask task : tasks) {
+            // 只处理已评分的任务
+            if (task.getStatus() != ReviewStatus.SCORED) {
+                continue;
+            }
+            
+            // 获取评分记录
+            ReviewScore score = reviewScoreRepository
+                .findByReviewTaskId(task.getId())
+                .orElse(null);
+            if (score == null) {
+                continue;
+            }
+            
+            // 获取评委信息
+            UserAccount reviewer = task.getReviewer();
+            if (reviewer == null) {
+                continue;
+            }
+            
+            Institution institution = reviewer.getInstitution();
+            
+            // 构建返回对象
+            results.add(ReviewerScoreDetail.builder()
+                .stage(task.getStage())
+                .reviewerId(reviewer.getId())
+                .reviewerName(reviewer.getName())
+                .reviewerTitle(reviewer.getTitle())
+                .reviewerInstitutionId(institution == null ? null : institution.getId())
+                .reviewerInstitutionName(institution == null ? null : institution.getName())
+                .reviewerInstitutionLevel(institution == null ? null : institution.getLevel())
+                .scores(ScoreBreakdown.builder()
+                    .plan(score.getPlan())
+                    .problem(score.getProblem())
+                    .action(score.getAction())
+                    .success(score.getSuccess())
+                    .review(score.getReview())
+                    .operation(score.getOperation())
+                    .presentation(score.getPresentation())
+                    .total(score.getTotal())
+                    .build())
+                .highlight(score.getHighlight())
+                .weakness(score.getWeakness())
+                .submittedAt(score.getSubmittedAt())
+                .build());
+        }
+        
+        // 按阶段、评委ID排序
+        results.sort(Comparator
+            .comparing(ReviewerScoreDetail::getStage)
+            .thenComparing(ReviewerScoreDetail::getReviewerId));
+        
+        return results;
     }
 }

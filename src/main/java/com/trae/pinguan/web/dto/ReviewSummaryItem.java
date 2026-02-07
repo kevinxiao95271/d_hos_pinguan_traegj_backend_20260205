@@ -11,6 +11,7 @@ public class ReviewSummaryItem {
     private Long registrationId;
     private String projectName;
     private String institutionName;
+    private String institutionLevel;
     private GroupType groupType;
     private ReviewStage stage;
     private Double avgTotal;
