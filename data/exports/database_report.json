@@ -1,0 +1,86 @@
+{
+  "database": "d_hos_pinguan_traegj_20260205",
+  "timestamp": "2026-02-06 17:56:46",
+  "summary": {
+    "institutions": 33,
+    "competitions": 6,
+    "user_accounts": 58,
+    "registrations": 34,
+    "review_tasks": 0,
+    "review_scores": 0,
+    "dictionary_items": 102,
+    "activity_infos": 33
+  },
+  "competitions": [
+    {
+      "id": 21,
+      "name": "2026浙江品管大赛",
+      "stage": "REGISTER",
+      "created_at": "2026-02-05 10:05:06"
+    },
+    {
+      "id": 25,
+      "name": "2026年浙江省医疗质量改进大赛",
+      "stage": "REGISTER",
+      "created_at": "2026-02-06 17:50:25"
+    },
+    {
+      "id": 26,
+      "name": "2026年浙江省医疗质量改进大赛",
+      "stage": "REGISTER",
+      "created_at": "2026-02-06 17:50:58"
+    },
+    {
+      "id": 27,
+      "name": "2026年浙江省医疗质量改进大赛",
+      "stage": "REGISTER",
+      "created_at": "2026-02-06 17:51:20"
+    },
+    {
+      "id": 28,
+      "name": "2026年省级质量改进赛-1",
+      "stage": "REGISTER",
+      "created_at": "2026-02-06 17:54:06"
+    },
+    {
+      "id": 29,
+      "name": "2026年省级质量改进赛-2",
+      "stage": "REGISTER",
+      "created_at": "2026-02-06 17:54:06"
+    }
+  ],
+  "users_by_role": {
+    "COMMITTEE": 3,
+    "COMMITTEE_ADMIN": 1,
+    "CONTESTANT": 34,
+    "OPS": 4,
+    "REVIEWER": 16
+  },
+  "registrations_by_status": {
+    "APPROVED": 33,
+    "DRAFT": 1
+  },
+  "registrations_by_group": {
+    "ADVANCED-C1": 3,
+    "ADVANCED-C2": 4,
+    "ADVANCED-C3": 4,
+    "BASIC-A1": 6,
+    "BASIC-A2": 2,
+    "BASIC-A3": 3,
+    "COMPREHENSIVE-NULL": 1,
+    "COMPREHENSIVE-B1": 4,
+    "COMPREHENSIVE-B2": 5,
+    "COMPREHENSIVE-B3": 2
+  },
+  "review_tasks_by_stage": {},
+  "dictionaries": {
+    "advanced_group": 2,
+    "basic_group": 2,
+    "experience": 8,
+    "experience_improve": 9,
+    "group_type": 3,
+    "method": 33,
+    "quality_topic": 24,
+    "subject_type": 21
+  }
+}

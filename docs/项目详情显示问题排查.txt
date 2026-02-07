@@ -1,0 +1,198 @@
+================================================================================
+                    入围管理-项目详情显示问题排查
+================================================================================
+
+【问题现象】
+✅ 总分显示正确: 88.0
+❌ 分项得分全部显示 "-"
+❌ 亮点显示"暂无亮点"
+
+【结论】
+后端数据完整✅ 问题在前端❌
+
+================================================================================
+  正确的API调用
+================================================================================
+
+API路径:
+  GET /api/registrations/{registrationId}/review-details
+
+完整返回结构:
+{
+  "code": 200,
+  "data": [
+    {
+      "stage": "BOOK",          // 书审阶段
+      "avgPlan": 18.0,          // ✅ 计划得分
+      "avgProblem": 17.0,       // ✅ 问题得分
+      "avgAction": 19.0,        // ✅ 行动得分
+      "avgSuccess": 18.0,       // ✅ 成效得分
+      "avgReview": 16.0,        // ✅ 回顾得分
+      "avgOperation": 0.0,      // ✅ 运作得分
+      "avgPresentation": 0.0,   // ✅ 展示得分
+      "avgTotal": 88.0,         // ✅ 总分
+      "highlights": ["项目主题明确..."],   // ✅ 亮点
+      "weaknesses": ["建议进一步..."]      // ✅ 改进建议
+    },
+    {
+      "stage": "INTERVIEW",     // 面谈阶段
+      "avgPlan": null,          // 未评审
+      ...
+    },
+    {
+      "stage": "FINAL",         // 决赛阶段
+      "avgPlan": null,          // 未评审
+      ...
+    }
+  ]
+}
+
+================================================================================
+  前端正确解析方式
+================================================================================
+
+步骤1: 调用API
+  const response = await axios.get(
+    `/api/registrations/${registrationId}/review-details`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+步骤2: 获取书审阶段数据
+  const allStages = response.data.data;  // 注意是 data.data
+  const bookStage = allStages.find(s => s.stage === 'BOOK');
+
+步骤3: 显示分项得分
+  计划: bookStage?.avgPlan ?? '-'
+  问题: bookStage?.avgProblem ?? '-'
+  行动: bookStage?.avgAction ?? '-'
+  成效: bookStage?.avgSuccess ?? '-'
+  回顾: bookStage?.avgReview ?? '-'
+  运作: bookStage?.avgOperation ?? '-'
+  展示: bookStage?.avgPresentation ?? '-'
+  总分: bookStage?.avgTotal ?? '-'
+
+步骤4: 显示评委意见
+  亮点: bookStage?.highlights || []
+  改进建议: bookStage?.weaknesses || []
+
+================================================================================
+  常见错误
+================================================================================
+
+❌ 错误1: 字段名拼写错误
+   错误: bookStage.plan
+   正确: bookStage.avgPlan
+
+❌ 错误2: 未找到正确的stage
+   错误: data.data[0]  // 直接取第一个
+   正确: data.data.find(s => s.stage === 'BOOK')
+
+❌ 错误3: 未处理null值
+   错误: avgPlan.toFixed(1)  // avgPlan可能是null
+   正确: (avgPlan ?? 0).toFixed(1) 或 avgPlan === null ? '-' : avgPlan
+
+❌ 错误4: 空数组判断错误
+   错误: if (!highlights) { 显示"暂无" }
+   正确: if (!highlights || highlights.length === 0) { 显示"暂无" }
+
+================================================================================
+  快速验证（在浏览器控制台）
+================================================================================
+
+// 1. 验证API返回
+fetch('/api/registrations/106/review-details', {
+  headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+})
+.then(r => r.json())
+.then(data => {
+  console.log('完整返回:', data);
+  const book = data.data.find(s => s.stage === 'BOOK');
+  console.log('书审阶段:', book);
+  console.log('计划得分:', book.avgPlan);
+  console.log('亮点:', book.highlights);
+});
+
+// 2. 期望看到的结果
+书审阶段: {
+  stage: "BOOK",
+  avgPlan: 18.0,      ← 应该有值
+  avgProblem: 17.0,   ← 应该有值
+  avgAction: 19.0,    ← 应该有值
+  ...
+  highlights: ["项目主题明确..."],  ← 应该有数据
+  weaknesses: ["建议进一步..."]     ← 应该有数据
+}
+
+================================================================================
+  字段对照表
+================================================================================
+
+前端显示      后端字段名           类型      说明
+--------      -----------          ------    ----
+计划          avgPlan              Double    可能是null
+问题          avgProblem           Double    可能是null
+行动          avgAction            Double    可能是null
+成效          avgSuccess           Double    可能是null
+回顾          avgReview            Double    可能是null
+运作          avgOperation         Double    可能是null
+展示          avgPresentation      Double    可能是null
+总分          avgTotal             Double    可能是null
+亮点          highlights           Array     可能是空数组[]
+改进建议      weaknesses           Array     可能是空数组[]
+
+================================================================================
+  排查清单
+================================================================================
+
+前端代码检查:
+  [ ] API路径正确: /api/registrations/{id}/review-details
+  [ ] 解析结构正确: response.data.data
+  [ ] 找到书审阶段: .find(s => s.stage === 'BOOK')
+  [ ] 字段名正确: avgPlan, avgProblem, avgAction...
+  [ ] 处理null值: score === null ? '-' : score
+  [ ] 处理空数组: array.length === 0 ? '暂无' : ...
+
+浏览器检查:
+  [ ] Network中API请求成功(200)
+  [ ] Network中响应数据包含avgPlan等字段
+  [ ] Console中无JavaScript错误
+  [ ] Console中验证了数据结构
+
+================================================================================
+  完整测试数据（项目ID: 106）
+================================================================================
+
+后端实际返回（已验证）:
+{
+  "stage": "BOOK",
+  "taskCount": 2,
+  "scoredCount": 1,
+  "avgPlan": 18.0,
+  "avgProblem": 17.0,
+  "avgAction": 19.0,
+  "avgSuccess": 18.0,
+  "avgReview": 16.0,
+  "avgOperation": 0.0,
+  "avgPresentation": 0.0,
+  "avgTotal": 88.0,
+  "highlights": [
+    "项目主题明确，改进措施得当，成效显著。实施过程规范，数据收集完整，对比分析清晰。团队协作良好。"
+  ],
+  "weaknesses": [
+    "建议进一步量化成本效益分析。可以增加更多的跨部门协作案例。持续改进机制可以更完善。"
+  ]
+}
+
+前端应该显示:
+  计划: 18.0
+  问题: 17.0
+  行动: 19.0
+  成效: 18.0
+  回顾: 16.0
+  运作: 0.0
+  展示: 0.0
+  总分: 88.0
+  亮点: "项目主题明确，改进措施得当，成效显著。实施过程规范，数据收集完整，对比分析清晰。团队协作良好。"
+  改进建议: "建议进一步量化成本效益分析。可以增加更多的跨部门协作案例。持续改进机制可以更完善。"
+
+================================================================================

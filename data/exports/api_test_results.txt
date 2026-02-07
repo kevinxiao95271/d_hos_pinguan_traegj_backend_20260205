@@ -1,0 +1,36 @@
+﻿================================================================================
+API接口测试
+================================================================================
+
+================================================================================
+【第1步】测试登录
+================================================================================
+
+================================================================================
+测试: 管理员登录
+POST /api/auth/login
+状态码: 200
+成功: True
+返回数据: {
+  "id": 1,
+  "phone": "13800000009",
+  "name": "Committee",
+  "title": "Title",
+  "role": "COMMITTEE",
+  "institutionId": null,
+  "institutionName": null,
+  "institutionCode": null,
+  "institutionUscc": null,
+  "expertBackground": null,
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwicm9sZSI6IkNP...
+python : Traceback (most recent call last):
+所在位置 C:\Users\kevinxiao\AppData\Local\Temp\ps-script-e25d4b5e-eb58-4447-af8f-122bdae7fe7f.ps1:79 字符: 1
++ python scripts/test_existing_apis.py 2>&1 | Out-File -Encoding UTF8 d ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "D:\AiCode\traegj\d_hos_pinguan_traegj_backend_20260205\scripts\test_existing_apis.py", line 79, in <module>
+    print(f"\n\u2713 登录成功，获得token")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2713' in position 2: illegal multibyte sequence

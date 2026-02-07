@@ -1,0 +1,48 @@
+{
+  "success": true,
+  "data": {
+    "competitionId": 21,
+    "competitionName": "2026浙江品管大赛",
+    "registrationCount": 33,
+    "toolTypeCount": 21,
+    "reviewerCount": 16,
+    "reviewerInstitutionCount": 12,
+    "bookReviewTaskCount": 0,
+    "bookReviewUnscoredCount": 0,
+    "regionCounts": {
+      "嘉兴": 2,
+      "舟山": 2,
+      "台州": 2,
+      "湖州": 2,
+      "未知": 9,
+      "温州": 2,
+      "绍兴": 2,
+      "宁波": 3,
+      "金华": 2,
+      "衢州": 2,
+      "杭州": 3,
+      "丽水": 2
+    },
+    "subjectTypeCounts": {
+      "流程改造": 1,
+      "医疗信息": 6,
+      "满意度": 4,
+      "时间效率": 3,
+      "安全环境": 2,
+      "教育训练": 1,
+      "其他": 6,
+      "医疗质量与安全": 1,
+      "病历质量": 3,
+      "病人照护": 4,
+      "成本效益": 2
+    },
+    "avgPlan": 0.0,
+    "avgProblem": 0.0,
+    "avgAction": 0.0,
+    "avgSuccess": 0.0,
+    "avgReview": 0.0,
+    "avgOperation": 0.0,
+    "avgPresentation": 0.0
+  },
+  "message": null
+}

@@ -1,0 +1,203 @@
+{
+  "registration": {
+    "success": true,
+    "data": {
+      "id": 72,
+      "projectName": "流程项目-进阶组",
+      "groupType": "ADVANCED",
+      "groupCode": null,
+      "status": "DRAFT",
+      "submittedAt": null,
+      "createdAt": "2026-02-05T22:23:20.313"
+    },
+    "message": null
+  },
+  "submit": {
+    "success": true,
+    "data": {
+      "id": 72,
+      "projectName": "流程项目-进阶组",
+      "groupType": "ADVANCED",
+      "groupCode": null,
+      "status": "SUBMITTED",
+      "submittedAt": "2026-02-05T22:23:20.538",
+      "createdAt": "2026-02-05T22:23:20.313"
+    },
+    "message": null
+  },
+  "return": {
+    "success": true,
+    "data": {
+      "id": 72,
+      "projectName": "流程项目-进阶组",
+      "groupType": "ADVANCED",
+      "groupCode": null,
+      "status": "RETURNED",
+      "submittedAt": "2026-02-05T22:23:20.538",
+      "createdAt": "2026-02-05T22:23:20.313"
+    },
+    "message": null
+  },
+  "resubmit": {
+    "success": true,
+    "data": {
+      "id": 72,
+      "projectName": "流程项目-进阶组",
+      "groupType": "ADVANCED",
+      "groupCode": null,
+      "status": "SUBMITTED",
+      "submittedAt": "2026-02-05T22:23:21.055",
+      "createdAt": "2026-02-05T22:23:20.313"
+    },
+    "message": null
+  },
+  "approve": {
+    "success": true,
+    "data": {
+      "id": 72,
+      "projectName": "流程项目-进阶组",
+      "groupType": "ADVANCED",
+      "groupCode": null,
+      "status": "APPROVED",
+      "submittedAt": "2026-02-05T22:23:21.055",
+      "createdAt": "2026-02-05T22:23:20.313"
+    },
+    "message": null
+  },
+  "batchClassify": {
+    "success": true,
+    "data": [
+      {
+        "id": 72,
+        "projectName": "流程项目-进阶组",
+        "groupType": "ADVANCED",
+        "groupCode": "B1",
+        "status": "APPROVED",
+        "submittedAt": "2026-02-05T22:23:21.055",
+        "createdAt": "2026-02-05T22:23:20.313"
+      }
+    ],
+    "message": null
+  },
+  "assignReview": {
+    "success": true,
+    "data": {
+      "id": 114,
+      "stage": "BOOK",
+      "status": "PENDING",
+      "createdAt": "2026-02-05T22:23:21.752"
+    },
+    "message": null
+  },
+  "confirmTask": {
+    "success": true,
+    "data": {
+      "id": 114,
+      "stage": "BOOK",
+      "status": "CONFIRMED",
+      "createdAt": "2026-02-05T22:23:21.752"
+    },
+    "message": null
+  },
+  "submitScore": {
+    "success": true,
+    "data": {
+      "id": 47,
+      "plan": 20,
+      "problem": 20,
+      "action": 20,
+      "success": 15,
+      "review": 10,
+      "operation": 10,
+      "presentation": 5,
+      "total": 100,
+      "highlight": "结构清晰",
+      "weakness": "细节可加强",
+      "submittedAt": "2026-02-05T22:23:22.194"
+    },
+    "message": null
+  },
+  "reviewDetails": {
+    "success": true,
+    "data": [
+      {
+        "stage": "BOOK",
+        "taskCount": 1,
+        "scoredCount": 1,
+        "avgPlan": 20.0,
+        "avgProblem": 20.0,
+        "avgAction": 20.0,
+        "avgSuccess": 15.0,
+        "avgReview": 10.0,
+        "avgOperation": 10.0,
+        "avgPresentation": 5.0,
+        "avgTotal": 100.0,
+        "highlights": [
+          "结构清晰"
+        ],
+        "weaknesses": [
+          "细节可加强"
+        ]
+      },
+      {
+        "stage": "INTERVIEW",
+        "taskCount": 0,
+        "scoredCount": 0,
+        "avgPlan": null,
+        "avgProblem": null,
+        "avgAction": null,
+        "avgSuccess": null,
+        "avgReview": null,
+        "avgOperation": null,
+        "avgPresentation": null,
+        "avgTotal": null,
+        "highlights": [],
+        "weaknesses": []
+      },
+      {
+        "stage": "FINAL",
+        "taskCount": 0,
+        "scoredCount": 0,
+        "avgPlan": null,
+        "avgProblem": null,
+        "avgAction": null,
+        "avgSuccess": null,
+        "avgReview": null,
+        "avgOperation": null,
+        "avgPresentation": null,
+        "avgTotal": null,
+        "highlights": [],
+        "weaknesses": []
+      }
+    ],
+    "message": null
+  },
+  "returnScore": {
+    "success": true,
+    "data": {
+      "id": 114,
+      "stage": "BOOK",
+      "status": "RETURNED",
+      "createdAt": "2026-02-05T22:23:21.752"
+    },
+    "message": null
+  },
+  "rescore": {
+    "success": true,
+    "data": {
+      "id": 48,
+      "plan": 18,
+      "problem": 18,
+      "action": 18,
+      "success": 14,
+      "review": 9,
+      "operation": 9,
+      "presentation": 4,
+      "total": 90,
+      "highlight": "数据扎实",
+      "weakness": "表达可提升",
+      "submittedAt": "2026-02-05T22:23:23.174"
+    },
+    "message": null
+  }
+}

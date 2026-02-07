@@ -27,16 +27,25 @@ public class Registration {
     @JoinColumn(name = "competition_id")
     @JsonIgnore
     private Competition competition;
+    
+    @Column(name = "competition_id", insertable = false, updatable = false)
+    private Long competitionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "institution_id")
     @JsonIgnore
     private Institution institution;
+    
+    @Column(name = "institution_id", insertable = false, updatable = false)
+    private Long institutionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "applicant_id")
     @JsonIgnore
     private UserAccount applicant;
+    
+    @Column(name = "applicant_id", insertable = false, updatable = false)
+    private Long applicantId;
 
     @Column(nullable = false, length = 120)
     private String projectName;

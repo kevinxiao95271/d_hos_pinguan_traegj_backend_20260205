@@ -28,6 +28,8 @@ import com.trae.pinguan.web.dto.GroupedRegistrationResponse;
 import com.trae.pinguan.web.dto.MemberUpsertRequest;
 import com.trae.pinguan.web.dto.ProjectSummaryRequest;
 import com.trae.pinguan.web.dto.RegistrationFilterItem;
+import java.util.HashSet;
+import java.util.Set;
 import com.trae.pinguan.web.dto.RegistrationCreateRequest;
 import com.trae.pinguan.web.dto.RegistrationDetailResponse;
 import java.time.LocalDateTime;
@@ -270,21 +272,104 @@ public class RegistrationService {
                                                             String projectName,
                                                             String institutionName,
                                                             String methodCode,
-                                                            String subjectTypeCode) {
+                                                            String methodLabel,
+                                                            String subjectTypeCode,
+                                                            String subjectTypeLabel) {
         String groupCodeValue = groupCode == null || groupCode.trim().isEmpty() ? null : groupCode.trim();
         String projectNameValue = projectName == null || projectName.trim().isEmpty() ? null : projectName.trim();
         String institutionNameValue = institutionName == null || institutionName.trim().isEmpty() ? null : institutionName.trim();
-        String methodCodeValue = methodCode == null || methodCode.trim().isEmpty() ? null : methodCode.trim();
-        String subjectTypeCodeValue = subjectTypeCode == null || subjectTypeCode.trim().isEmpty() ? null : subjectTypeCode.trim();
-        List<RegistrationFilterItem> items = registrationRepository.filterRegistrations(
-                competitionId,
-                groupType,
-                groupCodeValue,
-                projectNameValue,
-                institutionNameValue,
-                methodCodeValue,
-                subjectTypeCodeValue
-        );
+        
+        // 如果传了methodLabel，转换为methodCode（支持多个匹配）
+        String methodCodeValue = methodCode;
+        List<String> methodCodes = null;
+        if ((methodCodeValue == null || methodCodeValue.trim().isEmpty()) && methodLabel != null && !methodLabel.trim().isEmpty()) {
+            // 根据label查找所有匹配的code（可能有多个）
+            methodCodes = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("method", true)
+                    .stream()
+                    .filter(item -> methodLabel.trim().equals(item.getLabel()))
+                    .map(item -> item.getCode())
+                    .collect(Collectors.toList());
+        }
+        methodCodeValue = methodCodeValue == null || methodCodeValue.trim().isEmpty() ? null : methodCodeValue.trim();
+        
+        // 如果传了subjectTypeLabel，转换为subjectTypeCode（支持多个匹配）
+        String subjectTypeCodeValue = subjectTypeCode;
+        List<String> subjectTypeCodes = null;
+        if ((subjectTypeCodeValue == null || subjectTypeCodeValue.trim().isEmpty()) && subjectTypeLabel != null && !subjectTypeLabel.trim().isEmpty()) {
+            // 根据label查找所有匹配的code（可能有多个）
+            subjectTypeCodes = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("subject_type", true)
+                    .stream()
+                    .filter(item -> subjectTypeLabel.trim().equals(item.getLabel()))
+                    .map(item -> item.getCode())
+                    .collect(Collectors.toList());
+        }
+        subjectTypeCodeValue = subjectTypeCodeValue == null || subjectTypeCodeValue.trim().isEmpty() ? null : subjectTypeCodeValue.trim();
+        
+        // 如果methodLabel匹配了多个code，需要分别查询然后合并结果
+        List<RegistrationFilterItem> items;
+        if (methodCodeValue == null && methodCodes != null && methodCodes.size() > 1) {
+            // 多个methodCode匹配，分别查询
+            items = new ArrayList<>();
+            Set<Long> seenIds = new HashSet<>();
+            for (String code : methodCodes) {
+                List<RegistrationFilterItem> partialItems = registrationRepository.filterRegistrations(
+                        competitionId,
+                        groupType,
+                        groupCodeValue,
+                        projectNameValue,
+                        institutionNameValue,
+                        code,
+                        subjectTypeCodeValue
+                );
+                // 去重
+                for (RegistrationFilterItem item : partialItems) {
+                    if (!seenIds.contains(item.getRegistrationId())) {
+                        items.add(item);
+                        seenIds.add(item.getRegistrationId());
+                    }
+                }
+            }
+        } else if (subjectTypeCodeValue == null && subjectTypeCodes != null && subjectTypeCodes.size() > 1) {
+            // 多个subjectTypeCode匹配，分别查询
+            items = new ArrayList<>();
+            Set<Long> seenIds = new HashSet<>();
+            for (String code : subjectTypeCodes) {
+                List<RegistrationFilterItem> partialItems = registrationRepository.filterRegistrations(
+                        competitionId,
+                        groupType,
+                        groupCodeValue,
+                        projectNameValue,
+                        institutionNameValue,
+                        methodCodeValue,
+                        code
+                );
+                // 去重
+                for (RegistrationFilterItem item : partialItems) {
+                    if (!seenIds.contains(item.getRegistrationId())) {
+                        items.add(item);
+                        seenIds.add(item.getRegistrationId());
+                    }
+                }
+            }
+        } else {
+            // 单个code或没有label，正常查询
+            if (methodCodeValue == null && methodCodes != null && methodCodes.size() == 1) {
+                methodCodeValue = methodCodes.get(0);
+            }
+            if (subjectTypeCodeValue == null && subjectTypeCodes != null && subjectTypeCodes.size() == 1) {
+                subjectTypeCodeValue = subjectTypeCodes.get(0);
+            }
+            items = registrationRepository.filterRegistrations(
+                    competitionId,
+                    groupType,
+                    groupCodeValue,
+                    projectNameValue,
+                    institutionNameValue,
+                    methodCodeValue,
+                    subjectTypeCodeValue
+            );
+        }
+        
         if (items.isEmpty()) {
             return items;
         }

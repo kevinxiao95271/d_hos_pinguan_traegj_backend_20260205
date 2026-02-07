@@ -36,14 +36,16 @@ public class AdminRegistrationController {
     }
 
     @GetMapping("/filter")
-    @Operation(summary = "后台报名筛选")
+    @Operation(summary = "后台报名筛选（支持按code或label筛选）")
     public ApiResponse<List<RegistrationFilterItem>> filter(@RequestParam Long competitionId,
                                                             @RequestParam(required = false) com.trae.pinguan.domain.enums.GroupType groupType,
                                                             @RequestParam(required = false) String groupCode,
                                                             @RequestParam(required = false) String projectName,
                                                             @RequestParam(required = false) String institutionName,
                                                             @RequestParam(required = false) String methodCode,
-                                                            @RequestParam(required = false) String subjectTypeCode) {
+                                                            @RequestParam(required = false) String methodLabel,
+                                                            @RequestParam(required = false) String subjectTypeCode,
+                                                            @RequestParam(required = false) String subjectTypeLabel) {
         return ApiResponse.ok(registrationService.filterRegistrations(
                 competitionId,
                 groupType,
@@ -51,7 +53,9 @@ public class AdminRegistrationController {
                 projectName,
                 institutionName,
                 methodCode,
-                subjectTypeCode
+                methodLabel,
+                subjectTypeCode,
+                subjectTypeLabel
         ));
     }
 

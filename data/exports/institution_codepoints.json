@@ -1,0 +1,15 @@
+{
+  "name": "杭州市第一人民医院",
+  "hex": "E69DADE5B79EE5B882E7ACACE4B880E4BABAE6B091E58CBBE999A2",
+  "contains_??": false,
+  "name_codepoints": [
+    "0x676d",
+    "0x5dde",
+    "0x5e02",
+    "0x7b2c"
+  ],
+  "target_codepoints": [
+    "0x3f",
+    "0x3f"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "data": {
+    "id": 21,
+    "name": "2026浙江品管大赛",
+    "stage": "REGISTER",
+    "registerStart": null,
+    "registerEnd": null,
+    "bookReviewStart": null,
+    "bookReviewEnd": null,
+    "interviewStart": null,
+    "interviewEnd": null,
+    "finalStart": null,
+    "finalEnd": null,
+    "createdAt": "2026-02-05T10:05:06.699"
+  },
+  "message": null
+}

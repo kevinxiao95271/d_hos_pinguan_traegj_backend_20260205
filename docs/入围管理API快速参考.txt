@@ -1,0 +1,179 @@
+================================================================================
+                        入围管理API快速参考
+================================================================================
+
+【核心API - 3个】
+
+1. 获取排名（书审/面谈）
+   GET /api/admin/reviews/rankings
+   参数: competitionId=21, stage=BOOK|INTERVIEW, groupType=BASIC|ADVANCED|COMPREHENSIVE(可选)
+   返回: [{rank, registrationId, projectName, institutionName, groupType, stage, avgTotal}]
+
+2. 获取项目详细评分
+   GET /api/registrations/{registrationId}/review-details
+   返回: [{stage, avgPlan, avgProblem, avgAction, avgSuccess, avgReview, avgOperation, avgPresentation, avgTotal, highlights[], weaknesses[]}]
+
+3. 获取入围名单（可选）
+   GET /api/admin/reviews/shortlist
+   参数: competitionId=21, stage=BOOK|INTERVIEW, limit=10(可选), minAvgTotal=80(可选)
+   返回: 同rankings结构
+
+================================================================================
+
+【核心功能点 - 7个】
+
+功能1: 综合排名展示
+   API: rankings(BOOK) + rankings(INTERVIEW)
+   逻辑: 合并两个列表，计算 compositeScore = bookScore × 50% + interviewScore × 50%
+   输出: [{rank, projectName, bookScore, interviewScore, compositeScore}]
+
+功能2: 入围策略配置
+   API: 无需新API，基于功能1数据计算
+   逻辑: 
+     - 修改权重 -> 重新计算compositeScore
+     - 设置比例30% -> 取前30%标记为入围
+     - 设置分数线80 -> 过滤 >= 80分的项目
+   输出: [{...功能1字段, isShortlisted: true/false, shortlistType: "auto"}]
+
+功能3: 个别增补/取消
+   API: 无需API，客户端维护状态
+   逻辑:
+     - 增补: shortlistType = "manual_add", isShortlisted = true
+     - 取消: shortlistType = "manual_remove", isShortlisted = false
+   输出: [{...功能2字段, shortlistType: "auto"|"manual_add"|"manual_remove"}]
+
+功能4: 按组别筛选
+   API: rankings(BOOK, groupType=BASIC) + rankings(INTERVIEW, groupType=BASIC)
+   逻辑: API传参或客户端过滤
+   输出: 指定组别的排名数据
+
+功能5: 查看项目详情
+   API: review-details
+   逻辑: 弹窗显示书审/面谈/决赛各阶段的详细评分
+   输出: 各阶段评分 + 评委意见
+
+功能6: 统计信息
+   API: 无需新API，基于功能1数据统计
+   逻辑:
+     totalProjects = data.length
+     completedBoth = data.filter(p => p.status === 'completed').length
+     shortlisted = data.filter(p => p.isShortlisted).length
+   输出: {totalProjects, completedBook, completedInterview, shortlisted, ...}
+
+功能7: 导出入围名单
+   API: 无需API，基于功能2/3的入围数据生成CSV
+   格式: 综合排名,项目名称,医疗机构,组别,书审得分,面谈得分,综合得分,入围状态
+
+================================================================================
+
+【API调用流程】
+
+场景1: 页面加载
+  1. GET /api/admin/reviews/rankings?competitionId=21&stage=BOOK
+  2. GET /api/admin/reviews/rankings?competitionId=21&stage=INTERVIEW
+  3. 客户端合并计算综合得分和排名
+  4. 显示列表
+
+场景2: 调整权重（书审60% + 面谈40%）
+  1. 无需API调用
+  2. 客户端重新计算: compositeScore = bookScore × 0.6 + interviewScore × 0.4
+  3. 重新排序
+  4. 刷新显示
+
+场景3: 设置入围比例30%
+  1. 无需API调用
+  2. 计算入围数量: count = Math.floor(completedBoth × 0.3)
+  3. 标记前count名为入围
+  4. 刷新显示
+
+场景4: 手动增补第11名
+  1. 无需API调用
+  2. 修改状态: isShortlisted=true, shortlistType="manual_add"
+  3. 刷新显示
+
+场景5: 查看项目详情
+  1. GET /api/registrations/106/review-details
+  2. 显示书审/面谈各维度得分 + 评委意见
+
+================================================================================
+
+【返回数据结构】
+
+rankings API:
+{
+  "code": 200,
+  "data": [
+    {
+      "rank": 1,
+      "registrationId": 106,
+      "projectName": "护理交接班规范化-1",
+      "institutionName": "浙江大学医学院附属第一医院",
+      "groupType": "BASIC",
+      "stage": "BOOK",
+      "avgTotal": 88.0
+    }
+  ]
+}
+
+review-details API:
+{
+  "code": 200,
+  "data": [
+    {
+      "stage": "BOOK",
+      "taskCount": 2,
+      "scoredCount": 1,
+      "avgPlan": 18.0,
+      "avgProblem": 17.0,
+      "avgAction": 19.0,
+      "avgSuccess": 18.0,
+      "avgReview": 16.0,
+      "avgOperation": 0.0,
+      "avgPresentation": 0.0,
+      "avgTotal": 88.0,
+      "highlights": ["项目主题明确..."],
+      "weaknesses": ["建议进一步量化..."]
+    }
+  ]
+}
+
+客户端处理后（综合排名）:
+[
+  {
+    "rank": 1,
+    "registrationId": 106,
+    "projectName": "护理交接班规范化-1",
+    "institutionName": "浙江大学医学院附属第一医院",
+    "groupType": "BASIC",
+    "bookScore": 88.0,
+    "interviewScore": 85.5,
+    "compositeScore": 86.75,
+    "status": "completed",
+    "isShortlisted": true,
+    "shortlistType": "auto"
+  }
+]
+
+================================================================================
+
+【测试验证结果】
+
+✅ API调用成功
+✅ 书审排名: 1个项目，得分88.0
+✅ 面谈排名: 0个项目（待评审）
+✅ 项目详情: 可获取书审详细评分 + 评委意见
+✅ 数据合并: 支持，待面谈数据后可计算综合排名
+✅ 功能拆解: 7个功能点全部可实现
+
+================================================================================
+
+【注意事项】
+
+1. 权重默认各50%，可调整
+2. 入围只针对已完成书审和面谈的项目（status="completed"）
+3. 待面谈的项目（status="pending_interview"）不参与入围
+4. 手动增补/取消由客户端维护，后续可扩展持久化API
+5. 组别筛选可用API参数或客户端过滤
+6. 所有API需要Bearer token认证
+
+================================================================================

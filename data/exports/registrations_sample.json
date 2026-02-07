@@ -1,0 +1,336 @@
+{
+  "success": true,
+  "data": [
+    {
+      "registrationId": 106,
+      "projectName": "护理交接班规范化-1",
+      "institutionName": "浙江大学医学院附属第一医院",
+      "groupType": "BASIC",
+      "groupCode": "A1",
+      "submittedAt": "2026-02-04T15:38:52.604359",
+      "methodCode": "qc_topic",
+      "applicantName": "参赛者1"
+    },
+    {
+      "registrationId": 107,
+      "projectName": "检验报告时效提升-2",
+      "institutionName": "浙江大学医学院附属第二医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "A2",
+      "submittedAt": "2026-02-04T16:38:52.604359",
+      "methodCode": "method_7",
+      "applicantName": "参赛者2"
+    },
+    {
+      "registrationId": 108,
+      "projectName": "静脉输液安全改进-3",
+      "institutionName": "浙江省人民医院",
+      "groupType": "ADVANCED",
+      "groupCode": "B1",
+      "submittedAt": "2026-02-04T17:38:52.604359",
+      "methodCode": "method_4",
+      "applicantName": "参赛者3"
+    },
+    {
+      "registrationId": 109,
+      "projectName": "疼痛管理规范化-4",
+      "institutionName": "浙江省中医院",
+      "groupType": "BASIC",
+      "groupCode": "B2",
+      "submittedAt": "2026-02-04T18:38:52.604359",
+      "methodCode": "trm",
+      "applicantName": "参赛者4"
+    },
+    {
+      "registrationId": 110,
+      "projectName": "医技检查协调优化-5",
+      "institutionName": "杭州市第一人民医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "A1",
+      "submittedAt": "2026-02-04T19:38:52.604359",
+      "methodCode": "method_6",
+      "applicantName": "参赛者5"
+    },
+    {
+      "registrationId": 111,
+      "projectName": "医疗耗材精细化管理-6",
+      "institutionName": "杭州市中医院",
+      "groupType": "ADVANCED",
+      "groupCode": "A2",
+      "submittedAt": "2026-02-04T20:38:52.604359",
+      "methodCode": "pdca",
+      "applicantName": "参赛者6"
+    },
+    {
+      "registrationId": 112,
+      "projectName": "住院用药安全改进-7",
+      "institutionName": "宁波市第一医院",
+      "groupType": "BASIC",
+      "groupCode": "B1",
+      "submittedAt": "2026-02-04T21:38:52.604359",
+      "methodCode": "method_9",
+      "applicantName": "参赛者7"
+    },
+    {
+      "registrationId": 113,
+      "projectName": "护理质量提升行动-8",
+      "institutionName": "宁波市第二医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "B2",
+      "submittedAt": "2026-02-04T22:38:52.604359",
+      "methodCode": "ebm",
+      "applicantName": "参赛者8"
+    },
+    {
+      "registrationId": 114,
+      "projectName": "住院服务效率提升-9",
+      "institutionName": "温州市人民医院",
+      "groupType": "ADVANCED",
+      "groupCode": "A1",
+      "submittedAt": "2026-02-04T23:38:52.604359",
+      "methodCode": "qc_topic",
+      "applicantName": "参赛者9"
+    },
+    {
+      "registrationId": 115,
+      "projectName": "减少等待时间改善项目-10",
+      "institutionName": "温州市中医院",
+      "groupType": "BASIC",
+      "groupCode": "A2",
+      "submittedAt": "2026-02-05T00:38:52.604359",
+      "methodCode": "method_9",
+      "applicantName": "参赛者10"
+    },
+    {
+      "registrationId": 116,
+      "projectName": "门诊预约体验提升-11",
+      "institutionName": "嘉兴市第一医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "B1",
+      "submittedAt": "2026-02-05T01:38:52.604359",
+      "methodCode": "5s",
+      "applicantName": "参赛者11"
+    },
+    {
+      "registrationId": 117,
+      "projectName": "病案质量提升-12",
+      "institutionName": "嘉兴市第二医院",
+      "groupType": "ADVANCED",
+      "groupCode": "B2",
+      "submittedAt": "2026-02-05T02:38:52.604359",
+      "methodCode": "process_improve",
+      "applicantName": "参赛者12"
+    },
+    {
+      "registrationId": 118,
+      "projectName": "病区巡查标准化-13",
+      "institutionName": "湖州市中心医院",
+      "groupType": "BASIC",
+      "groupCode": "A1",
+      "submittedAt": "2026-02-05T03:38:52.604359",
+      "methodCode": "method_7",
+      "applicantName": "参赛者13"
+    },
+    {
+      "registrationId": 119,
+      "projectName": "康复流程改进-14",
+      "institutionName": "绍兴市人民医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "A2",
+      "submittedAt": "2026-02-05T04:38:52.604359",
+      "methodCode": "method_15",
+      "applicantName": "参赛者14"
+    },
+    {
+      "registrationId": 120,
+      "projectName": "信息系统提效-15",
+      "institutionName": "金华市中心医院",
+      "groupType": "ADVANCED",
+      "groupCode": "B1",
+      "submittedAt": "2026-02-05T05:38:52.604359",
+      "methodCode": "method_13",
+      "applicantName": "参赛者15"
+    },
+    {
+      "registrationId": 121,
+      "projectName": "抗菌药物规范化-16",
+      "institutionName": "衢州市人民医院",
+      "groupType": "BASIC",
+      "groupCode": "B2",
+      "submittedAt": "2026-02-05T06:38:52.604359",
+      "methodCode": "method_13",
+      "applicantName": "参赛者16"
+    },
+    {
+      "registrationId": 122,
+      "projectName": "手卫生依从性提升-17",
+      "institutionName": "舟山市人民医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "A1",
+      "submittedAt": "2026-02-05T07:38:52.604359",
+      "methodCode": "method_8",
+      "applicantName": "参赛者17"
+    },
+    {
+      "registrationId": 123,
+      "projectName": "急诊分诊优化-18",
+      "institutionName": "台州市中心医院",
+      "groupType": "ADVANCED",
+      "groupCode": "A2",
+      "submittedAt": "2026-02-05T08:38:52.604359",
+      "methodCode": "process_improve",
+      "applicantName": "参赛者18"
+    },
+    {
+      "registrationId": 124,
+      "projectName": "影像检查流程优化-19",
+      "institutionName": "丽水市人民医院",
+      "groupType": "BASIC",
+      "groupCode": "B1",
+      "submittedAt": "2026-02-05T09:38:52.604359",
+      "methodCode": "root_cause",
+      "applicantName": "参赛者19"
+    },
+    {
+      "registrationId": 125,
+      "projectName": "手术室周转优化-20",
+      "institutionName": "湖州市中医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "B2",
+      "submittedAt": "2026-02-05T10:38:52.604359",
+      "methodCode": "trm",
+      "applicantName": "参赛者20"
+    },
+    {
+      "registrationId": 126,
+      "projectName": "门急诊流程优化-21",
+      "institutionName": "绍兴市中医院",
+      "groupType": "ADVANCED",
+      "groupCode": "A1",
+      "submittedAt": "2026-02-05T11:38:52.604359",
+      "methodCode": "pdca",
+      "applicantName": "参赛者21"
+    },
+    {
+      "registrationId": 127,
+      "projectName": "患者满意度提升-22",
+      "institutionName": "金华市中医院",
+      "groupType": "BASIC",
+      "groupCode": "A2",
+      "submittedAt": "2026-02-05T12:38:52.604359",
+      "methodCode": "method_3",
+      "applicantName": "参赛者22"
+    },
+    {
+      "registrationId": 128,
+      "projectName": "药学服务质量提升-23",
+      "institutionName": "衢州市中医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "B1",
+      "submittedAt": "2026-02-05T13:38:52.604359",
+      "methodCode": "method_13",
+      "applicantName": "参赛者23"
+    },
+    {
+      "registrationId": 129,
+      "projectName": "医保结算效率提升-24",
+      "institutionName": "舟山市中医院",
+      "groupType": "ADVANCED",
+      "groupCode": "B2",
+      "submittedAt": "2026-02-05T14:38:52.604359",
+      "methodCode": "method_5",
+      "applicantName": "参赛者24"
+    },
+    {
+      "registrationId": 130,
+      "projectName": "护理交接班规范化-25",
+      "institutionName": "台州市中医院",
+      "groupType": "BASIC",
+      "groupCode": "A1",
+      "submittedAt": "2026-02-05T15:38:52.604359",
+      "methodCode": "qfd",
+      "applicantName": "参赛者25"
+    },
+    {
+      "registrationId": 131,
+      "projectName": "检验报告时效提升-26",
+      "institutionName": "丽水市中医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "A2",
+      "submittedAt": "2026-02-05T16:38:52.604359",
+      "methodCode": "method_6",
+      "applicantName": "参赛者26"
+    },
+    {
+      "registrationId": 132,
+      "projectName": "静脉输液安全改进-27",
+      "institutionName": "杭州师范大学附属医院",
+      "groupType": "ADVANCED",
+      "groupCode": "B1",
+      "submittedAt": "2026-02-05T17:38:52.604359",
+      "methodCode": "root_cause",
+      "applicantName": "参赛者27"
+    },
+    {
+      "registrationId": 133,
+      "projectName": "疼痛管理规范化-28",
+      "institutionName": "浙江省肿瘤医院",
+      "groupType": "BASIC",
+      "groupCode": "B2",
+      "submittedAt": "2026-02-05T18:38:52.604359",
+      "methodCode": "method_5",
+      "applicantName": "参赛者28"
+    },
+    {
+      "registrationId": 134,
+      "projectName": "医技检查协调优化-29",
+      "institutionName": "浙江省妇幼保健院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "A1",
+      "submittedAt": "2026-02-05T19:38:52.604359",
+      "methodCode": "QC_CIRCLE",
+      "applicantName": "参赛者29"
+    },
+    {
+      "registrationId": 135,
+      "projectName": "医疗耗材精细化管理-30",
+      "institutionName": "浙江省立同德医院",
+      "groupType": "ADVANCED",
+      "groupCode": "A2",
+      "submittedAt": "2026-02-05T20:38:52.604359",
+      "methodCode": "method_16",
+      "applicantName": "参赛者30"
+    },
+    {
+      "registrationId": 136,
+      "projectName": "住院用药安全改进-31",
+      "institutionName": "浙江省立同德医院下沙院区",
+      "groupType": "BASIC",
+      "groupCode": "B1",
+      "submittedAt": "2026-02-05T21:38:52.604359",
+      "methodCode": "ebm",
+      "applicantName": "参赛者31"
+    },
+    {
+      "registrationId": 137,
+      "projectName": "护理质量提升行动-32",
+      "institutionName": "宁波大学附属医院",
+      "groupType": "COMPREHENSIVE",
+      "groupCode": "B2",
+      "submittedAt": "2026-02-05T22:38:52.604359",
+      "methodCode": "method_10",
+      "applicantName": "参赛者32"
+    },
+    {
+      "registrationId": 138,
+      "projectName": "住院服务效率提升-33",
+      "institutionName": "浙江大学医学院附属邵逸夫医院",
+      "groupType": "ADVANCED",
+      "groupCode": "A1",
+      "submittedAt": "2026-02-05T23:38:52.604359",
+      "methodCode": "benchmark",
+      "applicantName": "参赛者33"
+    }
+  ],
+  "message": null
+}

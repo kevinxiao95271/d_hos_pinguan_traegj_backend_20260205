@@ -1,0 +1,232 @@
+{
+  "test_data": {
+    "competition_id": 27,
+    "registration_ids": [],
+    "reviewer_ids": [],
+    "review_task_ids": [],
+    "institution_ids": []
+  },
+  "results": [
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "================================================================================"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "开始端到端全流程测试"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "================================================================================"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "============================================================"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "步骤1: 管理员登录"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[OK] 管理员登录成功",
+      "data": {
+        "userId": 150,
+        "name": "系统管理员",
+        "role": "OPS"
+      }
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "============================================================"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "步骤2: 检查字典配置"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[OK] 字典 subject_type 配置数量: 21"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[OK] 字典 method 配置数量: 33"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[OK] 字典 experience_improve 配置数量: 9"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[OK] 字典 quality_topic 配置数量: 24"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "============================================================"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "步骤3: 创建新赛事"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[OK] 赛事创建成功",
+      "data": {
+        "competitionId": 27,
+        "name": "2026年浙江省医疗质量改进大赛"
+      }
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "步骤: 设置赛事阶段为 REGISTER"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[OK] 赛事阶段设置为 REGISTER"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "============================================================"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "步骤5: 创建参赛报名"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "步骤: 参赛者登录 (机构ID: 1)"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[FAIL] API调用失败: POST /api/auth/login",
+      "data": {
+        "status_code": 400,
+        "success": false,
+        "response": {
+          "timestamp": "2026-02-06 17:51:20",
+          "status": 400,
+          "error": "Bad Request",
+          "path": "/api/auth/login"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[FAIL] 参赛者登录失败"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "步骤: 参赛者登录 (机构ID: 2)"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[FAIL] API调用失败: POST /api/auth/login",
+      "data": {
+        "status_code": 400,
+        "success": false,
+        "response": {
+          "timestamp": "2026-02-06 17:51:20",
+          "status": 400,
+          "error": "Bad Request",
+          "path": "/api/auth/login"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[FAIL] 参赛者登录失败"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "步骤: 参赛者登录 (机构ID: 3)"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[FAIL] API调用失败: POST /api/auth/login",
+      "data": {
+        "status_code": 400,
+        "success": false,
+        "response": {
+          "timestamp": "2026-02-06 17:51:20",
+          "status": 400,
+          "error": "Bad Request",
+          "path": "/api/auth/login"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "[FAIL] 参赛者登录失败"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:20",
+      "message": "步骤: 参赛者登录 (机构ID: 4)"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:21",
+      "message": "[FAIL] API调用失败: POST /api/auth/login",
+      "data": {
+        "status_code": 400,
+        "success": false,
+        "response": {
+          "timestamp": "2026-02-06 17:51:20",
+          "status": 400,
+          "error": "Bad Request",
+          "path": "/api/auth/login"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-02-06 17:51:21",
+      "message": "[FAIL] 参赛者登录失败"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:21",
+      "message": "步骤: 参赛者登录 (机构ID: 5)"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:21",
+      "message": "[FAIL] API调用失败: POST /api/auth/login",
+      "data": {
+        "status_code": 400,
+        "success": false,
+        "response": {
+          "timestamp": "2026-02-06 17:51:21",
+          "status": 400,
+          "error": "Bad Request",
+          "path": "/api/auth/login"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-02-06 17:51:21",
+      "message": "[FAIL] 参赛者登录失败"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:21",
+      "message": "步骤: 参赛者登录 (机构ID: 6)"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:21",
+      "message": "[FAIL] API调用失败: POST /api/auth/login",
+      "data": {
+        "status_code": 400,
+        "success": false,
+        "response": {
+          "timestamp": "2026-02-06 17:51:21",
+          "status": 400,
+          "error": "Bad Request",
+          "path": "/api/auth/login"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-02-06 17:51:21",
+      "message": "[FAIL] 参赛者登录失败"
+    },
+    {
+      "timestamp": "2026-02-06 17:51:21",
+      "message": "[FAIL] 没有成功创建任何报名"
+    }
+  ]
+}
