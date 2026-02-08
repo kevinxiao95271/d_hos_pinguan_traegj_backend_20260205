@@ -218,6 +218,9 @@ public class RegistrationService {
         if (activity != null) {
             String methodLabel = null;
             String subjectTypeLabel = null;
+            String experienceImproveLabel = null;
+            String qualityTopicLabel = null;
+            
             if (activity.getMethodCode() != null && !activity.getMethodCode().trim().isEmpty()) {
                 methodLabel = dictionaryItemRepository
                         .findFirstByTypeAndCodeAndActiveTrue("method", activity.getMethodCode())
@@ -230,6 +233,18 @@ public class RegistrationService {
                         .map(item -> item.getLabel())
                         .orElse(null);
             }
+            if (activity.getExperienceImproveCode() != null && !activity.getExperienceImproveCode().trim().isEmpty()) {
+                experienceImproveLabel = dictionaryItemRepository
+                        .findFirstByTypeAndCodeAndActiveTrue("experience_improve", activity.getExperienceImproveCode())
+                        .map(item -> item.getLabel())
+                        .orElse(null);
+            }
+            if (activity.getQualityTopicCode() != null && !activity.getQualityTopicCode().trim().isEmpty()) {
+                qualityTopicLabel = dictionaryItemRepository
+                        .findFirstByTypeAndCodeAndActiveTrue("quality_topic", activity.getQualityTopicCode())
+                        .map(item -> item.getLabel())
+                        .orElse(null);
+            }
             activityDetail = new ActivityInfoDetailResponse(
                     activity.getTheme(),
                     activity.getKeywords(),
@@ -238,15 +253,17 @@ public class RegistrationService {
                     subjectTypeLabel,
                     activity.getMethodCode(),
                     activity.getMethodOther(),
+                    methodLabel,
                     activity.getExperienceImproveCode(),
                     activity.getExperienceImproveOther(),
+                    experienceImproveLabel,
                     activity.getQualityTopicCode(),
                     activity.getQualityTopicOther(),
+                    qualityTopicLabel,
                     activity.getAvgWorkYears(),
                     activity.getAvgAge(),
                     activity.getCrossDepartment(),
-                    activity.getRelatedToDigitalAi(),
-                    methodLabel
+                    activity.getRelatedToDigitalAi()
             );
         }
         return new RegistrationDetailResponse(registration, institutionInfo, members, activityDetail, summary, materials);

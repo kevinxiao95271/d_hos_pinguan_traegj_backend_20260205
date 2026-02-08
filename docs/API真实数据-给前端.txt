@@ -1,0 +1,181 @@
+================================================================================
+API真实数据 - 给前端（用API说话）
+================================================================================
+
+测试项目ID: 119
+测试时间: 2026-02-09
+
+================================================================================
+场景1: 参赛者 - 我的报名
+================================================================================
+
+API: GET /api/registrations/119
+
+返回数据（activityInfo部分）:
+{
+  "experienceImproveCode": "outpatient_process",
+  "experienceImproveLabel": "门诊就诊流程更加优化",
+  "qualityTopicCode": "surgery_mortality",
+  "qualityTopicLabel": "降低住院患者围手术期死亡率"
+}
+
+前端应该显示:
+- 改善就医环境: 门诊就诊流程更加优化
+- 医疗质量相关主题: 降低住院患者围手术期死亡率
+
+================================================================================
+场景2: 组委会管理员 - 书审分组项目列表
+================================================================================
+
+API: GET /api/registrations/119
+
+返回数据（activityInfo部分）:
+{
+  "experienceImproveCode": "outpatient_process",
+  "experienceImproveLabel": "门诊就诊流程更加优化",
+  "qualityTopicCode": "surgery_mortality",
+  "qualityTopicLabel": "降低住院患者围手术期死亡率"
+}
+
+前端应该显示:
+- 改善就医环境: 门诊就诊流程更加优化
+- 医疗质量相关主题: 降低住院患者围手术期死亡率
+
+================================================================================
+场景3: 组委会管理员 - 筛选项目列表
+================================================================================
+
+API: GET /api/registrations/119
+
+返回数据（activityInfo部分）:
+{
+  "experienceImproveCode": "outpatient_process",
+  "experienceImproveLabel": "门诊就诊流程更加优化",
+  "qualityTopicCode": "surgery_mortality",
+  "qualityTopicLabel": "降低住院患者围手术期死亡率"
+}
+
+前端应该显示:
+- 改善就医环境: 门诊就诊流程更加优化
+- 医疗质量相关主题: 降低住院患者围手术期死亡率
+
+================================================================================
+场景4: 评委 - 查看评审任务
+================================================================================
+
+API: GET /api/registrations/119
+
+返回数据（activityInfo部分）:
+{
+  "experienceImproveCode": "outpatient_process",
+  "experienceImproveLabel": "门诊就诊流程更加优化",
+  "qualityTopicCode": "surgery_mortality",
+  "qualityTopicLabel": "降低住院患者围手术期死亡率"
+}
+
+前端应该显示:
+- 改善就医环境: 门诊就诊流程更加优化
+- 医疗质量相关主题: 降低住院患者围手术期死亡率
+
+================================================================================
+结论
+================================================================================
+
+✅ 所有4个场景都调用同一个API: GET /api/registrations/{id}
+✅ 所有4个场景都返回相同的Label字段
+✅ 后端已经正确返回了experienceImproveLabel和qualityTopicLabel
+
+❌ 如果前端显示的是:
+   - "outpatient_process" 或 "experience_1"
+   - "surgery_mortality" 或 "quality_1"
+   
+   说明前端代码使用了Code字段，而不是Label字段！
+
+================================================================================
+前端错误代码
+================================================================================
+
+❌ 错误:
+<div>{{ activityInfo.experienceImproveCode }}</div>
+<div>{{ activityInfo.qualityTopicCode }}</div>
+
+显示结果:
+- outpatient_process ❌
+- surgery_mortality ❌
+
+================================================================================
+正确的前端代码
+================================================================================
+
+✅ 正确:
+<div>{{ activityInfo.experienceImproveLabel || activityInfo.experienceImproveCode }}</div>
+<div>{{ activityInfo.qualityTopicLabel || activityInfo.qualityTopicCode }}</div>
+
+显示结果:
+- 门诊就诊流程更加优化 ✅
+- 降低住院患者围手术期死亡率 ✅
+
+================================================================================
+如何验证
+================================================================================
+
+方法1: 使用Python脚本
+python check_label_fields.py
+
+方法2: 使用浏览器开发者工具
+1. F12打开开发者工具
+2. Network标签
+3. 找到 /api/registrations/119 请求
+4. 查看Response中的activityInfo对象
+5. 确认包含experienceImproveLabel和qualityTopicLabel
+
+方法3: 使用Postman或curl
+curl -X POST http://localhost:6031/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"13900000001","name":"李明华","role":"REVIEWER"}'
+
+# 复制返回的token
+
+curl -X GET http://localhost:6031/api/registrations/119 \
+  -H "Authorization: Bearer {token}"
+
+# 查看响应中的experienceImproveLabel和qualityTopicLabel
+
+================================================================================
+完整的activityInfo数据结构
+================================================================================
+
+{
+  "theme": "项目主题119",
+  "keywords": "质量,改进",
+  "subjectTypeCode": "subject_type_6",
+  "subjectTypeLabel": "满意度",
+  "methodCode": "method_15",
+  "methodLabel": "流程改造",
+  "experienceImproveCode": "outpatient_process",
+  "experienceImproveLabel": "门诊就诊流程更加优化",
+  "qualityTopicCode": "surgery_mortality",
+  "qualityTopicLabel": "降低住院患者围手术期死亡率",
+  "avgWorkYears": 7,
+  "avgAge": 32,
+  "crossDepartment": true,
+  "relatedToDigitalAi": false
+}
+
+================================================================================
+总结
+================================================================================
+
+项目ID: 119
+API: GET /api/registrations/119
+
+所有4个场景都使用这个API，都返回相同的Label字段。
+
+前端只需要改一个地方:
+把 {{ activityInfo.experienceImproveCode }}
+改成 {{ activityInfo.experienceImproveLabel || activityInfo.experienceImproveCode }}
+
+把 {{ activityInfo.qualityTopicCode }}
+改成 {{ activityInfo.qualityTopicLabel || activityInfo.qualityTopicCode }}
+
+================================================================================

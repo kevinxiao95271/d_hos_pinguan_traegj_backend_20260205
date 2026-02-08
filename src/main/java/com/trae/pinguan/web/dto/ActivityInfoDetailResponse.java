@@ -13,13 +13,15 @@ public class ActivityInfoDetailResponse {
     private String subjectTypeLabel;
     private String methodCode;
     private String methodOther;
+    private String methodLabel;
     private String experienceImproveCode;
     private String experienceImproveOther;
+    private String experienceImproveLabel;
     private String qualityTopicCode;
     private String qualityTopicOther;
+    private String qualityTopicLabel;
     private Integer avgWorkYears;
     private Integer avgAge;
     private Boolean crossDepartment;
     private Boolean relatedToDigitalAi;
-    private String methodLabel;
 }

@@ -1,0 +1,26 @@
+experience_improve 修复快速参考
+=====================================
+
+问题: "改善就医环境" 没有Label
+
+原因: 数据库中有14条记录使用了不存在的code (experience_1/2/3)
+
+修复: 已将这些记录更新为有效的code
+
+验证: 
+  python verify_experience_improve_fix.py
+
+结果: ✅ 所有4个Label字段都正确返回
+
+测试API:
+  GET /api/registrations/119
+  
+返回示例:
+  experienceImproveCode: "outpatient_process"
+  experienceImproveLabel: "门诊就诊流程更加优化"
+
+详细报告:
+  - experience_improve乱码修复完成报告.md
+  - 4个Label字段修复总结.md
+
+状态: ✅ 已完成

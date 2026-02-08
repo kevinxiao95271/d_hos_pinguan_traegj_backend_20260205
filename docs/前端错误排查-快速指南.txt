@@ -1,0 +1,179 @@
+================================================================================
+前端错误排查 - 快速指南
+================================================================================
+
+问题：前端显示 "experience_1" 而不是 "门诊就诊流程更加优化"
+
+原因：前端代码直接使用了 Code 字段，而不是 Label 字段
+
+================================================================================
+后端数据（正确的）
+================================================================================
+
+后端API返回的数据：
+
+{
+  "experienceImproveCode": "outpatient_process",
+  "experienceImproveLabel": "门诊就诊流程更加优化",  ← 这个才是要显示的！
+  "qualityTopicCode": "surgery_mortality",
+  "qualityTopicLabel": "降低住院患者围手术期死亡率"  ← 这个才是要显示的！
+}
+
+✅ 后端已经正确返回了所有Label字段！
+
+================================================================================
+前端错误代码
+================================================================================
+
+❌ 错误1：直接使用Code字段
+
+<div>{{ activityInfo.experienceImproveCode }}</div>
+<div>{{ activityInfo.qualityTopicCode }}</div>
+
+显示结果：
+- outpatient_process ❌
+- surgery_mortality ❌
+
+❌ 错误2：字段名写错
+
+<div>{{ activityInfo.experienceLabel }}</div>  ← 应该是 experienceImproveLabel
+<div>{{ activityInfo.qualityLabel }}</div>     ← 应该是 qualityTopicLabel
+
+================================================================================
+正确的前端代码
+================================================================================
+
+✅ 方法1：使用 || 运算符（推荐）
+
+<div>{{ activityInfo.experienceImproveLabel || activityInfo.experienceImproveCode }}</div>
+<div>{{ activityInfo.qualityTopicLabel || activityInfo.qualityTopicCode }}</div>
+
+显示结果：
+- 门诊就诊流程更加优化 ✅
+- 降低住院患者围手术期死亡率 ✅
+
+✅ 方法2：使用计算属性
+
+<template>
+  <div>{{ experienceImproveDisplay }}</div>
+  <div>{{ qualityTopicDisplay }}</div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+const experienceImproveDisplay = computed(() => {
+  return props.activityInfo.experienceImproveLabel || 
+         props.activityInfo.experienceImproveCode || 
+         '未填写'
+})
+
+const qualityTopicDisplay = computed(() => {
+  return props.activityInfo.qualityTopicLabel || 
+         props.activityInfo.qualityTopicCode || 
+         '未填写'
+})
+</script>
+
+================================================================================
+4个字段的完整示例
+================================================================================
+
+<el-descriptions :column="2" border>
+  <!-- 主题类型 -->
+  <el-descriptions-item label="主题类型">
+    {{ activityInfo.subjectTypeLabel || activityInfo.subjectTypeCode }}
+  </el-descriptions-item>
+  
+  <!-- 运用手法 -->
+  <el-descriptions-item label="运用手法">
+    {{ activityInfo.methodLabel || activityInfo.methodCode }}
+  </el-descriptions-item>
+  
+  <!-- 改善就医环境 -->
+  <el-descriptions-item label="改善就医环境">
+    {{ activityInfo.experienceImproveLabel || activityInfo.experienceImproveCode }}
+  </el-descriptions-item>
+  
+  <!-- 医疗质量相关主题 -->
+  <el-descriptions-item label="医疗质量相关主题">
+    {{ activityInfo.qualityTopicLabel || activityInfo.qualityTopicCode }}
+  </el-descriptions-item>
+</el-descriptions>
+
+================================================================================
+快速检查
+================================================================================
+
+1. 打开浏览器开发者工具（F12）
+2. 切换到 Network 标签
+3. 刷新页面，找到 /api/registrations/{id} 请求
+4. 查看响应数据中的 activityInfo 对象
+5. 确认是否包含以下字段：
+   - experienceImproveLabel ✅
+   - qualityTopicLabel ✅
+
+如果这两个字段存在，说明后端正确。
+如果前端还是显示Code，说明前端代码有问题。
+
+================================================================================
+检查工具
+================================================================================
+
+运行以下命令检查后端API是否正确：
+
+python check_label_fields.py
+
+这个工具会：
+1. 自动登录
+2. 获取报名详情
+3. 检查所有Label字段
+4. 显示前端代码示例
+
+================================================================================
+常见问题
+================================================================================
+
+Q: 为什么要用 Label 而不是 Code？
+A: Code 是给程序用的（如 "outpatient_process"），Label 是给用户看的（如 "门诊就诊流程更加优化"）。
+
+Q: 为什么要写 Label || Code？
+A: 这是一个降级策略。优先显示Label，如果Label为空（数据问题），至少显示Code，总比什么都不显示好。
+
+Q: 字段名为什么这么长？
+A: 为了清晰明确。experienceImproveLabel 比 experienceLabel 更能说明这是"改善就医环境"的标签。
+
+Q: 如果选择了"其他"怎么办？
+A: 需要特殊处理，显示 Other 字段：
+
+if (activityInfo.experienceImproveCode === 'other') {
+  display = activityInfo.experienceImproveOther || '其他'
+} else {
+  display = activityInfo.experienceImproveLabel || activityInfo.experienceImproveCode
+}
+
+================================================================================
+相关文档
+================================================================================
+
+- 前端常见错误-Label字段显示.md - 详细的错误说明和解决方案
+- 前端开发指引-分场景API调用.md - 完整的API调用指引
+- Label字段快速参考.txt - 快速参考
+
+================================================================================
+总结
+================================================================================
+
+✅ 后端API正确返回了所有Label字段
+❌ 前端代码直接使用了Code字段（错误）
+✅ 修改前端代码，优先使用Label字段
+
+快速修复：
+把 {{ activityInfo.experienceImproveCode }}
+改成 {{ activityInfo.experienceImproveLabel || activityInfo.experienceImproveCode }}
+
+================================================================================
+更新时间: 2026-02-09
+问题: 前端显示Code而不是Label
+解决: 优先使用Label字段
+================================================================================

@@ -1,0 +1,181 @@
+================================================================================
+给前端 - Label字段使用说明（用API说话）
+================================================================================
+
+问题：前端显示 "experience_1" 而不是 "门诊就诊流程更加优化"
+
+原因：前端代码使用了 Code 字段，而不是 Label 字段
+
+================================================================================
+真实API测试（项目ID: 119）
+================================================================================
+
+场景1: 参赛者 - 我的报名
+场景2: 组委会管理员 - 书审分组项目列表
+场景3: 组委会管理员 - 筛选项目列表
+场景4: 评委 - 查看评审任务
+
+所有4个场景最终都调用同一个API：
+
+GET /api/registrations/119
+Authorization: Bearer {token}
+
+================================================================================
+真实API响应（activityInfo部分）
+================================================================================
+
+{
+  "activityInfo": {
+    "theme": "项目主题119",
+    "keywords": "质量,改进",
+    
+    "subjectTypeCode": "subject_type_6",
+    "subjectTypeLabel": "满意度",
+    
+    "methodCode": "method_15",
+    "methodLabel": "流程改造",
+    
+    "experienceImproveCode": "outpatient_process",
+    "experienceImproveLabel": "门诊就诊流程更加优化",  ← 前端应该显示这个
+    
+    "qualityTopicCode": "surgery_mortality",
+    "qualityTopicLabel": "降低住院患者围手术期死亡率",  ← 前端应该显示这个
+    
+    "avgWorkYears": 7,
+    "avgAge": 32,
+    "crossDepartment": true,
+    "relatedToDigitalAi": false
+  }
+}
+
+================================================================================
+前端错误代码
+================================================================================
+
+❌ 错误：直接使用了Code字段
+
+<div>{{ activityInfo.experienceImproveCode }}</div>
+<div>{{ activityInfo.qualityTopicCode }}</div>
+
+显示结果：
+- outpatient_process ❌
+- surgery_mortality ❌
+
+================================================================================
+正确的前端代码
+================================================================================
+
+✅ 正确：优先使用Label字段
+
+<div>{{ activityInfo.experienceImproveLabel || activityInfo.experienceImproveCode }}</div>
+<div>{{ activityInfo.qualityTopicLabel || activityInfo.qualityTopicCode }}</div>
+
+显示结果：
+- 门诊就诊流程更加优化 ✅
+- 降低住院患者围手术期死亡率 ✅
+
+================================================================================
+完整的4个字段示例
+================================================================================
+
+<el-descriptions :column="2" border>
+  <!-- 主题类型 -->
+  <el-descriptions-item label="主题类型">
+    {{ activityInfo.subjectTypeLabel || activityInfo.subjectTypeCode }}
+  </el-descriptions-item>
+  
+  <!-- 运用手法 -->
+  <el-descriptions-item label="运用手法">
+    {{ activityInfo.methodLabel || activityInfo.methodCode }}
+  </el-descriptions-item>
+  
+  <!-- 改善就医环境 -->
+  <el-descriptions-item label="改善就医环境">
+    {{ activityInfo.experienceImproveLabel || activityInfo.experienceImproveCode }}
+  </el-descriptions-item>
+  
+  <!-- 医疗质量相关主题 -->
+  <el-descriptions-item label="医疗质量相关主题">
+    {{ activityInfo.qualityTopicLabel || activityInfo.qualityTopicCode }}
+  </el-descriptions-item>
+</el-descriptions>
+
+================================================================================
+如何验证（用curl测试）
+================================================================================
+
+# 1. 登录
+curl -X POST http://localhost:6031/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"13900000001","name":"李明华","role":"REVIEWER"}'
+
+# 响应会返回token，复制它
+
+# 2. 获取详情（替换{token}为实际token）
+curl -X GET http://localhost:6031/api/registrations/119 \
+  -H "Authorization: Bearer {token}"
+
+# 3. 查看响应中的 activityInfo 对象
+# 确认包含以下字段：
+#   - experienceImproveLabel: "门诊就诊流程更加优化"
+#   - qualityTopicLabel: "降低住院患者围手术期死亡率"
+
+================================================================================
+如何验证（用浏览器开发者工具）
+================================================================================
+
+1. 打开浏览器开发者工具（F12）
+2. 切换到 Network 标签
+3. 刷新页面
+4. 找到 /api/registrations/119 请求
+5. 点击查看 Response
+6. 确认 activityInfo 对象包含 experienceImproveLabel 和 qualityTopicLabel
+
+如果这两个字段存在 → 后端正确，前端代码有问题
+如果这两个字段不存在 → 后端有问题
+
+================================================================================
+快速修复
+================================================================================
+
+搜索前端代码中的：
+- experienceImproveCode
+- qualityTopicCode
+
+把所有直接使用Code的地方改成：
+- experienceImproveLabel || experienceImproveCode
+- qualityTopicLabel || qualityTopicCode
+
+================================================================================
+测试数据
+================================================================================
+
+项目ID: 119
+API: GET /api/registrations/119
+
+测试账号（任选一个）:
+- 参赛者: phone=13800000001, name=张三, role=CONTESTANT
+- 管理员: phone=13800000041, name=CommitteeAdmin A, role=COMMITTEE_ADMIN
+- 评委: phone=13900000001, name=李明华, role=REVIEWER
+
+================================================================================
+总结
+================================================================================
+
+✅ 后端API正确返回了所有Label字段
+❌ 前端代码直接使用了Code字段（错误）
+✅ 修改前端代码，优先使用Label字段
+
+所有4个场景都使用同一个API: GET /api/registrations/{id}
+所有4个场景都返回相同的Label字段
+
+前端只需要改一个地方：
+把 {{ activityInfo.experienceImproveCode }}
+改成 {{ activityInfo.experienceImproveLabel || activityInfo.experienceImproveCode }}
+
+================================================================================
+更新时间: 2026-02-09
+测试项目ID: 119
+问题: 前端显示Code而不是Label
+解决: 优先使用Label字段
+================================================================================
