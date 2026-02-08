@@ -1,0 +1,78 @@
+前端开发快速参考 - 报名详情字段显示
+=====================================
+
+## 4个场景使用同一个API
+
+GET /api/registrations/{id}
+
+场景1: 参赛者 - 我的报名详情
+场景2: 组委会管理员 - 书审分组项目详情
+场景3: 组委会管理员 - 分组项目列表详情
+场景4: 评委 - 评审任务项目详情
+
+## 必须显示的字段
+
+### 活动说明（10个字段）
+1. theme - 活动主题
+2. keywords - 关键词
+3. subjectTypeCode + subjectTypeLabel - 主题类型
+4. methodCode + methodLabel - 运用手法
+5. experienceImproveCode - 改善就医环境
+6. qualityTopicCode - 医疗质量主题
+7. avgWorkYears - 平均工作年限
+8. avgAge - 平均年龄
+9. crossDepartment - 是否跨部门
+10. relatedToDigitalAi - 是否与数字化/AI相关 ← NEW!
+
+### 项目摘要（7个字段）
+1. theme - 主题
+2. plan - 计划
+3. problem - 问题结构与对策措施探讨
+4. action - 对策行动过程
+5. success - 成果表现
+6. discussion - 讨论总结
+7. operation - 运作 ← NEW!
+8. presentation - 展示 ← NEW!
+
+## 显示规则
+
+### Boolean字段
+- crossDepartment: true → "是" (绿色Tag) / false → "否" (灰色Tag)
+- relatedToDigitalAi: true → "是" (绿色Tag) / false → "否" (灰色Tag)
+
+### 数字字段
+- avgWorkYears: 7 → "7 年"
+- avgAge: 32 → "32 岁"
+
+### 字典字段
+- 显示Label，不是Code
+- 如果选择"其他"，显示Other字段内容
+- 示例: "流程改造" 或 "流程改造（其他说明）"
+
+### 长文本字段
+- 使用 white-space: pre-wrap 保留换行
+- 使用 word-break: break-word 自动换行
+
+### 空值处理
+- activityInfo 为 null → 显示"暂无活动说明"
+- projectSummary 为 null → 显示"暂无项目摘要"
+- operation 为 null → 显示"未填写"
+- presentation 为 null → 显示"未填写"
+
+## 字典接口
+
+GET /api/dictionary/experience_improve - 改善就医环境选项
+GET /api/dictionary/quality_topic - 医疗质量主题选项
+
+## 部署前检查
+
+1. 数据库已执行 add_digital_ai_field.sql
+2. 数据库已执行 insert_dictionary_items.sql
+3. 后端应用已重启
+4. 测试数据已准备
+5. 前端代码已更新
+6. 所有场景已测试
+
+## 完整文档
+
+docs/前端开发指引-报名详情字段显示.md
