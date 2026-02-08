@@ -260,6 +260,35 @@ public class RegistrationService {
         return registrationRepository.findByApplicantId(applicantId);
     }
 
+    @Transactional(readOnly = true)
+    public List<com.trae.pinguan.web.dto.MyRegistrationItem> listMyRegistrations(Long applicantId) {
+        List<Registration> registrations = registrationRepository.findByApplicantId(applicantId);
+        
+        return registrations.stream()
+                .map(reg -> {
+                    Institution institution = reg.getInstitution();
+                    Competition competition = reg.getCompetition();
+                    
+                    return com.trae.pinguan.web.dto.MyRegistrationItem.builder()
+                            .id(reg.getId())
+                            .projectName(reg.getProjectName())
+                            .groupType(reg.getGroupType())
+                            .groupCode(reg.getGroupCode())
+                            .status(reg.getStatus())
+                            .submittedAt(reg.getSubmittedAt())
+                            .createdAt(reg.getCreatedAt())
+                            // 机构信息
+                            .institutionId(institution != null ? institution.getId() : null)
+                            .institutionName(institution != null ? institution.getName() : null)
+                            .institutionLevel(institution != null ? institution.getLevel() : null)
+                            // 赛事信息
+                            .competitionId(competition != null ? competition.getId() : null)
+                            .competitionName(competition != null ? competition.getName() : null)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
     public List<Registration> listByInstitution(Long institutionId) {
         return registrationRepository.findByInstitutionId(institutionId);
     }

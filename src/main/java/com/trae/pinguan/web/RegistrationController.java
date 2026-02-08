@@ -116,10 +116,10 @@ public class RegistrationController {
 
     @GetMapping("/my")
     @Operation(summary = "我的报名列表（参赛者端）")
-    public ApiResponse<List<Registration>> myRegistrations() {
+    public ApiResponse<List<MyRegistrationItem>> myRegistrations() {
         // 从token中获取当前登录用户ID
         Long applicantId = getCurrentUserId();
-        return ApiResponse.ok(registrationService.listByApplicant(applicantId));
+        return ApiResponse.ok(registrationService.listMyRegistrations(applicantId));
     }
 
     @GetMapping("/by-applicant")
