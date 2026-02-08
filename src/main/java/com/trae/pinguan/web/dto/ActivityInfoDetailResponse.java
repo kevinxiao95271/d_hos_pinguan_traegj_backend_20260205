@@ -20,5 +20,6 @@ public class ActivityInfoDetailResponse {
     private Integer avgWorkYears;
     private Integer avgAge;
     private Boolean crossDepartment;
+    private Boolean relatedToDigitalAi;
     private String methodLabel;
 }

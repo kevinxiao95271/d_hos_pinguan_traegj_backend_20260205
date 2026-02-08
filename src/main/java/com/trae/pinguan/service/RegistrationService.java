@@ -137,6 +137,7 @@ public class RegistrationService {
         activityInfo.setAvgWorkYears(request.getAvgWorkYears());
         activityInfo.setAvgAge(request.getAvgAge());
         activityInfo.setCrossDepartment(request.getCrossDepartment());
+        activityInfo.setRelatedToDigitalAi(request.getRelatedToDigitalAi());
         return activityInfoRepository.save(activityInfo);
     }
 
@@ -244,6 +245,7 @@ public class RegistrationService {
                     activity.getAvgWorkYears(),
                     activity.getAvgAge(),
                     activity.getCrossDepartment(),
+                    activity.getRelatedToDigitalAi(),
                     methodLabel
             );
         }

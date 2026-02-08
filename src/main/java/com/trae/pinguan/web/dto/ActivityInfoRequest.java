@@ -52,4 +52,9 @@ public class ActivityInfoRequest {
     @NotNull(message = "是否跨部门不能为空")
     @Schema(example = "false", description = "是否跨部门团队")
     private Boolean crossDepartment;
+    
+    // 是否与数字化/人工智能应用相关主题
+    @NotNull(message = "是否与数字化/人工智能应用相关主题不能为空")
+    @Schema(example = "false", description = "是否与数字化/人工智能应用相关主题")
+    private Boolean relatedToDigitalAi;
 }

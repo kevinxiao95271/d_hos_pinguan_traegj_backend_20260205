@@ -63,4 +63,7 @@ public class ActivityInfo {
 
     @Column(nullable = false)
     private Boolean crossDepartment;
+
+    @Column(nullable = false)
+    private Boolean relatedToDigitalAi;
 }
