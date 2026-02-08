@@ -14,6 +14,8 @@ public class GroupedRegistrationItem {
     private String projectName;
     @Schema(example = "某医院")
     private String institutionName;
+    @Schema(example = "三级甲等")
+    private String institutionLevel;
     @Schema(example = "BASIC")
     private GroupType groupType;
     @Schema(example = "M1")

@@ -43,7 +43,13 @@ public class StatsService {
         Competition competition = competitionRepository.findAll().stream()
                 .max(Comparator.comparing(Competition::getId))
                 .orElseThrow(() -> new IllegalArgumentException("暂无赛事"));
-        Long competitionId = competition.getId();
+        return summaryForCompetition(competition.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public StatsSummaryResponse summaryForCompetition(Long competitionId) {
+        Competition competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
 
         List<Registration> registrations = registrationRepository.findByCompetitionId(competitionId);
         Map<String, Integer> regionCounts = new HashMap<>();

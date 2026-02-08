@@ -3,6 +3,7 @@ package com.trae.pinguan.web;
 import com.trae.pinguan.domain.entity.ReviewTask;
 import com.trae.pinguan.domain.enums.GroupType;
 import com.trae.pinguan.domain.enums.ReviewStage;
+import com.trae.pinguan.domain.enums.ReviewStatus;
 import com.trae.pinguan.service.ReviewService;
 import com.trae.pinguan.web.dto.ApiResponse;
 import com.trae.pinguan.web.dto.ReviewAutoAssignRequest;
@@ -38,6 +39,15 @@ public class AdminReviewController {
     @Operation(summary = "后台自动分配评审任务")
     public ApiResponse<List<ReviewTask>> autoAssign(@Valid @RequestBody ReviewAutoAssignRequest request) {
         return ApiResponse.ok(reviewService.autoAssign(request));
+    }
+
+    @GetMapping("/tasks")
+    @Operation(summary = "后台查询已分配任务列表")
+    public ApiResponse<List<com.trae.pinguan.web.dto.AdminReviewTaskItem>> listTasks(
+            @RequestParam Long competitionId,
+            @RequestParam ReviewStage stage,
+            @RequestParam(required = false) ReviewStatus status) {
+        return ApiResponse.ok(reviewService.listTasksForAdmin(competitionId, stage, status));
     }
 
     @GetMapping("/summary")

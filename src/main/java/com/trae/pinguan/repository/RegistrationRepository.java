@@ -19,7 +19,7 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     List<Registration> findByCompetitionIdWithInstitution(@Param("competitionId") Long competitionId);
 
     @Query("select new com.trae.pinguan.web.dto.RegistrationFilterItem(" +
-            "r.id, r.projectName, i.name, r.groupType, r.groupCode, r.submittedAt, " +
+            "r.id, r.projectName, i.name, i.level, r.groupType, r.groupCode, r.submittedAt, " +
             "a.subjectTypeCode, a.methodCode, '', '', r.applicant.name) " +
             "from Registration r " +
             "join r.institution i " +

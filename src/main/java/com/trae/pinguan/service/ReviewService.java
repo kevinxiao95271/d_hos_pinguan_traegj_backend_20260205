@@ -110,6 +110,46 @@ public class ReviewService {
         return reviewTaskRepository.findByStageAndStatusAndRegistrationCompetitionId(stage, status, competitionId);
     }
 
+    @Transactional(readOnly = true)
+    public List<com.trae.pinguan.web.dto.AdminReviewTaskItem> listTasksForAdmin(Long competitionId, ReviewStage stage, ReviewStatus status) {
+        List<ReviewTask> tasks;
+        if (status == null) {
+            tasks = reviewTaskRepository.findByStageAndRegistrationCompetitionId(stage, competitionId);
+        } else {
+            tasks = reviewTaskRepository.findByStageAndStatusAndRegistrationCompetitionId(stage, status, competitionId);
+        }
+        
+        return tasks.stream()
+                .map(task -> {
+                    Registration reg = task.getRegistration();
+                    UserAccount reviewer = task.getReviewer();
+                    
+                    return com.trae.pinguan.web.dto.AdminReviewTaskItem.builder()
+                            .id(task.getId())
+                            .stage(task.getStage())
+                            .status(task.getStatus())
+                            .createdAt(task.getCreatedAt())
+                            // 报名信息
+                            .registrationId(reg != null ? reg.getId() : null)
+                            .projectName(reg != null ? reg.getProjectName() : null)
+                            .institutionName(reg != null && reg.getInstitution() != null 
+                                    ? reg.getInstitution().getName() : null)
+                            .groupType(reg != null ? reg.getGroupType() : null)
+                            .groupCode(reg != null ? reg.getGroupCode() : null)
+                            // 评委信息
+                            .reviewerId(reviewer != null ? reviewer.getId() : null)
+                            .reviewerName(reviewer != null ? reviewer.getName() : null)
+                            .reviewerTitle(reviewer != null ? reviewer.getTitle() : null)
+                            .reviewerInstitutionName(reviewer != null && reviewer.getInstitution() != null 
+                                    ? reviewer.getInstitution().getName() : null)
+                            .reviewerGroupCode(reviewer != null ? reviewer.getReviewerGroupCode() : null)
+                            .interviewGroupCode(reviewer != null ? reviewer.getInterviewGroupCode() : null)
+                            .expertBackground(reviewer != null ? reviewer.getExpertBackground() : null)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public List<ReviewTask> autoAssign(ReviewAutoAssignRequest request) {
         int perRegistration = request.getReviewersPerRegistration() == null ? 1 : request.getReviewersPerRegistration();

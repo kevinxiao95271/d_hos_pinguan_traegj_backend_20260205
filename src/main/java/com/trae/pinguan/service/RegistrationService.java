@@ -351,6 +351,7 @@ public class RegistrationService {
                             reg.getId(),
                             reg.getProjectName(),
                             reg.getInstitution().getName(),
+                            reg.getInstitution().getLevel(),
                             reg.getGroupType(),
                             reg.getGroupCode()
                     ))

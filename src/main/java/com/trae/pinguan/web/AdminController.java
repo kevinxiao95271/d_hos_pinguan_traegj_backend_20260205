@@ -55,7 +55,10 @@ public class AdminController {
 
     @GetMapping("/stats/summary")
     @Operation(summary = "统计汇总")
-    public ApiResponse<StatsSummaryResponse> summary() {
+    public ApiResponse<StatsSummaryResponse> summary(@RequestParam(required = false) Long competitionId) {
+        if (competitionId != null) {
+            return ApiResponse.ok(statsService.summaryForCompetition(competitionId));
+        }
         return ApiResponse.ok(statsService.summaryForLatestCompetition());
     }
 

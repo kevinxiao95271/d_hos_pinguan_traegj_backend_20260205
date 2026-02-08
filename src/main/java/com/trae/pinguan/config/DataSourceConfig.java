@@ -47,6 +47,12 @@ public class DataSourceConfig {
         dataSource.setUsername(item.getUsername());
         dataSource.setPassword(item.getPassword());
         dataSource.setDriverClassName(item.getDriverClassName());
+        // 添加连接池配置
+        dataSource.setMaximumPoolSize(10);
+        dataSource.setMinimumIdle(2);
+        dataSource.setConnectionTimeout(30000);
+        dataSource.setIdleTimeout(600000);
+        dataSource.setMaxLifetime(1800000);
         return dataSource;
     }
 }

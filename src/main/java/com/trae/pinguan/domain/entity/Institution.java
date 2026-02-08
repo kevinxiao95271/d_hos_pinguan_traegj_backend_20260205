@@ -31,6 +31,9 @@ public class Institution {
 
     @Column(length = 64)
     private String region;
+    
+    @Column(length = 32)
+    private String level;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;

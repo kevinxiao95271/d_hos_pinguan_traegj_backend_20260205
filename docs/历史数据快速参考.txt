@@ -1,0 +1,66 @@
+========================================
+历史数据查询接口 - 快速参考
+========================================
+
+【接口地址】
+GET /api/historical-data
+
+【权限要求】
+✓ COMMITTEE_ADMIN (组委会管理员)
+✓ OPS (系统运维)
+✗ REVIEWER (评委) - 无权限
+✗ CONTESTANT (参赛者) - 无权限
+
+【测试账号】
+手机号: 13800000041
+姓名: CommitteeAdmin A
+角色: COMMITTEE_ADMIN
+
+【查询参数】
+region            地区关键词 (模糊)
+competitionGroup  组别 (精确)
+circleName        品管工具/圈名 (模糊)
+dataStatus        入围状态 (精确)
+institutionName   医院名称 (模糊)
+projectName       项目名称 (模糊)
+year              年份 (精确)
+page              页码 (默认0)
+size              每页大小 (默认20)
+sortBy            排序字段 (默认id)
+sortDirection     排序方向 (默认DESC)
+
+【使用示例】
+
+1. 基本查询
+/api/historical-data?page=0&size=10
+
+2. 按地区查询
+/api/historical-data?region=杭州
+
+3. 按组别查询
+/api/historical-data?competitionGroup=综合组
+
+4. 按医院查询
+/api/historical-data?institutionName=人民医院
+
+5. 组合查询
+/api/historical-data?region=杭州&competitionGroup=综合组&page=0&size=20
+
+6. 自定义排序
+/api/historical-data?sortBy=projectCode&sortDirection=ASC
+
+【数据统计】
+总记录数: 1818 条
+杭州地区: 363 条
+综合组: 1249 条
+基层组: 569 条
+
+【访问地址】
+服务: http://localhost:6031
+Swagger: http://localhost:6031/swagger
+健康检查: http://localhost:6031/actuator/health
+
+【快速测试】
+python scripts/test_historical_data_api.py
+
+========================================
