@@ -1,0 +1,25 @@
+项目摘要字段快速参考
+===================
+
+问题：报名详情中缺少"运作"和"展示"字段
+
+解决：
+1. 执行SQL: add_project_summary_fields.sql
+2. 重启应用
+3. 前端添加这两个字段的输入和显示
+
+字段列表（共7个）：
+- theme (主题)
+- plan (计划)
+- problem (问题)
+- action (行动)
+- success (成效)
+- discussion (回顾)
+- operation (运作) ← 新增
+- presentation (展示) ← 新增
+
+API接口：
+- POST /api/registrations/{id}/summary - 提交摘要（包含新字段）
+- GET /api/registrations/{id} - 查看详情（返回新字段）
+
+测试：python test_registration_detail.py

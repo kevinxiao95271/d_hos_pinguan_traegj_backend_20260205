@@ -152,6 +152,8 @@ public class RegistrationService {
         summary.setAction(request.getAction());
         summary.setSuccess(request.getSuccess());
         summary.setDiscussion(request.getDiscussion());
+        summary.setOperation(request.getOperation());
+        summary.setPresentation(request.getPresentation());
         return summaryRepository.save(summary);
     }
 

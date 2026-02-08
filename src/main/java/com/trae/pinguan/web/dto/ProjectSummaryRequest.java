@@ -19,4 +19,8 @@ public class ProjectSummaryRequest {
     private String success;
     @NotBlank
     private String discussion;
+    
+    private String operation;
+    
+    private String presentation;
 }

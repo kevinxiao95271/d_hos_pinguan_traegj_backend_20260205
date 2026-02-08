@@ -42,4 +42,10 @@ public class ProjectSummary {
 
     @Column(nullable = false, length = 1000)
     private String discussion;
+
+    @Column(length = 1000)
+    private String operation;
+
+    @Column(length = 1000)
+    private String presentation;
 }
