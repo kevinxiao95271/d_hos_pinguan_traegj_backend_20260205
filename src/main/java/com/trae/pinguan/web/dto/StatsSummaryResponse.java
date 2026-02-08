@@ -17,6 +17,7 @@ public class StatsSummaryResponse {
     private Integer bookReviewUnscoredCount;
     private Map<String, Integer> regionCounts;
     private Map<String, Integer> subjectTypeCounts;
+    private Map<String, Integer> methodCounts;
     private Double avgPlan;
     private Double avgProblem;
     private Double avgAction;

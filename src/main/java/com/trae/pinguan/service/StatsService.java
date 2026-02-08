@@ -66,9 +66,16 @@ public class StatsService {
 
         Set<String> toolTypes = new HashSet<>();
         Map<String, Integer> subjectTypeCounts = new HashMap<>();
+        Map<String, Integer> methodCounts = new HashMap<>();
+        
         Map<String, String> subjectTypeLabels = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("subject_type", true)
                 .stream()
                 .collect(Collectors.toMap(item -> item.getCode(), item -> item.getLabel(), (a, b) -> a));
+        
+        Map<String, String> methodLabels = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("method", true)
+                .stream()
+                .collect(Collectors.toMap(item -> item.getCode(), item -> item.getLabel(), (a, b) -> a));
+        
         for (Registration registration : registrations) {
             ActivityInfo info = activityInfoRepository.findByRegistrationId(registration.getId()).orElse(null);
             if (info != null && info.getMethodCode() != null) {
@@ -83,6 +90,18 @@ public class StatsService {
                     label = subjectTypeCode;
                 }
                 subjectTypeCounts.put(label, subjectTypeCounts.getOrDefault(label, 0) + 1);
+            }
+            
+            // 统计品管工具分布
+            String methodCode = info == null ? null : info.getMethodCode();
+            if (methodCode == null || methodCode.trim().isEmpty()) {
+                methodCounts.put("未知", methodCounts.getOrDefault("未知", 0) + 1);
+            } else {
+                String label = methodLabels.get(methodCode);
+                if (label == null || label.trim().isEmpty()) {
+                    label = methodCode;
+                }
+                methodCounts.put(label, methodCounts.getOrDefault(label, 0) + 1);
             }
         }
 
@@ -145,6 +164,7 @@ public class StatsService {
                 unscoredCount,
                 regionCounts,
                 subjectTypeCounts,
+                methodCounts,
                 planSum / divisor,
                 problemSum / divisor,
                 actionSum / divisor,
