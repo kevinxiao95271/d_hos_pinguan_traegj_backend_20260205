@@ -3,16 +3,10 @@
 """检查赛事21的统计数据"""
 
 import pymysql
+from db_config import DB_CONFIG
 from collections import defaultdict
 
-DB_CONFIG = {
-    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
-    'port': 63606,
-    'user': 'root',
-    'password': 'Yiguo9527_',
-    'database': 'd_hos_pinguan_traegj_20260205',
-    'charset': 'utf8mb4'
-}
+# DB_CONFIG imported from db_config.py
 
 def check_competition_21():
     conn = pymysql.connect(**DB_CONFIG)

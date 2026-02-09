@@ -3,16 +3,15 @@
 """查看服务器文件"""
 
 import paramiko
+from db_config import SERVER_CONFIG["host"]_CONFIG
 
-SERVER = "81.71.44.180"
-USER = "root"
-PASSWORD = "Yiguo9527_"
+# SERVER_CONFIG["host"]_CONFIG imported from db_config.py
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 try:
-    ssh.connect(SERVER, username=USER, password=PASSWORD, timeout=10)
+    ssh.connect(SERVER_CONFIG["host"], username=SERVER_CONFIG["user"], password=SERVER_CONFIG["password"], timeout=10)
     
     print("=" * 80)
     print("服务器文件列表: /data/pinguan")

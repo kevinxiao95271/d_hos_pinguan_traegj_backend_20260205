@@ -3,12 +3,11 @@
 """自动部署到服务器"""
 
 import paramiko
+from db_config import SERVER_CONFIG["host"]_CONFIG
 import os
 import time
 
-SERVER = "81.71.44.180"
-USER = "root"
-PASSWORD = "Yiguo9527_"
+# SERVER_CONFIG["host"]_CONFIG imported from db_config.py
 REMOTE_DIR = "/data/pinguan"
 JAR_FILE = "target/pinguan-backend-0.0.1-SNAPSHOT.jar"
 APP_YML = "src/main/resources/application.yml"
@@ -36,8 +35,8 @@ def deploy():
     
     try:
         # 连接服务器
-        print(f"\n[1/6] 连接服务器 {SERVER}...")
-        ssh.connect(SERVER, username=USER, password=PASSWORD)
+        print(f"\n[1/6] 连接服务器 {SERVER_CONFIG["host"]}...")
+        ssh.connect(SERVER_CONFIG["host"], username=SERVER_CONFIG["user"], password=SERVER_CONFIG["password"])
         print("✅ 连接成功")
         
         # 创建目录
@@ -80,8 +79,8 @@ def deploy():
         print("\n" + "=" * 80)
         print("部署完成！")
         print("=" * 80)
-        print(f"\n查看日志: ssh {USER}@{SERVER} 'tail -f {REMOTE_DIR}/app.log'")
-        print(f"访问地址: http://{SERVER}:6031/swagger")
+        print(f"\n查看日志: ssh {SERVER_CONFIG["user"]}@{SERVER_CONFIG["host"]} 'tail -f {REMOTE_DIR}/app.log'")
+        print(f"访问地址: http://{SERVER_CONFIG["host"]}:6031/swagger")
         
     except Exception as e:
         print(f"\n❌ 部署失败: {e}")

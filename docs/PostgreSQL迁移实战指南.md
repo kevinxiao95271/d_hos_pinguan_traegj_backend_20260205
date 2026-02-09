@@ -76,7 +76,7 @@ GRANT ALL PRIVILEGES ON DATABASE d_hos_pinguan_traegj_20260205 TO pinguan_user;
 
 ```bash
 pgloader \
-  mysql://root:Yiguo9527_@gz-cdb-bq7gk3k5.sql.tencentcdb.com:63606/d_hos_pinguan_traegj_20260205 \
+  mysql://user:password@mysql-host:port/database \
   postgresql://pinguan_user:your_password@your-pg-host:5432/d_hos_pinguan_traegj_20260205
 ```
 
@@ -114,14 +114,14 @@ ORDER BY n_live_tup DESC;
 
 ```bash
 mysqldump \
-  -h gz-cdb-bq7gk3k5.sql.tencentcdb.com \
-  -P 63606 \
-  -u root \
-  -pYiguo9527_ \
+  -h mysql-host \
+  -P port \
+  -u username \
+  -p \
   --single-transaction \
   --skip-lock-tables \
   --no-tablespaces \
-  d_hos_pinguan_traegj_20260205 > mysql_dump.sql
+  database_name > mysql_dump.sql
 ```
 
 ### 步骤2: 转换SQL语法

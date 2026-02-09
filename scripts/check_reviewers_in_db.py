@@ -7,16 +7,10 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 import pymysql
+from db_config import DB_CONFIG
 
 # 数据库连接
-conn = pymysql.connect(
-    host='gz-cdb-bq7gk3k5.sql.tencentcdb.com',
-    port=63606,
-    user='root',
-    password='Yiguo9527_',
-    database='d_hos_pinguan_traegj_20260205',
-    charset='utf8mb4'
-)
+conn = pymysql.connect(**DB_CONFIG)
 
 cursor = conn.cursor(pymysql.cursors.DictCursor)
 

@@ -3,16 +3,10 @@
 """自动修复使用了不存在code的experience_improve记录"""
 
 import pymysql
+from db_config import DB_CONFIG
 import random
 
-DB_CONFIG = {
-    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
-    'port': 63606,
-    'user': 'root',
-    'password': 'Yiguo9527_',
-    'database': 'd_hos_pinguan_traegj_20260205',
-    'charset': 'utf8mb4'
-}
+# DB_CONFIG imported from db_config.py
 
 # 有效的code列表（排除测试数据）
 VALID_CODES = [

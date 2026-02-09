@@ -3,16 +3,10 @@
 """自动修复使用乱码quality_topic code的记录 - 随机分配正确的code"""
 
 import pymysql
+from db_config import DB_CONFIG
 import random
 
-DB_CONFIG = {
-    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
-    'port': 63606,
-    'user': 'root',
-    'password': 'Yiguo9527_',
-    'database': 'd_hos_pinguan_traegj_20260205',
-    'charset': 'utf8mb4'
-}
+# DB_CONFIG imported from db_config.py
 
 def auto_fix():
     conn = pymysql.connect(**DB_CONFIG)

@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import pymysql
+from db_config import DB_CONFIG
 
-DB_CONFIG = {
-    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
-    'port': 63606,
-    'user': 'root',
-    'password': 'Yiguo9527_',
-    'database': 'd_hos_pinguan_traegj_20260205',
-    'charset': 'utf8mb4'
-}
+# DB_CONFIG imported from db_config.py
 
 conn = pymysql.connect(**DB_CONFIG)
 cursor = conn.cursor()

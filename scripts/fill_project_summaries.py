@@ -3,16 +3,10 @@
 """为所有报名记录填充项目摘要数据"""
 
 import pymysql
+from db_config import DB_CONFIG
 import random
 
-DB_CONFIG = {
-    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
-    'port': 63606,
-    'user': 'root',
-    'password': 'Yiguo9527_',
-    'database': 'd_hos_pinguan_traegj_20260205',
-    'charset': 'utf8mb4'
-}
+# DB_CONFIG imported from db_config.py
 
 # 示例数据模板
 PLAN_TEMPLATES = [

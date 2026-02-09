@@ -3,18 +3,12 @@
 """测试面谈分组和书审分组接口"""
 
 import requests
+from db_config import DB_CONFIG
 import json
 import pymysql
 
 # 数据库配置
-DB_CONFIG = {
-    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
-    'port': 63606,
-    'user': 'root',
-    'password': 'Yiguo9527_',
-    'database': 'd_hos_pinguan_traegj_20260205',
-    'charset': 'utf8mb4'
-}
+# DB_CONFIG imported from db_config.py
 
 print("=== 1. 检查数据库表结构 ===\n")
 

@@ -3,16 +3,10 @@
 """导出机构列表供核对"""
 
 import pymysql
+from db_config import DB_CONFIG
 import csv
 
-DB_CONFIG = {
-    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
-    'port': 63606,
-    'user': 'root',
-    'password': 'Yiguo9527_',
-    'database': 'd_hos_pinguan_traegj_20260205',
-    'charset': 'utf8mb4'
-}
+# DB_CONFIG imported from db_config.py
 
 def export_institutions():
     conn = pymysql.connect(**DB_CONFIG)

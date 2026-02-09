@@ -59,21 +59,30 @@ d_hos_pinguan_traegj_backend_20260205/
 
 ### 2. 配置数据库
 
-设置环境变量（Windows PowerShell）：
+**重要：请先配置数据库连接信息**
+
+复制配置文件模板：
+```bash
+cp src/main/resources/application.yml.example src/main/resources/application.yml
+```
+
+编辑 `application.yml` 填入真实的数据库连接信息。
+
+或者使用环境变量（Windows PowerShell）：
 
 ```powershell
-$env:PINGUAN_DS1_URL="jdbc:mysql://gz-cdb-bq7gk3k5.sql.tencentcdb.com:63606/d_hos_pinguan_traegj_20260205?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai"
-$env:PINGUAN_DS1_USER="root"
-$env:PINGUAN_DS1_PASSWORD="Yiguo9527_"
+$env:PINGUAN_DS1_URL="jdbc:mysql://your-host:port/database?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai"
+$env:PINGUAN_DS1_USER="your-username"
+$env:PINGUAN_DS1_PASSWORD="your-password"
 
 # 可选：配置其他数据源
-$env:PINGUAN_DS2_URL="jdbc:mysql://...d_hos_pinguan_traegj_20260205-2..."
-$env:PINGUAN_DS2_USER="root"
-$env:PINGUAN_DS2_PASSWORD="Yiguo9527_"
+$env:PINGUAN_DS2_URL="jdbc:mysql://your-host:port/database?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai"
+$env:PINGUAN_DS2_USER="your-username"
+$env:PINGUAN_DS2_PASSWORD="your-password"
 
-$env:PINGUAN_DS3_URL="jdbc:mysql://...d_hos_pinguan_traegj_20260205-3..."
-$env:PINGUAN_DS3_USER="root"
-$env:PINGUAN_DS3_PASSWORD="Yiguo9527_"
+$env:PINGUAN_DS3_URL="jdbc:mysql://your-host:port/database?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai"
+$env:PINGUAN_DS3_USER="your-username"
+$env:PINGUAN_DS3_PASSWORD="your-password"
 ```
 
 ### 3. 启动服务

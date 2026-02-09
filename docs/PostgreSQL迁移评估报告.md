@@ -344,7 +344,7 @@ private RoleType role;
 ```bash
 # 一条命令完成迁移（5-10分钟）
 pgloader \
-  mysql://root:Yiguo9527_@gz-cdb-bq7gk3k5.sql.tencentcdb.com:63606/d_hos_pinguan_traegj_20260205 \
+  mysql://user:password@mysql-host:port/database \
   postgresql://user:password@pg-host:5432/database
 ```
 

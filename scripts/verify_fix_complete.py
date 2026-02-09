@@ -3,16 +3,10 @@
 """验证修正完成 - 对比修正前后的数据"""
 
 import pymysql
+from db_config import DB_CONFIG
 from collections import defaultdict
 
-DB_CONFIG = {
-    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
-    'port': 63606,
-    'user': 'root',
-    'password': 'Yiguo9527_',
-    'database': 'd_hos_pinguan_traegj_20260205',
-    'charset': 'utf8mb4'
-}
+# DB_CONFIG imported from db_config.py
 
 def get_region_stats_from_backup(cursor):
     """从备份表获取修正前的统计"""

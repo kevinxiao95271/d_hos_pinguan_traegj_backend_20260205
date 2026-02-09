@@ -3,11 +3,10 @@
 """检查服务器状态"""
 
 import paramiko
+from db_config import SERVER_CONFIG["host"]_CONFIG
 import requests
 
-SERVER = "81.71.44.180"
-USER = "root"
-PASSWORD = "Yiguo9527_"
+# SERVER_CONFIG["host"]_CONFIG imported from db_config.py
 
 def check_status():
     print("=" * 80)
@@ -20,7 +19,7 @@ def check_status():
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     
     try:
-        ssh.connect(SERVER, username=USER, password=PASSWORD, timeout=10)
+        ssh.connect(SERVER_CONFIG["host"], username=SERVER_CONFIG["user"], password=SERVER_CONFIG["password"], timeout=10)
         stdin, stdout, stderr = ssh.exec_command("ps aux | grep pinguan-backend | grep -v grep")
         output = stdout.read().decode('utf-8')
         
@@ -44,7 +43,7 @@ def check_status():
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(SERVER, username=USER, password=PASSWORD, timeout=10)
+        ssh.connect(SERVER_CONFIG["host"], username=SERVER_CONFIG["user"], password=SERVER_CONFIG["password"], timeout=10)
         
         stdin, stdout, stderr = ssh.exec_command("netstat -tuln | grep 6031")
         output = stdout.read().decode('utf-8')
@@ -62,7 +61,7 @@ def check_status():
     # 检查HTTP接口
     print("\n[3/3] 检查HTTP接口...")
     try:
-        response = requests.get(f"http://{SERVER}:6031/actuator/health", timeout=5)
+        response = requests.get(f"http://{SERVER_CONFIG["host"]}:6031/actuator/health", timeout=5)
         if response.status_code == 200:
             print("✅ HTTP接口正常")
             print(response.json())
@@ -72,7 +71,7 @@ def check_status():
         print(f"❌ HTTP接口无法访问: {e}")
     
     print("\n" + "=" * 80)
-    print(f"Swagger地址: http://{SERVER}:6031/swagger")
+    print(f"Swagger地址: http://{SERVER_CONFIG["host"]}:6031/swagger")
     print("=" * 80)
 
 if __name__ == '__main__':
