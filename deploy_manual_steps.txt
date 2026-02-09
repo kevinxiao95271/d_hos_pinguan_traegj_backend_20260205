@@ -1,0 +1,33 @@
+手动部署步骤
+================
+
+服务器信息:
+- IP: 81.71.44.180
+- 用户: root
+- 密码: Yiguo9527_
+- 部署目录: /data/pinguan
+- 端口: 6031
+
+步骤1: 创建目录
+ssh root@81.71.44.180
+mkdir -p /data/pinguan
+exit
+
+步骤2: 上传jar包
+scp target/pinguan-backend-0.0.1-SNAPSHOT.jar root@81.71.44.180:/data/pinguan/pinguan-backend.jar
+
+步骤3: 上传配置文件
+scp src/main/resources/application.yml root@81.71.44.180:/data/pinguan/application.yml
+
+步骤4: 连接服务器并启动
+ssh root@81.71.44.180
+cd /data/pinguan
+pkill -f pinguan-backend || true
+nohup java -jar pinguan-backend.jar > app.log 2>&1 &
+tail -f app.log
+
+步骤5: 验证服务
+curl http://81.71.44.180:6031/actuator/health
+
+或者在浏览器访问:
+http://81.71.44.180:6031/swagger
