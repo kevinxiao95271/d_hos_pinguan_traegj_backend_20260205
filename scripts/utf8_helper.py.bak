@@ -36,10 +36,10 @@ def get_db_config():
     获取数据库配置（UTF-8）
     """
     return {
-        'host': 'your-db-host',
+        'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
         'port': 63606,
         'user': 'root',
-        'password': 'your-password',
+        'password': 'Yiguo9527_',
         'database': 'd_hos_pinguan_traegj_20260205',
         'charset': 'utf8mb4',  # 使用utf8mb4支持完整的UTF-8字符集
         'use_unicode': True

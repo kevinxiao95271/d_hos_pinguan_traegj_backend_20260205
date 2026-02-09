@@ -1,7 +1,7 @@
 # 部署到服务器脚本
-$SERVER = "81.71.44.180"
+$SERVER = "your-server-ip"
 $USER = "root"
-$PASSWORD = "Yiguo9527_"
+$PASSWORD = "your-password"
 $REMOTE_DIR = "/data/pinguan"
 $JAR_FILE = "target/pinguan-backend-0.0.1-SNAPSHOT.jar"
 $APP_YML = "src/main/resources/application.yml"

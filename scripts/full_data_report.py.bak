@@ -9,10 +9,10 @@ import json
 from datetime import datetime
 
 db_config = {
-    'host': 'your-db-host',
+    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
     'port': 63606,
     'user': 'root',
-    'password': 'your-password',
+    'password': 'Yiguo9527_',
     'database': 'd_hos_pinguan_traegj_20260205',
     'charset': 'utf8mb4'
 }

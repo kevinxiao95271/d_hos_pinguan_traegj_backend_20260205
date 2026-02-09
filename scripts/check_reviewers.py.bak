@@ -10,10 +10,15 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 import mysql.connector
-from db_config import DB_CONFIG
 
-# 使用导入的配置
-db_config = DB_CONFIG
+db_config = {
+    'host': 'gz-cdb-bq7gk3k5.sql.tencentcdb.com',
+    'port': 63606,
+    'user': 'root',
+    'password': 'Yiguo9527_',
+    'database': 'd_hos_pinguan_traegj_20260205',
+    'charset': 'utf8mb4'
+}
 
 try:
     conn = mysql.connector.connect(**db_config)

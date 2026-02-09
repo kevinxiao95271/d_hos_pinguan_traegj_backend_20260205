@@ -2,32 +2,32 @@
 ================
 
 服务器信息:
-- IP: 81.71.44.180
+- IP: your-server-ip
 - 用户: root
-- 密码: Yiguo9527_
+- 密码: your-password
 - 部署目录: /data/pinguan
 - 端口: 6031
 
 步骤1: 创建目录
-ssh root@81.71.44.180
+ssh root@your-server-ip
 mkdir -p /data/pinguan
 exit
 
 步骤2: 上传jar包
-scp target/pinguan-backend-0.0.1-SNAPSHOT.jar root@81.71.44.180:/data/pinguan/pinguan-backend.jar
+scp target/pinguan-backend-0.0.1-SNAPSHOT.jar root@your-server-ip:/data/pinguan/pinguan-backend.jar
 
 步骤3: 上传配置文件
-scp src/main/resources/application.yml root@81.71.44.180:/data/pinguan/application.yml
+scp src/main/resources/application.yml root@your-server-ip:/data/pinguan/application.yml
 
 步骤4: 连接服务器并启动
-ssh root@81.71.44.180
+ssh root@your-server-ip
 cd /data/pinguan
 pkill -f pinguan-backend || true
 nohup java -jar pinguan-backend.jar > app.log 2>&1 &
 tail -f app.log
 
 步骤5: 验证服务
-curl http://81.71.44.180:6031/actuator/health
+curl http://your-server-ip:6031/actuator/health
 
 或者在浏览器访问:
-http://81.71.44.180:6031/swagger
+http://your-server-ip:6031/swagger
