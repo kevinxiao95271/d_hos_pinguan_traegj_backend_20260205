@@ -37,3 +37,8 @@ __pycache__/
 # Environment
 .env
 .env.local
+
+# Sensitive config files
+scripts/db_config.py
+application.yml
+src/main/resources/application.yml

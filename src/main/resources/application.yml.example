@@ -1,0 +1,43 @@
+server:
+  port: 6031
+
+spring:
+  application:
+    name: pinguan-backend
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+app:
+  datasource:
+    active: ds1
+    ds1:
+      url: jdbc:mysql://your-host:3306/your-database?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      username: your-username
+      password: your-password
+      driver-class-name: com.mysql.cj.jdbc.Driver
+    ds2:
+      url: jdbc:mysql://your-host:3306/your-database?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      username: your-username
+      password: your-password
+      driver-class-name: com.mysql.cj.jdbc.Driver
+    ds3:
+      url: jdbc:mysql://your-host:3306/your-database?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      username: your-username
+      password: your-password
+      driver-class-name: com.mysql.cj.jdbc.Driver
+
+jwt:
+  secret: your-jwt-secret-key-at-least-256-bits-long
+  expiration: 86400000
+
+logging:
+  level:
+    com.trae.pinguan: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
