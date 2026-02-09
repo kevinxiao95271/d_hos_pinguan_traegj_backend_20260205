@@ -17,6 +17,7 @@ public class ReviewTaskItem {
     private Long registrationId;
     private String projectName;
     private String institutionName;
+    private String institutionLevel;
     private ReviewStage stage;
     private ReviewStatus status;
     private LocalDateTime createdAt;

@@ -207,6 +207,7 @@ public class RegistrationService {
                     .code(inst.getCode())
                     .uscc(inst.getUscc())
                     .region(inst.getRegion())
+                    .level(inst.getLevel())
                     .build();
         }
         

@@ -68,6 +68,8 @@ public class ReviewController {
                             .projectName(reg != null ? reg.getProjectName() : null)
                             .institutionName(reg != null && reg.getInstitution() != null 
                                     ? reg.getInstitution().getName() : null)
+                            .institutionLevel(reg != null && reg.getInstitution() != null 
+                                    ? reg.getInstitution().getLevel() : null)
                             .stage(task.getStage())
                             .status(task.getStatus())
                             .createdAt(task.getCreatedAt())
