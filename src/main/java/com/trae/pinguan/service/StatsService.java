@@ -3,6 +3,7 @@ package com.trae.pinguan.service;
 import com.trae.pinguan.domain.entity.ActivityInfo;
 import com.trae.pinguan.domain.entity.Competition;
 import com.trae.pinguan.domain.entity.Registration;
+import com.trae.pinguan.domain.entity.RegistrationMember;
 import com.trae.pinguan.domain.entity.ReviewScore;
 import com.trae.pinguan.domain.entity.ReviewTask;
 import com.trae.pinguan.domain.entity.UserAccount;
@@ -11,6 +12,7 @@ import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.repository.ActivityInfoRepository;
 import com.trae.pinguan.repository.CompetitionRepository;
 import com.trae.pinguan.repository.DictionaryItemRepository;
+import com.trae.pinguan.repository.RegistrationMemberRepository;
 import com.trae.pinguan.repository.RegistrationRepository;
 import com.trae.pinguan.repository.ReviewScoreRepository;
 import com.trae.pinguan.repository.ReviewTaskRepository;
@@ -37,6 +39,7 @@ public class StatsService {
     private final ReviewTaskRepository reviewTaskRepository;
     private final ReviewScoreRepository reviewScoreRepository;
     private final UserAccountRepository userAccountRepository;
+    private final RegistrationMemberRepository memberRepository;
 
     @Transactional(readOnly = true)
     public StatsSummaryResponse summaryForLatestCompetition() {
@@ -105,6 +108,22 @@ public class StatsService {
             }
         }
 
+        // 统计项目负责人职称分布
+        Map<String, Integer> leaderTitleCounts = new HashMap<>();
+        for (Registration registration : registrations) {
+            List<RegistrationMember> members = memberRepository.findByRegistrationId(registration.getId());
+            for (RegistrationMember member : members) {
+                if (member.getRole() == com.trae.pinguan.domain.enums.MemberRole.PARTICIPANT) {
+                    String title = member.getTitle();
+                    if (title == null || title.trim().isEmpty()) {
+                        title = "未知";
+                    }
+                    leaderTitleCounts.put(title, leaderTitleCounts.getOrDefault(title, 0) + 1);
+                    break;  // 每个项目只统计一个负责人
+                }
+            }
+        }
+
         List<UserAccount> reviewers = userAccountRepository.findAll().stream()
                 .filter(user -> user.getRole() == RoleType.REVIEWER)
                 .collect(Collectors.toList());
@@ -165,6 +184,7 @@ public class StatsService {
                 regionCounts,
                 subjectTypeCounts,
                 methodCounts,
+                leaderTitleCounts,
                 planSum / divisor,
                 problemSum / divisor,
                 actionSum / divisor,
