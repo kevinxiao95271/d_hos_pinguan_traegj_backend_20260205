@@ -20,8 +20,8 @@ public class ReviewFeedbackItem {
     private Long reviewerId;
     @Schema(example = "张评委")
     private String reviewerName;
-    @Schema(example = "85")
-    private Integer total;
+    @Schema(example = "85.5")
+    private Double total;
     @Schema(example = "结构清晰")
     private String highlight;
     @Schema(example = "细节可加强")

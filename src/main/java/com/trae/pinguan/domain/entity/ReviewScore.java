@@ -27,28 +27,28 @@ public class ReviewScore {
     private ReviewTask reviewTask;
 
     @Column(nullable = false)
-    private Integer plan;
+    private Double plan;
 
     @Column(nullable = false)
-    private Integer problem;
+    private Double problem;
 
     @Column(nullable = false)
-    private Integer action;
+    private Double action;
 
     @Column(nullable = false)
-    private Integer success;
+    private Double success;
 
     @Column(nullable = false)
-    private Integer review;
+    private Double review;
 
     @Column(nullable = false)
-    private Integer operation;
+    private Double operation;
 
     @Column(nullable = false)
-    private Integer presentation;
+    private Double presentation;
 
     @Column(nullable = false)
-    private Integer total;
+    private Double total;
 
     @Column(nullable = false, length = 500)
     private String highlight;

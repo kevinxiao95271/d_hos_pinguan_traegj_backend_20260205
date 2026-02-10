@@ -423,7 +423,7 @@ public class ReviewService {
     public ReviewScore submitScore(ReviewScoreRequest request) {
         ReviewTask task = reviewTaskRepository.findById(request.getReviewTaskId())
                 .orElseThrow(() -> new IllegalArgumentException("评审任务不存在"));
-        int total = request.getPlan() + request.getProblem() + request.getAction()
+        double total = request.getPlan() + request.getProblem() + request.getAction()
                 + request.getSuccess() + request.getReview() + request.getOperation()
                 + request.getPresentation();
         ReviewScore score = reviewScoreRepository.findByReviewTaskId(task.getId())
@@ -524,7 +524,7 @@ public class ReviewService {
         private final String institutionName;
         private final GroupType groupType;
         private int count;
-        private int totalSum;
+        private double totalSum;
 
         private SummaryAccumulator(ReviewTask task) {
             this.registrationId = task.getRegistration().getId();
@@ -533,7 +533,7 @@ public class ReviewService {
             this.groupType = task.getRegistration().getGroupType();
         }
 
-        private void add(int total) {
+        private void add(double total) {
             this.totalSum += total;
             this.count += 1;
         }
@@ -542,7 +542,7 @@ public class ReviewService {
             if (count == 0) {
                 return 0;
             }
-            return (double) totalSum / count;
+            return totalSum / count;
         }
     }
 }

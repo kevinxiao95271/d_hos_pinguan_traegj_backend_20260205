@@ -14,32 +14,32 @@ public class ReviewScoreRequest {
     private Long reviewTaskId;
     @Min(0)
     @Max(100)
-    @Schema(example = "20")
-    private Integer plan;
+    @Schema(example = "20.0")
+    private Double plan;
     @Min(0)
     @Max(100)
-    @Schema(example = "20")
-    private Integer problem;
+    @Schema(example = "20.0")
+    private Double problem;
     @Min(0)
     @Max(100)
-    @Schema(example = "20")
-    private Integer action;
+    @Schema(example = "20.0")
+    private Double action;
     @Min(0)
     @Max(100)
-    @Schema(example = "15")
-    private Integer success;
+    @Schema(example = "15.0")
+    private Double success;
     @Min(0)
     @Max(100)
-    @Schema(example = "10")
-    private Integer review;
+    @Schema(example = "10.0")
+    private Double review;
     @Min(0)
     @Max(100)
-    @Schema(example = "10")
-    private Integer operation;
+    @Schema(example = "10.0")
+    private Double operation;
     @Min(0)
     @Max(100)
-    @Schema(example = "5")
-    private Integer presentation;
+    @Schema(example = "5.0")
+    private Double presentation;
     @NotBlank
     @Schema(example = "结构清晰")
     private String highlight;
