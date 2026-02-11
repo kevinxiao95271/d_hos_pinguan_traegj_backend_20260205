@@ -24,7 +24,7 @@ public class DataSourceInitializer implements ApplicationRunner {
 
     private void ensureColumn(String tableName, String columnName, String definition) {
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?",
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=CURRENT_SCHEMA() AND TABLE_NAME=? AND COLUMN_NAME=?",
                 Integer.class,
                 tableName,
                 columnName
