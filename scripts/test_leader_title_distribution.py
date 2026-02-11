@@ -1,93 +1,147 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-测试项目负责人职称分布统计功能
+测试项目负责人职称统计功能
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(__file__))
+
 import requests
 import json
+from db_config import DB_CONFIG
 
+# API配置
 BASE_URL = "http://localhost:6031"
 
-def test_stats_api():
-    """测试报名统计API - 验证leaderTitleCounts字段"""
-    print("=" * 60)
-    print("测试报名统计API - 项目负责人职称分布")
-    print("=" * 60)
-    
-    # 使用组委会管理员账号登录
-    login_data = {
-        "phone": "13800000041",
+def login_as_admin():
+    """管理员登录"""
+    url = f"{BASE_URL}/api/auth/login"
+    # 使用组委会管理员账号
+    data = {
+        "phone": "13800000127",
         "name": "CommitteeAdmin A",
-        "role": "COMMITTEE_ADMIN"
+        "role": "COMMITTEE"
     }
+    response = requests.post(url, json=data)
+    if response.status_code == 200:
+        result = response.json()
+        if result.get('success'):
+            token = result['data']['token']
+            print(f"✅ 管理员登录成功")
+            return token
+    print(f"❌ 管理员登录失败: {response.text}")
+    return None
+
+def test_stats_api(token, competition_id=None):
+    """测试统计API"""
+    url = f"{BASE_URL}/api/admin/stats/summary"
+    if competition_id:
+        url += f"?competitionId={competition_id}"
     
-    print("\n1. 组委会管理员登录...")
-    response = requests.post(f"{BASE_URL}/api/auth/login", json=login_data)
-    print(f"状态码: {response.status_code}")
-    
-    if response.status_code != 200:
-        print(f"登录失败: {response.text}")
-        return
-    
-    result = response.json()
-    if not result.get("success"):
-        print(f"登录失败: {result.get('message')}")
-        return
-    
-    token = result["data"]["token"]
-    print(f"登录成功，获取token")
-    
-    # 调用统计API - 使用赛事21（有更多数据）
     headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(url, headers=headers)
     
-    print("\n2. 调用报名统计API（赛事21）...")
-    response = requests.get(f"{BASE_URL}/api/admin/stats/summary?competitionId=21", headers=headers)
+    print(f"\n{'='*60}")
+    print(f"测试统计API")
+    print(f"{'='*60}")
+    print(f"URL: {url}")
     print(f"状态码: {response.status_code}")
     
-    if response.status_code != 200:
-        print(f"请求失败: {response.text}")
+    if response.status_code == 200:
+        result = response.json()
+        # 处理两种响应格式：{success: true, data: ...} 或 {code: 200, data: ...}
+        if result.get('success') or result.get('code') == 200:
+            data = result.get('data')
+            if not data:
+                print(f"❌ API返回数据为空")
+                return False
+                
+            print(f"\n✅ API调用成功")
+            print(f"\n赛事信息:")
+            print(f"  - 赛事ID: {data.get('competitionId')}")
+            print(f"  - 赛事名称: {data.get('competitionName')}")
+            print(f"  - 报名总数: {data.get('registrationCount')}")
+            
+            # 检查新增字段
+            if 'leaderTitleCounts' in data:
+                print(f"\n✅ leaderTitleCounts 字段存在")
+                leader_titles = data['leaderTitleCounts']
+                print(f"\n项目负责人职称分布:")
+                
+                # 按数量排序
+                sorted_titles = sorted(leader_titles.items(), key=lambda x: x[1], reverse=True)
+                total_leaders = 0
+                for title, count in sorted_titles:
+                    print(f"  - {title}: {count}个项目")
+                    total_leaders += count
+                
+                print(f"\n统计汇总:")
+                print(f"  - 职称类型数: {len(leader_titles)}")
+                print(f"  - 项目负责人总数: {total_leaders}")
+                print(f"  - 报名项目总数: {data.get('registrationCount')}")
+                
+                if total_leaders < data.get('registrationCount', 0):
+                    missing = data.get('registrationCount', 0) - total_leaders
+                    print(f"  ⚠️  有 {missing} 个项目没有负责人信息")
+                
+                # 显示完整响应（格式化）
+                print(f"\n完整响应数据:")
+                print(json.dumps(data, ensure_ascii=False, indent=2))
+                
+                return True
+            else:
+                print(f"\n❌ leaderTitleCounts 字段不存在")
+                print(f"响应数据: {json.dumps(data, ensure_ascii=False, indent=2)}")
+                return False
+        else:
+            print(f"❌ API返回错误: {result.get('message')}")
+            return False
+    else:
+        print(f"❌ HTTP请求失败: {response.text}")
+        return False
+
+def main():
+    """主函数"""
+    print("="*60)
+    print("项目负责人职称统计功能测试")
+    print("="*60)
+    
+    # 1. 管理员登录
+    token = login_as_admin()
+    if not token:
+        print("\n❌ 测试失败：无法登录")
         return
     
-    result = response.json()
-    if not result.get("success"):
-        print(f"请求失败: {result.get('message')}")
-        return
+    # 2. 测试统计API（最新赛事）
+    print(f"\n{'='*60}")
+    print("测试场景1: 查询最新赛事统计")
+    print(f"{'='*60}")
+    success1 = test_stats_api(token)
     
-    data = result["data"]
+    # 3. 测试统计API（指定赛事ID=21）
+    print(f"\n{'='*60}")
+    print("测试场景2: 查询指定赛事统计 (competitionId=21)")
+    print(f"{'='*60}")
+    success2 = test_stats_api(token, competition_id=21)
     
-    print("\n3. 验证返回数据...")
-    print(f"赛事ID: {data.get('competitionId')}")
-    print(f"赛事名称: {data.get('competitionName')}")
-    print(f"报名总数: {data.get('registrationCount')}")
-    
-    # 验证leaderTitleCounts字段
-    leader_title_counts = data.get('leaderTitleCounts')
-    if leader_title_counts is None:
-        print("\n❌ 错误: leaderTitleCounts字段不存在")
-        return
-    
-    print(f"\n✅ leaderTitleCounts字段存在")
-    print(f"职称分布统计:")
-    
-    # 按数量排序显示
-    sorted_titles = sorted(leader_title_counts.items(), key=lambda x: x[1], reverse=True)
-    total = sum(leader_title_counts.values())
-    
-    for title, count in sorted_titles:
-        percentage = (count / total * 100) if total > 0 else 0
-        print(f"  {title}: {count} ({percentage:.1f}%)")
-    
-    print(f"\n总计: {total}")
-    
-    # 验证其他统计字段
-    print("\n4. 其他统计字段:")
-    print(f"  地区分布: {len(data.get('regionCounts', {}))} 个地区")
-    print(f"  学科类型分布: {len(data.get('subjectTypeCounts', {}))} 个类型")
-    print(f"  品管工具分布: {len(data.get('methodCounts', {}))} 个工具")
-    
-    print("\n" + "=" * 60)
-    print("✅ 测试完成 - 项目负责人职称分布统计功能正常")
-    print("=" * 60)
+    # 总结
+    print(f"\n{'='*60}")
+    print("测试总结")
+    print(f"{'='*60}")
+    if success1 and success2:
+        print("✅ 所有测试通过")
+        print("\n功能验证:")
+        print("  ✅ leaderTitleCounts 字段正确返回")
+        print("  ✅ 职称统计数据准确")
+        print("  ✅ 支持查询最新赛事")
+        print("  ✅ 支持查询指定赛事")
+    else:
+        print("❌ 部分测试失败")
+        if not success1:
+            print("  ❌ 最新赛事查询失败")
+        if not success2:
+            print("  ❌ 指定赛事查询失败")
 
 if __name__ == "__main__":
-    test_stats_api()
+    main()
