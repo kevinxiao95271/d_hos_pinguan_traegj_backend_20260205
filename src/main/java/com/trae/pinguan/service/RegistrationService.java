@@ -53,6 +53,7 @@ public class RegistrationService {
     private final ProjectSummaryRepository summaryRepository;
     private final MaterialFileRepository materialRepository;
     private final ReviewTaskRepository reviewTaskRepository;
+    private final com.trae.pinguan.repository.SystemSettingRepository systemSettingRepository;
 
     @Transactional
     public Registration create(RegistrationCreateRequest request) {
@@ -62,6 +63,22 @@ public class RegistrationService {
                 .orElseThrow(() -> new IllegalArgumentException("机构不存在"));
         UserAccount applicant = userAccountRepository.findById(request.getApplicantId())
                 .orElseThrow(() -> new IllegalArgumentException("报名人不存在"));
+        
+        // 检查机构报名数量限制
+        int maxRegistrationsPerInstitution = systemSettingRepository
+                .findBySettingKey("maxRegistrationsPerInstitution")
+                .map(setting -> Integer.parseInt(setting.getSettingValue()))
+                .orElse(8);  // 默认值为8
+        
+        long currentCount = registrationRepository
+                .findByCompetitionIdAndInstitutionId(competition.getId(), institution.getId())
+                .size();
+        
+        if (currentCount >= maxRegistrationsPerInstitution) {
+            throw new IllegalArgumentException(
+                    String.format("该机构报名数量已达上限（%d个项目），无法继续报名", maxRegistrationsPerInstitution));
+        }
+        
         Registration registration = Registration.builder()
                 .competition(competition)
                 .institution(institution)

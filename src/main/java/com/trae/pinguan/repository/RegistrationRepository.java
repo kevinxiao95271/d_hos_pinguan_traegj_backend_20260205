@@ -14,6 +14,7 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     List<Registration> findByCompetitionIdAndStatus(Long competitionId, RegistrationStatus status);
     List<Registration> findByApplicantId(Long applicantId);
     List<Registration> findByInstitutionId(Long institutionId);
+    List<Registration> findByCompetitionIdAndInstitutionId(Long competitionId, Long institutionId);
 
     @Query("select r from Registration r join fetch r.institution where r.competition.id = :competitionId")
     List<Registration> findByCompetitionIdWithInstitution(@Param("competitionId") Long competitionId);
