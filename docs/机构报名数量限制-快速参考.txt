@@ -1,0 +1,36 @@
+# 机构报名数量限制 - 快速参考
+
+## 功能
+限制同一机构在同一赛事中的报名项目数量，默认最多8个。
+
+## 运维操作
+
+### 查询当前限制值
+GET /api/admin/settings?key=maxRegistrationsPerInstitution
+
+### 修改限制值
+POST /api/admin/settings
+Body: {
+  "key": "maxRegistrationsPerInstitution",
+  "value": "10"
+}
+
+## 常用配置值
+- 默认值：8
+- 建议范围：5-15
+- 特殊情况可调整为更大值
+
+## 错误提示
+当机构报名数达到上限时：
+"该机构报名数量已达上限（N个项目），无法继续报名"
+
+## 注意事项
+1. 统计所有状态的报名（草稿、已提交、已退回等）
+2. 修改限制值立即生效
+3. 不影响已有报名
+4. 只有管理员可以修改
+
+## 代码位置
+- 检查逻辑：RegistrationService.create()
+- 配置键：maxRegistrationsPerInstitution
+- 默认值：8
