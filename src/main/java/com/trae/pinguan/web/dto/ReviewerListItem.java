@@ -15,4 +15,5 @@ public class ReviewerListItem {
     private String reviewerGroupCode;
     private String interviewGroupCode;
     private String expertBackground;
+    private Integer currentLoad;  // 当前负荷（已分配任务数）
 }

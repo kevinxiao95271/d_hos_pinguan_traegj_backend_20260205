@@ -4,11 +4,14 @@ import com.trae.pinguan.domain.entity.Institution;
 import com.trae.pinguan.domain.entity.UserAccount;
 import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.repository.InstitutionRepository;
+import com.trae.pinguan.repository.ReviewTaskRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.web.dto.ReviewerListItem;
 import com.trae.pinguan.web.dto.ReviewerUpsertRequest;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReviewerService {
     private final UserAccountRepository userAccountRepository;
     private final InstitutionRepository institutionRepository;
+    private final ReviewTaskRepository reviewTaskRepository;
 
     @Transactional(readOnly = true)
     public List<ReviewerListItem> list(Long institutionId,
@@ -27,6 +31,14 @@ public class ReviewerService {
                                        String expertBackground) {
         // 优化：使用JOIN FETCH一次性加载所有关联数据，避免N+1问题
         List<UserAccount> reviewers = userAccountRepository.findByRoleWithInstitution(RoleType.REVIEWER);
+        
+        // 计算每个评委的负荷（已分配任务数）
+        Map<Long, Integer> loadMap = new HashMap<>();
+        for (UserAccount reviewer : reviewers) {
+            int load = reviewTaskRepository.findByReviewerId(reviewer.getId()).size();
+            loadMap.put(reviewer.getId(), load);
+        }
+        
         return reviewers.stream()
                 .filter(user -> institutionId == null || (user.getInstitution() != null
                         && institutionId.equals(user.getInstitution().getId())))
@@ -42,7 +54,8 @@ public class ReviewerService {
                         user.getInstitution() == null ? null : user.getInstitution().getName(),
                         user.getReviewerGroupCode(),
                         user.getInterviewGroupCode(),
-                        user.getExpertBackground()
+                        user.getExpertBackground(),
+                        loadMap.getOrDefault(user.getId(), 0)
                 ))
                 .collect(Collectors.toList());
     }
