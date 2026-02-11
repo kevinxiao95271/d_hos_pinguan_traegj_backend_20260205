@@ -332,6 +332,42 @@ public class RegistrationService {
         return registrationRepository.findByInstitutionId(institutionId);
     }
 
+    @Transactional(readOnly = true)
+    public com.trae.pinguan.web.dto.InstitutionQuotaResponse getInstitutionQuota(Long competitionId, Long institutionId) {
+        Competition competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
+        Institution institution = institutionRepository.findById(institutionId)
+                .orElseThrow(() -> new IllegalArgumentException("机构不存在"));
+        
+        // 获取最大报名数量限制
+        int maxCount = systemSettingRepository
+                .findBySettingKey("maxRegistrationsPerInstitution")
+                .map(setting -> Integer.parseInt(setting.getSettingValue()))
+                .orElse(8);  // 默认值为8
+        
+        // 统计当前已报名数量
+        int currentCount = registrationRepository
+                .findByCompetitionIdAndInstitutionId(competitionId, institutionId)
+                .size();
+        
+        // 计算剩余可报名数量
+        int remainingCount = Math.max(0, maxCount - currentCount);
+        
+        // 判断是否还可以报名
+        boolean canRegister = currentCount < maxCount;
+        
+        return com.trae.pinguan.web.dto.InstitutionQuotaResponse.builder()
+                .institutionId(institutionId)
+                .institutionName(institution.getName())
+                .competitionId(competitionId)
+                .competitionName(competition.getName())
+                .currentCount(currentCount)
+                .maxCount(maxCount)
+                .remainingCount(remainingCount)
+                .canRegister(canRegister)
+                .build();
+    }
+
     public List<RegistrationFilterItem> filterRegistrations(Long competitionId,
                                                             com.trae.pinguan.domain.enums.GroupType groupType,
                                                             String groupCode,

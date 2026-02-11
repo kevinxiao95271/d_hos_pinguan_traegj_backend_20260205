@@ -142,6 +142,14 @@ public class RegistrationController {
         return ApiResponse.ok(registrationService.listByInstitution(institutionId));
     }
 
+    @GetMapping("/institution-quota")
+    @Operation(summary = "查询机构报名配额信息")
+    public ApiResponse<InstitutionQuotaResponse> getInstitutionQuota(
+            @RequestParam Long competitionId,
+            @RequestParam Long institutionId) {
+        return ApiResponse.ok(registrationService.getInstitutionQuota(competitionId, institutionId));
+    }
+
     @PostMapping("/{id}/materials")
     @Operation(summary = "上传报名材料")
     public ApiResponse<MaterialFile> upload(@PathVariable Long id,
