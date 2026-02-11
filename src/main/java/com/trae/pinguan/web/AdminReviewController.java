@@ -103,4 +103,17 @@ public class AdminReviewController {
     public ApiResponse<ReviewTask> returnScore(@Valid @RequestBody ReviewScoreReturnRequest request) {
         return ApiResponse.ok(reviewService.returnScore(request));
     }
+
+    @GetMapping("/book-scores")
+    @Operation(summary = "书审得分列表")
+    public ApiResponse<List<com.trae.pinguan.web.dto.BookScoreItem>> listBookScores(
+            @RequestParam Long competitionId,
+            @RequestParam(required = false) ReviewStatus status,
+            @RequestParam(required = false) Long reviewerId,
+            @RequestParam(required = false) Long institutionId,
+            @RequestParam(required = false) GroupType groupType,
+            @RequestParam(required = false) String reviewerGroupCode) {
+        return ApiResponse.ok(reviewService.listBookScores(
+                competitionId, status, reviewerId, institutionId, groupType, reviewerGroupCode));
+    }
 }
