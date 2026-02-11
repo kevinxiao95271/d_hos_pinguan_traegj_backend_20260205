@@ -32,22 +32,18 @@ public class AdminReviewerController {
     @Operation(summary = "评委列表")
     public ApiResponse<List<ReviewerListItem>> list(@RequestParam(required = false) Long competitionId,
                                                     @RequestParam(required = false) Long institutionId,
-                                                    @RequestParam(required = false) String reviewerGroupCode,
-                                                    @RequestParam(required = false) String interviewGroupCode,
                                                     @RequestParam(required = false) String expertBackground) {
         requireCommitteeOrOps();
-        return ApiResponse.ok(reviewerService.list(institutionId, reviewerGroupCode, interviewGroupCode, expertBackground));
+        return ApiResponse.ok(reviewerService.list(institutionId, expertBackground));
     }
 
     @GetMapping("/list")
     @Operation(summary = "评委列表(兼容路径)")
     public ApiResponse<List<ReviewerListItem>> listCompat(@RequestParam(required = false) Long competitionId,
                                                           @RequestParam(required = false) Long institutionId,
-                                                          @RequestParam(required = false) String reviewerGroupCode,
-                                                          @RequestParam(required = false) String interviewGroupCode,
                                                           @RequestParam(required = false) String expertBackground) {
         requireCommitteeOrOps();
-        return ApiResponse.ok(reviewerService.list(institutionId, reviewerGroupCode, interviewGroupCode, expertBackground));
+        return ApiResponse.ok(reviewerService.list(institutionId, expertBackground));
     }
 
     @GetMapping("/{id}")

@@ -26,8 +26,6 @@ public class ReviewerService {
 
     @Transactional(readOnly = true)
     public List<ReviewerListItem> list(Long institutionId,
-                                       String reviewerGroupCode,
-                                       String interviewGroupCode,
                                        String expertBackground) {
         // 优化：使用JOIN FETCH一次性加载所有关联数据，避免N+1问题
         List<UserAccount> reviewers = userAccountRepository.findByRoleWithInstitution(RoleType.REVIEWER);
@@ -42,8 +40,7 @@ public class ReviewerService {
         return reviewers.stream()
                 .filter(user -> institutionId == null || (user.getInstitution() != null
                         && institutionId.equals(user.getInstitution().getId())))
-                .filter(user -> reviewerGroupCode == null || reviewerGroupCode.equals(user.getReviewerGroupCode()))
-                .filter(user -> interviewGroupCode == null || interviewGroupCode.equals(user.getInterviewGroupCode()))
+                // 删除reviewerGroupCode和interviewGroupCode筛选 - 评审专家没有分组限制
                 .filter(user -> expertBackground == null || expertBackground.equals(user.getExpertBackground()))
                 .map(user -> new ReviewerListItem(
                         user.getId(),
@@ -52,8 +49,6 @@ public class ReviewerService {
                         user.getTitle(),
                         user.getInstitution() == null ? null : user.getInstitution().getId(),
                         user.getInstitution() == null ? null : user.getInstitution().getName(),
-                        user.getReviewerGroupCode(),
-                        user.getInterviewGroupCode(),
                         user.getExpertBackground(),
                         loadMap.getOrDefault(user.getId(), 0)
                 ))

@@ -113,9 +113,18 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public List<com.trae.pinguan.web.dto.AdminReviewTaskItem> listTasksForAdmin(Long competitionId, ReviewStage stage, ReviewStatus status) {
         List<ReviewTask> tasks;
-        if (status == null) {
+        
+        if (stage == null && status == null) {
+            // 查询所有任务
+            tasks = reviewTaskRepository.findByRegistrationCompetitionId(competitionId);
+        } else if (stage == null) {
+            // 只按status筛选
+            tasks = reviewTaskRepository.findByStatusAndRegistrationCompetitionId(status, competitionId);
+        } else if (status == null) {
+            // 只按stage筛选
             tasks = reviewTaskRepository.findByStageAndRegistrationCompetitionId(stage, competitionId);
         } else {
+            // 同时按stage和status筛选
             tasks = reviewTaskRepository.findByStageAndStatusAndRegistrationCompetitionId(stage, status, competitionId);
         }
         
@@ -250,33 +259,34 @@ public class ReviewService {
         for (int i = 0; i < reviewers.size(); i++) {
             int idx = (startIndex + i) % reviewers.size();
             UserAccount reviewer = reviewers.get(idx);
-            if (stage == ReviewStage.INTERVIEW) {
-                if (requiredGroup != null && (reviewer.getInterviewGroupCode() == null
-                        || !requiredGroup.equals(reviewer.getInterviewGroupCode()))) {
-                    continue;
-                }
-            } else {
-                if (requiredGroup != null && (reviewer.getReviewerGroupCode() == null
-                        || !requiredGroup.equals(reviewer.getReviewerGroupCode()))) {
-                    continue;
-                }
-            }
+            
+            // 删除分组匹配逻辑 - 评审专家可以评审任何分组的项目
+            // 评审专家的分配主要基于expertBackground（专业背景）
+            
+            // 避免同机构评审
             if (reviewer.getInstitution() != null && registration.getInstitution() != null
                     && reviewer.getInstitution().getId().equals(registration.getInstitution().getId())) {
                 continue;
             }
+            
+            // 避免重复分配
             if (assignedReviewerIds.contains(reviewer.getId())) {
                 continue;
             }
+            
+            // 确保不同专业背景（如果需要）
             if (requireDifferentBackground && reviewer.getExpertBackground() != null && assignedBackgrounds.size() == 1) {
                 if (assignedBackgrounds.contains(reviewer.getExpertBackground())) {
                     continue;
                 }
             }
+            
+            // 检查负荷上限
             int load = reviewerLoad.getOrDefault(reviewer.getId(), 0);
             if (load >= maxLoad) {
                 continue;
             }
+            
             return reviewer;
         }
         return null;
@@ -524,8 +534,7 @@ public class ReviewService {
             ReviewStatus status,
             Long reviewerId,
             Long institutionId,
-            GroupType groupType,
-            String reviewerGroupCode) {
+            GroupType groupType) {
         
         List<ReviewTask> tasks = reviewTaskRepository.findByStageAndRegistrationCompetitionId(
                 ReviewStage.BOOK, competitionId);
@@ -540,10 +549,7 @@ public class ReviewService {
             if (reviewerId != null && (task.getReviewer() == null || !task.getReviewer().getId().equals(reviewerId))) {
                 continue;
             }
-            if (task.getReviewer() != null && reviewerGroupCode != null 
-                    && !reviewerGroupCode.equals(task.getReviewer().getReviewerGroupCode())) {
-                continue;
-            }
+            // 删除reviewerGroupCode筛选 - 评审专家没有分组限制
             if (institutionId != null && (task.getRegistration().getInstitution() == null 
                     || !task.getRegistration().getInstitution().getId().equals(institutionId))) {
                 continue;

@@ -45,7 +45,7 @@ public class AdminReviewController {
     @Operation(summary = "后台查询已分配任务列表")
     public ApiResponse<List<com.trae.pinguan.web.dto.AdminReviewTaskItem>> listTasks(
             @RequestParam Long competitionId,
-            @RequestParam ReviewStage stage,
+            @RequestParam(required = false) ReviewStage stage,
             @RequestParam(required = false) ReviewStatus status) {
         return ApiResponse.ok(reviewService.listTasksForAdmin(competitionId, stage, status));
     }
@@ -69,11 +69,9 @@ public class AdminReviewController {
     @Operation(summary = "后台评委列表")
     public ApiResponse<java.util.List<com.trae.pinguan.web.dto.ReviewerListItem>> reviewers(
             @RequestParam(required = false) Long institutionId,
-            @RequestParam(required = false) String reviewerGroupCode,
-            @RequestParam(required = false) String interviewGroupCode,
             @RequestParam(required = false) String expertBackground) {
         return com.trae.pinguan.web.dto.ApiResponse.ok(
-                reviewerService.list(institutionId, reviewerGroupCode, interviewGroupCode, expertBackground));
+                reviewerService.list(institutionId, expertBackground));
     }
 
     @GetMapping("/shortlist")
@@ -111,9 +109,8 @@ public class AdminReviewController {
             @RequestParam(required = false) ReviewStatus status,
             @RequestParam(required = false) Long reviewerId,
             @RequestParam(required = false) Long institutionId,
-            @RequestParam(required = false) GroupType groupType,
-            @RequestParam(required = false) String reviewerGroupCode) {
+            @RequestParam(required = false) GroupType groupType) {
         return ApiResponse.ok(reviewService.listBookScores(
-                competitionId, status, reviewerId, institutionId, groupType, reviewerGroupCode));
+                competitionId, status, reviewerId, institutionId, groupType));
     }
 }

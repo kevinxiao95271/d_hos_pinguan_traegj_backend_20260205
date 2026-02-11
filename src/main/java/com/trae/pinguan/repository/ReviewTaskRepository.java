@@ -20,4 +20,6 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
     List<ReviewTask> findByStageAndStatus(ReviewStage stage, ReviewStatus status);
     List<ReviewTask> findByStageAndRegistrationCompetitionId(ReviewStage stage, Long competitionId);
     List<ReviewTask> findByStageAndStatusAndRegistrationCompetitionId(ReviewStage stage, ReviewStatus status, Long competitionId);
+    List<ReviewTask> findByRegistrationCompetitionId(Long competitionId);
+    List<ReviewTask> findByStatusAndRegistrationCompetitionId(ReviewStatus status, Long competitionId);
 }
