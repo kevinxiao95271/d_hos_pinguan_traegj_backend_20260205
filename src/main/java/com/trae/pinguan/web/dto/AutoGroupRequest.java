@@ -10,15 +10,22 @@ import lombok.Data;
 @Data
 public class AutoGroupRequest {
     @NotNull
-    @Schema(example = "21")
+    @Schema(example = "21", description = "竞赛ID")
     private Long competitionId;
-    @NotBlank
-    @Schema(example = "M")
-    private String groupPrefix;
-    @NotNull
-    @Min(1)
-    @Schema(example = "6")
-    private Integer groupSize;
-    @Schema(example = "APPROVED")
+
+    @Schema(example = "APPROVED", description = "筛选报名状态（可选，不填则处理所有状态）")
     private RegistrationStatus status;
+
+    @Schema(example = "20", description = "最小分组大小（默认20）")
+    private Integer minGroupSize = 20;
+
+    @Schema(example = "31", description = "最大分组大小（默认31）")
+    private Integer maxGroupSize = 31;
+
+    @Schema(example = "2.5", description = "分组大小标准差上限（默认2.5）")
+    private Double maxStdDev = 2.5;
+
+    @Schema(example = "2", description = "同机构项目最多散落分组数（默认2，推荐1-3）")
+    private Integer maxInstitutionSpread = 2;
 }
+

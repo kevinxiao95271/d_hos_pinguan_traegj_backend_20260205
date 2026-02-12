@@ -420,22 +420,133 @@ public class RegistrationService {
 
     @Transactional
     public List<Registration> autoGroup(AutoGroupRequest request) {
+        // 获取所有待分组的报名
         List<Registration> registrations = request.getStatus() == null
                 ? registrationRepository.findByCompetitionId(request.getCompetitionId())
                 : registrationRepository.findByCompetitionIdAndStatus(request.getCompetitionId(), request.getStatus());
-        registrations.sort(java.util.Comparator.comparing(Registration::getId));
-        int groupSize = request.getGroupSize();
-        int groupIndex = 1;
-        int counter = 0;
-        for (Registration registration : registrations) {
-            if (counter >= groupSize) {
-                groupIndex += 1;
-                counter = 0;
-            }
-            registration.setGroupCode(request.getGroupPrefix() + groupIndex);
-            counter += 1;
+        
+        if (registrations.isEmpty()) {
+            return registrations;
         }
+        
+        // 按groupType分组处理（基层组/综合组/进阶组）
+        Map<com.trae.pinguan.domain.enums.GroupType, List<Registration>> byGroupType = registrations.stream()
+                .collect(Collectors.groupingBy(Registration::getGroupType));
+        
+        // 对每个groupType独立分组
+        for (Map.Entry<com.trae.pinguan.domain.enums.GroupType, List<Registration>> entry : byGroupType.entrySet()) {
+            com.trae.pinguan.domain.enums.GroupType groupType = entry.getKey();
+            List<Registration> typeRegistrations = entry.getValue();
+            
+            // 确定分组前缀（A=基层组, B=综合组, C=进阶组）
+            String prefix = getGroupPrefix(groupType);
+            
+            // 执行智能分组
+            assignGroupCodes(typeRegistrations, prefix, request);
+        }
+        
         return registrationRepository.saveAll(registrations);
+    }
+    
+    private String getGroupPrefix(com.trae.pinguan.domain.enums.GroupType groupType) {
+        switch (groupType) {
+            case BASIC:
+                return "A";
+            case COMPREHENSIVE:
+                return "B";
+            case ADVANCED:
+                return "C";
+            default:
+                return "X";
+        }
+    }
+    
+    private void assignGroupCodes(List<Registration> registrations, String prefix, AutoGroupRequest request) {
+        int totalProjects = registrations.size();
+        int minSize = request.getMinGroupSize();
+        int maxSize = request.getMaxGroupSize();
+        int maxSpread = request.getMaxInstitutionSpread();
+        
+        // 计算最优分组数量
+        int numGroups = calculateOptimalGroupCount(totalProjects, minSize, maxSize);
+        
+        // 按机构分组统计
+        Map<Long, List<Registration>> byInstitution = registrations.stream()
+                .collect(Collectors.groupingBy(reg -> reg.getInstitution().getId()));
+        
+        // 创建分组桶
+        List<List<Registration>> buckets = new ArrayList<>();
+        for (int i = 0; i < numGroups; i++) {
+            buckets.add(new ArrayList<>());
+        }
+        
+        // 按机构项目数降序排序（大机构优先分配）
+        List<Map.Entry<Long, List<Registration>>> institutionEntries = new ArrayList<>(byInstitution.entrySet());
+        institutionEntries.sort((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()));
+        
+        // 分配策略：同机构项目尽量集中在1-2个分组
+        for (Map.Entry<Long, List<Registration>> entry : institutionEntries) {
+            List<Registration> instProjects = entry.getValue();
+            int projectCount = instProjects.size();
+            
+            // 确定该机构需要占用的分组数
+            int groupsNeeded = Math.min(
+                    (projectCount + maxSize - 1) / maxSize,  // 基于容量计算
+                    Math.min(maxSpread, (projectCount + minSize - 1) / minSize)  // 基于散落限制
+            );
+            groupsNeeded = Math.max(1, Math.min(groupsNeeded, numGroups));
+            
+            // 找到当前最空的N个桶
+            List<Integer> targetBuckets = findLeastLoadedBuckets(buckets, groupsNeeded);
+            
+            // 将项目分配到这些桶中
+            int projectsPerBucket = projectCount / groupsNeeded;
+            int remainder = projectCount % groupsNeeded;
+            
+            int projectIndex = 0;
+            for (int i = 0; i < groupsNeeded; i++) {
+                int bucketIndex = targetBuckets.get(i);
+                int count = projectsPerBucket + (i < remainder ? 1 : 0);
+                
+                for (int j = 0; j < count && projectIndex < projectCount; j++) {
+                    buckets.get(bucketIndex).add(instProjects.get(projectIndex++));
+                }
+            }
+        }
+        
+        // 分配group_code
+        for (int i = 0; i < buckets.size(); i++) {
+            String groupCode = prefix + (i + 1);
+            for (Registration reg : buckets.get(i)) {
+                reg.setGroupCode(groupCode);
+            }
+        }
+    }
+    
+    private int calculateOptimalGroupCount(int totalProjects, int minSize, int maxSize) {
+        // 目标：让每组项目数在minSize和maxSize之间，且尽量均衡
+        int targetSize = (minSize + maxSize) / 2;  // 目标大小约25-26
+        int numGroups = (totalProjects + targetSize - 1) / targetSize;
+        
+        // 确保不会超出范围
+        int minGroups = (totalProjects + maxSize - 1) / maxSize;
+        int maxGroups = (totalProjects + minSize - 1) / minSize;
+        
+        numGroups = Math.max(minGroups, Math.min(numGroups, maxGroups));
+        
+        return Math.max(1, numGroups);
+    }
+    
+    private List<Integer> findLeastLoadedBuckets(List<List<Registration>> buckets, int count) {
+        // 找到当前负载最小的N个桶
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < buckets.size(); i++) {
+            indices.add(i);
+        }
+        
+        indices.sort(java.util.Comparator.comparingInt(i -> buckets.get(i).size()));
+        
+        return indices.subList(0, Math.min(count, indices.size()));
     }
 
     @Transactional(readOnly = true)

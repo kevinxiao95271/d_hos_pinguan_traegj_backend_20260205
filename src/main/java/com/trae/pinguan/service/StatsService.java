@@ -55,6 +55,15 @@ public class StatsService {
                 .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
 
         List<Registration> registrations = registrationRepository.findByCompetitionId(competitionId);
+        
+        // 统计总机构数(去重)
+        Set<Long> uniqueInstitutions = new HashSet<>();
+        for (Registration registration : registrations) {
+            if (registration.getInstitution() != null) {
+                uniqueInstitutions.add(registration.getInstitution().getId());
+            }
+        }
+        
         Map<String, Integer> regionCounts = new HashMap<>();
         for (Registration registration : registrations) {
             String region = null;
@@ -123,6 +132,9 @@ public class StatsService {
                 }
             }
         }
+        
+        // 统计组别分布
+        List<com.trae.pinguan.web.dto.GroupTypeStats> groupTypeStatsList = calculateGroupTypeStats(registrations);
 
         List<UserAccount> reviewers = userAccountRepository.findAll().stream()
                 .filter(user -> user.getRole() == RoleType.REVIEWER)
@@ -176,6 +188,7 @@ public class StatsService {
                 competitionId,
                 competition.getName(),
                 registrations.size(),
+                uniqueInstitutions.size(),
                 toolTypes.size(),
                 reviewers.size(),
                 reviewerInstitutions.size(),
@@ -185,6 +198,7 @@ public class StatsService {
                 subjectTypeCounts,
                 methodCounts,
                 leaderTitleCounts,
+                groupTypeStatsList,
                 planSum / divisor,
                 problemSum / divisor,
                 actionSum / divisor,
@@ -193,5 +207,65 @@ public class StatsService {
                 operationSum / divisor,
                 presentationSum / divisor
         );
+    }
+    
+    private List<com.trae.pinguan.web.dto.GroupTypeStats> calculateGroupTypeStats(List<Registration> registrations) {
+        // 按组别分组统计
+        Map<com.trae.pinguan.domain.enums.GroupType, List<Registration>> groupedByType = registrations.stream()
+                .collect(Collectors.groupingBy(Registration::getGroupType));
+        
+        int totalProjects = registrations.size();
+        
+        List<com.trae.pinguan.web.dto.GroupTypeStats> statsList = new java.util.ArrayList<>();
+        
+        // 按顺序处理: BASIC, COMPREHENSIVE, ADVANCED
+        com.trae.pinguan.domain.enums.GroupType[] orderedTypes = {
+                com.trae.pinguan.domain.enums.GroupType.BASIC,
+                com.trae.pinguan.domain.enums.GroupType.COMPREHENSIVE,
+                com.trae.pinguan.domain.enums.GroupType.ADVANCED
+        };
+        
+        for (com.trae.pinguan.domain.enums.GroupType groupType : orderedTypes) {
+            List<Registration> groupRegistrations = groupedByType.getOrDefault(groupType, new java.util.ArrayList<>());
+            
+            // 统计该组别的机构数(去重)
+            Set<Long> groupInstitutions = new HashSet<>();
+            for (Registration reg : groupRegistrations) {
+                if (reg.getInstitution() != null) {
+                    groupInstitutions.add(reg.getInstitution().getId());
+                }
+            }
+            
+            int projectCount = groupRegistrations.size();
+            int institutionCount = groupInstitutions.size();
+            double percentage = totalProjects == 0 ? 0.0 : (projectCount * 100.0 / totalProjects);
+            double avgProjects = institutionCount == 0 ? 0.0 : (projectCount * 1.0 / institutionCount);
+            
+            String groupTypeName = getGroupTypeName(groupType);
+            
+            statsList.add(com.trae.pinguan.web.dto.GroupTypeStats.builder()
+                    .groupType(groupType)
+                    .groupTypeName(groupTypeName)
+                    .institutionCount(institutionCount)
+                    .projectCount(projectCount)
+                    .projectPercentage(Math.round(percentage * 10.0) / 10.0)  // 保留1位小数
+                    .avgProjectsPerInstitution(Math.round(avgProjects * 100.0) / 100.0)  // 保留2位小数
+                    .build());
+        }
+        
+        return statsList;
+    }
+    
+    private String getGroupTypeName(com.trae.pinguan.domain.enums.GroupType groupType) {
+        switch (groupType) {
+            case BASIC:
+                return "基层组";
+            case COMPREHENSIVE:
+                return "综合组";
+            case ADVANCED:
+                return "进阶组";
+            default:
+                return groupType.name();
+        }
     }
 }
