@@ -607,6 +607,84 @@ public class ReviewService {
         
         return result;
     }
+    @Transactional(readOnly = true)
+        public List<com.trae.pinguan.web.dto.BookScoreItem> listInterviewScores(
+                Long competitionId,
+                ReviewStatus status,
+                Long reviewerId,
+                Long institutionId,
+                GroupType groupType) {
+
+            List<ReviewTask> tasks = reviewTaskRepository.findByStageAndRegistrationCompetitionId(
+                    ReviewStage.INTERVIEW, competitionId);
+
+            List<com.trae.pinguan.web.dto.BookScoreItem> result = new ArrayList<>();
+
+            for (ReviewTask task : tasks) {
+                // 筛选条件
+                if (status != null && task.getStatus() != status) {
+                    continue;
+                }
+                if (reviewerId != null && (task.getReviewer() == null || !task.getReviewer().getId().equals(reviewerId))) {
+                    continue;
+                }
+                if (institutionId != null && (task.getRegistration().getInstitution() == null
+                        || !task.getRegistration().getInstitution().getId().equals(institutionId))) {
+                    continue;
+                }
+                if (groupType != null && task.getRegistration().getGroupType() != groupType) {
+                    continue;
+                }
+
+                // 只返回已评分的任务
+                if (task.getStatus() != ReviewStatus.SCORED) {
+                    continue;
+                }
+
+                // 获取评分详情
+                ReviewScore score = reviewScoreRepository.findByReviewTaskId(task.getId()).orElse(null);
+                if (score == null) {
+                    continue;
+                }
+
+                // 构建返回对象
+                com.trae.pinguan.web.dto.BookScoreItem item = com.trae.pinguan.web.dto.BookScoreItem.builder()
+                        .taskId(task.getId())
+                        .status(task.getStatus())
+                        .createdAt(task.getCreatedAt())
+                        .registrationId(task.getRegistration().getId())
+                        .projectName(task.getRegistration().getProjectName())
+                        .institutionName(task.getRegistration().getInstitution() != null
+                                ? task.getRegistration().getInstitution().getName() : null)
+                        .institutionLevel(task.getRegistration().getInstitution() != null
+                                ? task.getRegistration().getInstitution().getLevel() : null)
+                        .groupType(task.getRegistration().getGroupType())
+                        .groupCode(task.getRegistration().getGroupCode())
+                        .reviewerId(task.getReviewer() != null ? task.getReviewer().getId() : null)
+                        .reviewerName(task.getReviewer() != null ? task.getReviewer().getName() : null)
+                        .reviewerTitle(task.getReviewer() != null ? task.getReviewer().getTitle() : null)
+                        .reviewerInstitutionName(task.getReviewer() != null && task.getReviewer().getInstitution() != null
+                                ? task.getReviewer().getInstitution().getName() : null)
+                        .scoreId(score.getId())
+                        .plan(score.getPlan())
+                        .problem(score.getProblem())
+                        .action(score.getAction())
+                        .success(score.getSuccess())
+                        .review(score.getReview())
+                        .operation(score.getOperation())
+                        .presentation(score.getPresentation())
+                        .total(score.getTotal())
+                        .submittedAt(score.getSubmittedAt())
+                        .build();
+
+                result.add(item);
+            }
+
+            // 按提交时间降序排列
+            result.sort(Comparator.comparing(com.trae.pinguan.web.dto.BookScoreItem::getSubmittedAt).reversed());
+
+            return result;
+        }
 
     private static class SummaryAccumulator {
         private final Long registrationId;
