@@ -12,6 +12,7 @@ public class ReviewerListItem {
     private String title;
     private Long institutionId;
     private String institutionName;
+    private String institutionLevel;  // 机构等级
     // 删除reviewerGroupCode和interviewGroupCode - 评审专家没有分组限制
     private String expertBackground;  // 专业背景（这才是分配的关键依据）
     private Integer currentLoad;  // 当前负荷（已分配任务数）

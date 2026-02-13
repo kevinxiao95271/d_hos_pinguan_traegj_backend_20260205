@@ -49,6 +49,7 @@ public class ReviewerService {
                         user.getTitle(),
                         user.getInstitution() == null ? null : user.getInstitution().getId(),
                         user.getInstitution() == null ? null : user.getInstitution().getName(),
+                        user.getInstitution() == null ? null : user.getInstitution().getLevel(),
                         user.getExpertBackground(),
                         loadMap.getOrDefault(user.getId(), 0)
                 ))
