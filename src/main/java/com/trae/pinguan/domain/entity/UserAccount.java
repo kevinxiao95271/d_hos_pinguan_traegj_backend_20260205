@@ -25,6 +25,10 @@ public class UserAccount {
     @Column(nullable = false, length = 32, unique = true)
     private String phone;
 
+    @JsonIgnore
+    @Column(length = 128)
+    private String password;
+
     @Column(nullable = false, length = 64)
     private String name;
 
@@ -49,6 +53,13 @@ public class UserAccount {
     @Column(length = 32)
     private String expertBackground;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean enabled = true;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
+    
+    @Column
+    private LocalDateTime lastLoginAt;
 }

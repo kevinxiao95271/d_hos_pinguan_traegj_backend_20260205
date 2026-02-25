@@ -22,11 +22,26 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String path = request.getRequestURI();
-        // 只有认证接口、Swagger和actuator可以跳过JWT验证
+        String method = request.getMethod();
+        
+        // 白名单：无需JWT验证的接口
+        // 1. 认证接口、Swagger和actuator
         if (path.startsWith("/api/auth/")
                 || path.startsWith("/swagger")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/actuator")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
+        // 2. 机构查询公开接口（注册时需要）
+        if (isPublicInstitutionEndpoint(path, method)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
+        // 3. 字典查询接口（注册和报名时需要）- GET方法公开
+        if ("GET".equalsIgnoreCase(method) && path.startsWith("/api/dictionaries")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -93,5 +108,32 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
         request.setAttribute("userId", userId);
         request.setAttribute("role", role);
         filterChain.doFilter(request, response);
+    }
+    
+    /**
+     * 判断是否为公开的机构接口（注册时需要，无需token）
+     */
+    private boolean isPublicInstitutionEndpoint(String path, String method) {
+        // GET方法的查询接口（公开）
+        if ("GET".equalsIgnoreCase(method)) {
+            return path.equals("/api/institutions/search")           // 搜索（GET版本）
+                || path.equals("/api/institutions/autocomplete")     // 自动完成
+                || path.equals("/api/institutions/hot-regions")      // 热门地区
+                || path.equals("/api/institutions/cities")           // 城市列表
+                || path.equals("/api/institutions/regions")          // 地区列表
+                || path.equals("/api/institutions/districts")        // 区县列表
+                || path.equals("/api/institutions/levels")           // 等级列表
+                || path.equals("/api/institutions/region-stats")     // 地区统计
+                || path.matches("^/api/institutions/\\d+$")          // 机构详情 /api/institutions/{id}
+                || path.matches("^/api/institutions/by-uscc/.*$");   // 根据USCC查询
+        }
+        
+        // POST方法的搜索接口（公开）
+        if ("POST".equalsIgnoreCase(method)) {
+            return path.equals("/api/institutions/search");          // 高性能搜索
+        }
+        
+        // 其他方法（PUT, DELETE, POST创建/导入）需要认证
+        return false;
     }
 }

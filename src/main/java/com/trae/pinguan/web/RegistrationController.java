@@ -30,11 +30,15 @@ public class RegistrationController {
     private final javax.servlet.http.HttpServletRequest request;
 
     @PostMapping
-    @Operation(summary = "创建报名")
+    @Operation(
+        summary = "创建报名",
+        description = "创建新的项目报名。申请人ID和机构ID会自动从当前登录用户信息中获取，前端只需传入：赛事ID、项目名称、组别。"
+    )
     public ApiResponse<Registration> create(@Valid @RequestBody RegistrationCreateRequest request) {
         // 自动从token获取当前用户ID作为申请人
         Long applicantId = getCurrentUserId();
         request.setApplicantId(applicantId);
+        // institutionId 如果前端未传，会在 Service 层自动使用用户的所属机构
         return ApiResponse.ok(registrationService.create(request));
     }
 

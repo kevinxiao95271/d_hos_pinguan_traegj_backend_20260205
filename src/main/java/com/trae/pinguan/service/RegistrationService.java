@@ -11,7 +11,6 @@ import com.trae.pinguan.domain.entity.UserAccount;
 import com.trae.pinguan.domain.enums.RegistrationStatus;
 import com.trae.pinguan.repository.ActivityInfoRepository;
 import com.trae.pinguan.repository.CompetitionRepository;
-import com.trae.pinguan.repository.DictionaryItemRepository;
 import com.trae.pinguan.repository.InstitutionRepository;
 import com.trae.pinguan.repository.MaterialFileRepository;
 import com.trae.pinguan.repository.ProjectSummaryRepository;
@@ -37,9 +36,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RegistrationService {
@@ -49,7 +50,6 @@ public class RegistrationService {
     private final InstitutionRepository institutionRepository;
     private final UserAccountRepository userAccountRepository;
     private final ActivityInfoRepository activityInfoRepository;
-    private final DictionaryItemRepository dictionaryItemRepository;
     private final ProjectSummaryRepository summaryRepository;
     private final MaterialFileRepository materialRepository;
     private final ReviewTaskRepository reviewTaskRepository;
@@ -58,10 +58,26 @@ public class RegistrationService {
     public Registration create(RegistrationCreateRequest request) {
         Competition competition = competitionRepository.findById(request.getCompetitionId())
                 .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
-        Institution institution = institutionRepository.findById(request.getInstitutionId())
-                .orElseThrow(() -> new IllegalArgumentException("机构不存在"));
+        
         UserAccount applicant = userAccountRepository.findById(request.getApplicantId())
                 .orElseThrow(() -> new IllegalArgumentException("报名人不存在"));
+        
+        // 机构ID：如果前端未传，则自动使用申请人的所属机构
+        Institution institution;
+        if (request.getInstitutionId() != null) {
+            // 前端指定了机构（特殊情况，如代表其他机构报名）
+            institution = institutionRepository.findById(request.getInstitutionId())
+                    .orElseThrow(() -> new IllegalArgumentException("机构不存在"));
+            log.info("创建报名：用户 {} 代表机构 {} 报名", applicant.getName(), institution.getName());
+        } else {
+            // 自动使用申请人的所属机构
+            institution = applicant.getInstitution();
+            if (institution == null) {
+                throw new IllegalArgumentException("用户未绑定机构，无法创建报名");
+            }
+            log.info("创建报名：用户 {} 使用所属机构 {} 报名", applicant.getName(), institution.getName());
+        }
+        
         Registration registration = Registration.builder()
                 .competition(competition)
                 .institution(institution)
@@ -222,29 +238,18 @@ public class RegistrationService {
             String experienceImproveLabel = null;
             String qualityTopicLabel = null;
             
+            // 字典标签查询已移除，直接使用code作为label
             if (activity.getMethodCode() != null && !activity.getMethodCode().trim().isEmpty()) {
-                methodLabel = dictionaryItemRepository
-                        .findFirstByTypeAndCodeAndActiveTrue("method", activity.getMethodCode())
-                        .map(item -> item.getLabel())
-                        .orElse(null);
+                methodLabel = activity.getMethodCode();
             }
             if (activity.getSubjectTypeCode() != null && !activity.getSubjectTypeCode().trim().isEmpty()) {
-                subjectTypeLabel = dictionaryItemRepository
-                        .findFirstByTypeAndCodeAndActiveTrue("subject_type", activity.getSubjectTypeCode())
-                        .map(item -> item.getLabel())
-                        .orElse(null);
+                subjectTypeLabel = activity.getSubjectTypeCode();
             }
             if (activity.getExperienceImproveCode() != null && !activity.getExperienceImproveCode().trim().isEmpty()) {
-                experienceImproveLabel = dictionaryItemRepository
-                        .findFirstByTypeAndCodeAndActiveTrue("experience_improve", activity.getExperienceImproveCode())
-                        .map(item -> item.getLabel())
-                        .orElse(null);
+                experienceImproveLabel = activity.getExperienceImproveCode();
             }
             if (activity.getQualityTopicCode() != null && !activity.getQualityTopicCode().trim().isEmpty()) {
-                qualityTopicLabel = dictionaryItemRepository
-                        .findFirstByTypeAndCodeAndActiveTrue("quality_topic", activity.getQualityTopicCode())
-                        .map(item -> item.getLabel())
-                        .orElse(null);
+                qualityTopicLabel = activity.getQualityTopicCode();
             }
             activityDetail = new ActivityInfoDetailResponse(
                     activity.getTheme(),
@@ -267,7 +272,25 @@ public class RegistrationService {
                     activity.getRelatedToDigitalAi()
             );
         }
-        return new RegistrationDetailResponse(registration, institutionInfo, members, activityDetail, summary, materials);
+        // 获取赛事信息
+        Long competitionId = null;
+        String competitionName = null;
+        if (registration.getCompetition() != null) {
+            Competition comp = registration.getCompetition();
+            competitionId = comp.getId();
+            competitionName = comp.getName();
+        }
+        
+        return RegistrationDetailResponse.builder()
+                .registration(registration)
+                .competitionId(competitionId)
+                .competitionName(competitionName)
+                .institution(institutionInfo)
+                .members(members)
+                .activityInfo(activityDetail)
+                .projectSummary(summary)
+                .materials(materials)
+                .build();
     }
 
     public List<Registration> listByCompetition(Long competitionId) {
@@ -339,18 +362,13 @@ public class RegistrationService {
         if (items.isEmpty()) {
             return items;
         }
-        Map<String, String> methodLabels = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("method", true)
-                .stream()
-                .collect(Collectors.toMap(item -> item.getCode(), item -> item.getLabel(), (a, b) -> a));
-        Map<String, String> subjectTypeLabels = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("subject_type", true)
-                .stream()
-                .collect(Collectors.toMap(item -> item.getCode(), item -> item.getLabel(), (a, b) -> a));
+        // 字典标签查询已移除，直接使用code作为label
         for (RegistrationFilterItem item : items) {
             if (item.getMethodCode() != null) {
-                item.setMethodLabel(methodLabels.get(item.getMethodCode()));
+                item.setMethodLabel(item.getMethodCode());
             }
             if (item.getSubjectTypeCode() != null) {
-                item.setSubjectTypeLabel(subjectTypeLabels.get(item.getSubjectTypeCode()));
+                item.setSubjectTypeLabel(item.getSubjectTypeCode());
             }
         }
         return items;

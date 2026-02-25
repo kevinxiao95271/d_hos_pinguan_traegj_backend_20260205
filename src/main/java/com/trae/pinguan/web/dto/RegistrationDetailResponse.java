@@ -9,12 +9,20 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Builder;
 
 @Data
+@Builder
 @AllArgsConstructor
 public class RegistrationDetailResponse {
     @Schema(description = "报名基本信息")
     private Registration registration;
+    
+    @Schema(description = "赛事ID")
+    private Long competitionId;
+    
+    @Schema(description = "赛事名称")
+    private String competitionName;
     
     @Schema(description = "机构详细信息")
     private InstitutionInfo institution;

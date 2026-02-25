@@ -11,7 +11,6 @@ import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.repository.ActivityInfoRepository;
 import com.trae.pinguan.repository.CompetitionRepository;
-import com.trae.pinguan.repository.DictionaryItemRepository;
 import com.trae.pinguan.repository.RegistrationMemberRepository;
 import com.trae.pinguan.repository.RegistrationRepository;
 import com.trae.pinguan.repository.ReviewScoreRepository;
@@ -35,7 +34,6 @@ public class StatsService {
     private final CompetitionRepository competitionRepository;
     private final RegistrationRepository registrationRepository;
     private final ActivityInfoRepository activityInfoRepository;
-    private final DictionaryItemRepository dictionaryItemRepository;
     private final ReviewTaskRepository reviewTaskRepository;
     private final ReviewScoreRepository reviewScoreRepository;
     private final UserAccountRepository userAccountRepository;
@@ -71,14 +69,6 @@ public class StatsService {
         Map<String, Integer> subjectTypeCounts = new HashMap<>();
         Map<String, Integer> methodCounts = new HashMap<>();
         
-        Map<String, String> subjectTypeLabels = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("subject_type", true)
-                .stream()
-                .collect(Collectors.toMap(item -> item.getCode(), item -> item.getLabel(), (a, b) -> a));
-        
-        Map<String, String> methodLabels = dictionaryItemRepository.findByTypeAndActiveOrderByIdAsc("method", true)
-                .stream()
-                .collect(Collectors.toMap(item -> item.getCode(), item -> item.getLabel(), (a, b) -> a));
-        
         for (Registration registration : registrations) {
             ActivityInfo info = activityInfoRepository.findByRegistrationId(registration.getId()).orElse(null);
             if (info != null && info.getMethodCode() != null) {
@@ -88,11 +78,8 @@ public class StatsService {
             if (subjectTypeCode == null || subjectTypeCode.trim().isEmpty()) {
                 subjectTypeCounts.put("未知", subjectTypeCounts.getOrDefault("未知", 0) + 1);
             } else {
-                String label = subjectTypeLabels.get(subjectTypeCode);
-                if (label == null || label.trim().isEmpty()) {
-                    label = subjectTypeCode;
-                }
-                subjectTypeCounts.put(label, subjectTypeCounts.getOrDefault(label, 0) + 1);
+                // 直接使用code作为显示值
+                subjectTypeCounts.put(subjectTypeCode, subjectTypeCounts.getOrDefault(subjectTypeCode, 0) + 1);
             }
             
             // 统计品管工具分布
@@ -100,11 +87,8 @@ public class StatsService {
             if (methodCode == null || methodCode.trim().isEmpty()) {
                 methodCounts.put("未知", methodCounts.getOrDefault("未知", 0) + 1);
             } else {
-                String label = methodLabels.get(methodCode);
-                if (label == null || label.trim().isEmpty()) {
-                    label = methodCode;
-                }
-                methodCounts.put(label, methodCounts.getOrDefault(label, 0) + 1);
+                // 直接使用code作为显示值
+                methodCounts.put(methodCode, methodCounts.getOrDefault(methodCode, 0) + 1);
             }
         }
 

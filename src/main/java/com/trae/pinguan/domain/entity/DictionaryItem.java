@@ -1,11 +1,12 @@
 package com.trae.pinguan.domain.entity;
 
-import java.time.LocalDateTime;
-import javax.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import javax.persistence.*;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -14,22 +15,33 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "dictionary_items")
 public class DictionaryItem {
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false, length = 64)
+    
+    @Column(name = "type", nullable = false, length = 64)
     private String type;
-
-    @Column(nullable = false, length = 64)
+    
+    @Column(name = "code", nullable = false, length = 64)
     private String code;
-
-    @Column(nullable = false, length = 128)
+    
+    @Column(name = "label", nullable = false, length = 128)
     private String label;
-
-    @Column(nullable = false)
+    
+    @Column(name = "active", nullable = false)
     private Boolean active;
-
-    @Column(nullable = false)
+    
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (active == null) {
+            active = true;
+        }
+    }
 }
