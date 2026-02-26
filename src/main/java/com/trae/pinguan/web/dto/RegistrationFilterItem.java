@@ -8,6 +8,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class RegistrationFilterItem {
+    private Long id;
     private Long registrationId;
     private String projectName;
     private String institutionName;
@@ -20,4 +21,23 @@ public class RegistrationFilterItem {
     private String subjectTypeLabel;
     private String methodLabel;
     private String applicantName;
+    
+    public RegistrationFilterItem(Long registrationId, String projectName, String institutionName,
+                                  String institutionLevel, GroupType groupType, String groupCode,
+                                  LocalDateTime submittedAt, String subjectTypeCode, String methodCode,
+                                  String subjectTypeLabel, String methodLabel, String applicantName) {
+        this.id = registrationId;
+        this.registrationId = registrationId;
+        this.projectName = projectName;
+        this.institutionName = institutionName;
+        this.institutionLevel = institutionLevel;
+        this.groupType = groupType;
+        this.groupCode = groupCode;
+        this.submittedAt = submittedAt;
+        this.subjectTypeCode = subjectTypeCode;
+        this.methodCode = methodCode;
+        this.subjectTypeLabel = subjectTypeLabel;
+        this.methodLabel = methodLabel;
+        this.applicantName = applicantName;
+    }
 }

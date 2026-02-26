@@ -15,11 +15,20 @@ public interface InstitutionRepository extends JpaRepository<Institution, Long>,
     
     /**
      * 高性能搜索：支持多条件组合查询
+     * 排序规则：等级优先（三级>二级>一级>其他），然后按名称
      */
     @Query("SELECT i FROM Institution i WHERE " +
            "(:keyword IS NULL OR i.name LIKE %:keyword% OR i.region LIKE %:keyword%) AND " +
            "(:region IS NULL OR i.region = :region) AND " +
-           "(:level IS NULL OR i.level = :level)")
+           "(:level IS NULL OR i.level = :level) " +
+           "ORDER BY " +
+           "CASE " +
+           "  WHEN i.level = '三级' THEN 1 " +
+           "  WHEN i.level = '二级' THEN 2 " +
+           "  WHEN i.level = '一级' THEN 3 " +
+           "  ELSE 4 " +
+           "END, " +
+           "i.name ASC")
     Page<Institution> searchInstitutions(
         @Param("keyword") String keyword,
         @Param("region") String region,

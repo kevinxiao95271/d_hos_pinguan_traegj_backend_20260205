@@ -152,4 +152,23 @@ public class RegionUtils {
     public static boolean isCity(String region) {
         return CITY_TO_DISTRICTS.containsKey(region);
     }
+    
+    /**
+     * 从区县名推断所属城市
+     * 例如："上城区" -> "杭州市"
+     */
+    public static String getCityFromRegion(String region) {
+        if (region == null || region.trim().isEmpty()) {
+            return null;
+        }
+        
+        // 遍历所有城市的区县列表
+        for (Map.Entry<String, List<String>> entry : CITY_TO_DISTRICTS.entrySet()) {
+            if (entry.getValue().contains(region)) {
+                return entry.getKey();
+            }
+        }
+        
+        return null;
+    }
 }

@@ -8,7 +8,9 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class GroupedRegistrationItem {
-    @Schema(example = "101")
+    @Schema(example = "101", description = "报名ID（与registrationId相同）")
+    private Long id;
+    @Schema(example = "101", description = "报名ID")
     private Long registrationId;
     @Schema(example = "项目A")
     private String projectName;
@@ -20,4 +22,15 @@ public class GroupedRegistrationItem {
     private GroupType groupType;
     @Schema(example = "M1")
     private String groupCode;
+    
+    public GroupedRegistrationItem(Long registrationId, String projectName, String institutionName, 
+                                   String institutionLevel, GroupType groupType, String groupCode) {
+        this.id = registrationId;
+        this.registrationId = registrationId;
+        this.projectName = projectName;
+        this.institutionName = institutionName;
+        this.institutionLevel = institutionLevel;
+        this.groupType = groupType;
+        this.groupCode = groupCode;
+    }
 }

@@ -61,19 +61,25 @@ public class InstitutionController {
                     ? uscc.substring(uscc.length() - 4) 
                     : "";
                 
+                // 等级处理：null或空字符串统一显示为"无等级"
+                String level = inst.getLevel();
+                if (level == null || level.trim().isEmpty() || "未定等".equals(level)) {
+                    level = "无等级";
+                }
+                
                 String displayText = inst.getName();
                 if (inst.getRegion() != null) {
                     displayText += " (" + inst.getRegion() + ")";
                 }
-                if (inst.getLevel() != null && !"未定等".equals(inst.getLevel())) {
-                    displayText += " [" + inst.getLevel() + "]";
+                if (!"无等级".equals(level)) {
+                    displayText += " [" + level + "]";
                 }
                 
                 return com.trae.pinguan.web.dto.InstitutionSimpleDTO.builder()
                     .id(inst.getId())  // 注意：这是 const_init_institutions 的 ID
                     .name(inst.getName())
                     .region(inst.getRegion())
-                    .level(inst.getLevel())
+                    .level(level)  // 使用处理后的等级
                     .usccLast4(usccLast4)
                     .displayText(displayText)
                     .build();

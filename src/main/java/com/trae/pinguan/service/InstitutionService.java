@@ -32,13 +32,11 @@ public class InstitutionService {
     /**
      * 高性能搜索接口 - 支持智能地区扩展
      * 搜索"杭州市"时自动匹配所有杭州区县
+     * 排序规则：等级优先（三级>二级>一级>其他），然后按名称
      */
     public Page<Institution> search(String keyword, String region, String level, int page, int size, String sortBy, String sortDirection) {
-        Sort.Direction direction = "DESC".equalsIgnoreCase(sortDirection) 
-            ? Sort.Direction.DESC 
-            : Sort.Direction.ASC;
-        
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        // 使用固定的等级优先排序（不使用传入的sortBy和sortDirection）
+        Pageable pageable = PageRequest.of(page, size);
         
         // 如果指定了region，智能扩展（市 -> 区县）
         if (region != null && !region.trim().isEmpty()) {
@@ -58,6 +56,7 @@ public class InstitutionService {
     
     /**
      * 使用扩展后的地区列表进行查询（如杭州市的所有区县）
+     * 排序规则：等级优先（三级>二级>一级>其他），然后按名称
      */
     private Page<Institution> searchWithExpandedRegions(String keyword, List<String> regions, String level, Pageable pageable) {
         Specification<Institution> spec = (root, query, cb) -> {
@@ -70,14 +69,36 @@ public class InstitutionService {
                 predicates.add(cb.or(nameLike, regionLike));
             }
             
-            // 地区条件（IN查询）
+            // 地区条件：匹配region在区县列表中，或city为对应的市
             if (!regions.isEmpty()) {
-                predicates.add(root.get("region").in(regions));
+                String cityName = RegionUtils.getCityFromRegion(regions.get(0));
+                
+                if (cityName != null) {
+                    Predicate regionIn = root.get("region").in(regions);
+                    Predicate cityEqual = cb.equal(root.get("city"), cityName);
+                    predicates.add(cb.or(regionIn, cityEqual));
+                } else {
+                    predicates.add(root.get("region").in(regions));
+                }
             }
             
             // 等级条件
             if (level != null && !level.trim().isEmpty()) {
                 predicates.add(cb.equal(root.get("level"), level));
+            }
+            
+            // 自定义排序：等级优先（三级>二级>一级>其他），然后按名称
+            if (query != null) {
+                query.orderBy(
+                    cb.asc(
+                        cb.selectCase()
+                            .when(cb.equal(root.get("level"), "三级"), 1)
+                            .when(cb.equal(root.get("level"), "二级"), 2)
+                            .when(cb.equal(root.get("level"), "一级"), 3)
+                            .otherwise(4)
+                    ),
+                    cb.asc(root.get("name"))
+                );
             }
             
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -88,9 +109,10 @@ public class InstitutionService {
     
     /**
      * 简单搜索（保留向后兼容）
+     * 注意：已强制使用等级优先排序
      */
     public Page<Institution> search(String keyword, int page, int size) {
-        return search(keyword, null, null, page, size, "name", "ASC");
+        return search(keyword, null, null, page, size, null, null);
     }
     
     /**
