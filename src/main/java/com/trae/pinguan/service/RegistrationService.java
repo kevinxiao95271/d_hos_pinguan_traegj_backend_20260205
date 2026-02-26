@@ -48,6 +48,7 @@ public class RegistrationService {
     private final RegistrationMemberRepository memberRepository;
     private final CompetitionRepository competitionRepository;
     private final InstitutionRepository institutionRepository;
+    private final com.trae.pinguan.repository.DictionaryItemRepository dictionaryItemRepository;
     private final UserAccountRepository userAccountRepository;
     private final ActivityInfoRepository activityInfoRepository;
     private final ProjectSummaryRepository summaryRepository;
@@ -362,13 +363,13 @@ public class RegistrationService {
         if (items.isEmpty()) {
             return items;
         }
-        // 字典标签查询已移除，直接使用code作为label
+        // 从字典表查询label
         for (RegistrationFilterItem item : items) {
             if (item.getMethodCode() != null) {
-                item.setMethodLabel(item.getMethodCode());
+                item.setMethodLabel(getLabel(item.getMethodCode()));
             }
             if (item.getSubjectTypeCode() != null) {
-                item.setSubjectTypeLabel(item.getSubjectTypeCode());
+                item.setSubjectTypeLabel(getLabel(item.getSubjectTypeCode()));
             }
         }
         return items;
@@ -428,5 +429,17 @@ public class RegistrationService {
             responses.add(new GroupedRegistrationResponse(entry.getKey(), items));
         }
         return responses;
+    }
+    
+    /**
+     * 根据code获取label，如果找不到则返回code本身
+     */
+    private String getLabel(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            return "未知";
+        }
+        return dictionaryItemRepository.findByCode(code)
+                .map(item -> item.getLabel())
+                .orElse(code);
     }
 }

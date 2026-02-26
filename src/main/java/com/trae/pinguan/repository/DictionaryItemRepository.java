@@ -23,4 +23,9 @@ public interface DictionaryItemRepository extends JpaRepository<DictionaryItem, 
      * 查询所有启用的字典项
      */
     List<DictionaryItem> findByActiveTrue();
+    
+    /**
+     * 根据代码查询字典项
+     */
+    java.util.Optional<DictionaryItem> findByCode(String code);
 }

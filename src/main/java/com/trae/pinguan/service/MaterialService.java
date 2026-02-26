@@ -17,6 +17,13 @@ public class MaterialService {
     private final RegistrationRepository registrationRepository;
     private final MaterialFileRepository materialFileRepository;
     private final FileStorageService fileStorageService;
+    
+    private static final long MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB
+    private static final String[] ALLOWED_EXTENSIONS = {
+        "pdf", "doc", "docx", "xls", "xlsx", 
+        "ppt", "pptx", "zip", "rar", 
+        "jpg", "jpeg", "png", "gif"
+    };
 
     public List<MaterialFile> list(Long registrationId) {
         return materialFileRepository.findByRegistrationId(registrationId);
@@ -26,6 +33,23 @@ public class MaterialService {
     public MaterialFile upload(Long registrationId, String type, MultipartFile file) {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new IllegalArgumentException("报名不存在"));
+        
+        // 验证文件大小
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new IllegalArgumentException("文件大小不能超过30MB");
+        }
+        
+        // 验证文件类型
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isEmpty()) {
+            throw new IllegalArgumentException("文件名不能为空");
+        }
+        
+        String extension = getFileExtension(originalFilename);
+        if (!isAllowedExtension(extension)) {
+            throw new IllegalArgumentException("不支持的文件类型，仅支持: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar, jpg, jpeg, png, gif");
+        }
+        
         String path = fileStorageService.store(registrationId, file);
         MaterialFile materialFile = MaterialFile.builder()
                 .registration(registration)
@@ -35,6 +59,23 @@ public class MaterialService {
                 .uploadedAt(LocalDateTime.now())
                 .build();
         return materialFileRepository.save(materialFile);
+    }
+    
+    private String getFileExtension(String filename) {
+        int lastDotIndex = filename.lastIndexOf('.');
+        if (lastDotIndex == -1 || lastDotIndex == filename.length() - 1) {
+            return "";
+        }
+        return filename.substring(lastDotIndex + 1).toLowerCase();
+    }
+    
+    private boolean isAllowedExtension(String extension) {
+        for (String allowed : ALLOWED_EXTENSIONS) {
+            if (allowed.equalsIgnoreCase(extension)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Transactional

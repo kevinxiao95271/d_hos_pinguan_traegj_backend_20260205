@@ -38,6 +38,7 @@ public class StatsService {
     private final ReviewScoreRepository reviewScoreRepository;
     private final UserAccountRepository userAccountRepository;
     private final RegistrationMemberRepository memberRepository;
+    private final com.trae.pinguan.repository.DictionaryItemRepository dictionaryItemRepository;
 
     @Transactional(readOnly = true)
     public StatsSummaryResponse summaryForLatestCompetition() {
@@ -78,8 +79,9 @@ public class StatsService {
             if (subjectTypeCode == null || subjectTypeCode.trim().isEmpty()) {
                 subjectTypeCounts.put("未知", subjectTypeCounts.getOrDefault("未知", 0) + 1);
             } else {
-                // 直接使用code作为显示值
-                subjectTypeCounts.put(subjectTypeCode, subjectTypeCounts.getOrDefault(subjectTypeCode, 0) + 1);
+                // 将code转换为label
+                String label = getLabel(subjectTypeCode);
+                subjectTypeCounts.put(label, subjectTypeCounts.getOrDefault(label, 0) + 1);
             }
             
             // 统计品管工具分布
@@ -87,8 +89,9 @@ public class StatsService {
             if (methodCode == null || methodCode.trim().isEmpty()) {
                 methodCounts.put("未知", methodCounts.getOrDefault("未知", 0) + 1);
             } else {
-                // 直接使用code作为显示值
-                methodCounts.put(methodCode, methodCounts.getOrDefault(methodCode, 0) + 1);
+                // 将code转换为label
+                String label = getLabel(methodCode);
+                methodCounts.put(label, methodCounts.getOrDefault(label, 0) + 1);
             }
         }
 
@@ -177,5 +180,17 @@ public class StatsService {
                 operationSum / divisor,
                 presentationSum / divisor
         );
+    }
+    
+    /**
+     * 根据code获取label，如果找不到则返回code本身
+     */
+    private String getLabel(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            return "未知";
+        }
+        return dictionaryItemRepository.findByCode(code)
+                .map(item -> item.getLabel())
+                .orElse(code);
     }
 }
