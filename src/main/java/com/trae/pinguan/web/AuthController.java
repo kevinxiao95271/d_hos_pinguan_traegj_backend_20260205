@@ -1,6 +1,8 @@
 package com.trae.pinguan.web;
 
+import com.trae.pinguan.domain.entity.Competition;
 import com.trae.pinguan.domain.entity.UserAccount;
+import com.trae.pinguan.service.CompetitionService;
 import com.trae.pinguan.service.JwtService;
 import com.trae.pinguan.service.SmsService;
 import com.trae.pinguan.service.UserService;
@@ -9,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Optional;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +24,7 @@ public class AuthController {
     private final UserService userService;
     private final JwtService jwtService;
     private final SmsService smsService;
+    private final CompetitionService competitionService;
 
     @PostMapping("/register")
     @Operation(
@@ -78,6 +82,9 @@ public class AuthController {
     }
     
     private LoginResponse buildLoginResponse(UserAccount user) {
+        // 获取最新赛事作为默认选中
+        Optional<Competition> latestCompetition = competitionService.getLatest();
+        
         return new LoginResponse(
                 user.getId(),
                 user.getPhone(),
@@ -89,7 +96,9 @@ public class AuthController {
                 user.getInstitution() == null ? null : user.getInstitution().getCode(),
                 user.getInstitution() == null ? null : user.getInstitution().getUscc(),
                 user.getExpertBackground(),
-                jwtService.generateToken(user)
+                jwtService.generateToken(user),
+                latestCompetition.map(Competition::getId).orElse(null),
+                latestCompetition.map(Competition::getName).orElse(null)
         );
     }
 }

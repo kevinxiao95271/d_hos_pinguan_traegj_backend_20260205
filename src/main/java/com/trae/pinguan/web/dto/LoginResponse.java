@@ -18,4 +18,6 @@ public class LoginResponse {
     private String institutionUscc;
     private String expertBackground;
     private String token;
+    private Long currentCompetitionId;
+    private String currentCompetitionName;
 }

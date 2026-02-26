@@ -45,6 +45,13 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        
+        // 4. 赛事查询公开接口（获取赛事列表和最新赛事）
+        if ("GET".equalsIgnoreCase(method) && 
+            (path.equals("/api/competitions") || path.equals("/api/competitions/latest"))) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         String token = null;
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (header != null && !header.trim().isEmpty()) {

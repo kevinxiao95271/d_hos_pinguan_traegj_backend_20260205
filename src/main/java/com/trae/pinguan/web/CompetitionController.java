@@ -30,6 +30,14 @@ public class CompetitionController {
     public ApiResponse<List<Competition>> list() {
         return ApiResponse.ok(competitionService.listAll());
     }
+    
+    @GetMapping("/latest")
+    @Operation(summary = "获取最新赛事", description = "返回ID最大的赛事，用作默认选中")
+    public ApiResponse<Competition> latest() {
+        return competitionService.getLatest()
+                .map(ApiResponse::ok)
+                .orElse(ApiResponse.fail("暂无赛事"));
+    }
 
     @PostMapping
     @Operation(summary = "新增赛事")
