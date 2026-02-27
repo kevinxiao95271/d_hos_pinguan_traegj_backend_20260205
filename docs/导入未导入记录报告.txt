@@ -1,0 +1,50 @@
+
+导入完成报告
+====================================================================================================
+
+执行时间: 2026-02-26 22:20:34
+
+[约束修改]
+  - 已删除: UNIQUE KEY uk_uscc
+  - 已添加: UNIQUE KEY uk_name_uscc (name, uscc)
+
+[导入统计]
+  准备导入: 6044
+  成功导入: 6021
+  导入失败: 23
+
+[导入后DB状态]
+  总记录数: 42094
+  City字段已填充: 41035 (97.5%)
+
+[等级分布]
+  未定级: 24727
+  无等级: 14839
+  无级别: 1677
+  一级: 325
+  二级: 304
+  三级: 222
+
+[失败记录]
+  浙一医院潘方仁分院: (1062, "Duplicate entry '浙一医院潘方仁分院-12330000470003222e' for key 'const_init_institutions.uk_name_uscc'")
+  淳安县浪川乡卫生院双源分院: (1062, "Duplicate entry '淳安县浪川乡卫生院双源分院-12330127470421969l' for key 'const_init_institutions.uk_name_uscc'")
+  浙江省皮肤病医院拱墅区综合门诊部: (1062, "Duplicate entry '浙江省皮肤病医院拱墅区综合门诊部-123300004700518' for key 'const_init_institutions.uk_name_uscc'")
+  建德市大洋镇卫生院: (1062, "Duplicate entry '建德市大洋镇卫生院-12330182470483684p' for key 'const_init_institutions.uk_name_uscc'")
+  建德市李家镇卫生院: (1062, "Duplicate entry '建德市李家镇卫生院-1233018247048373XM' for key 'const_init_institutions.uk_name_uscc'")
+  建德市更楼街道桥岭村卫生室: (1062, "Duplicate entry '建德市更楼街道桥岭村卫生室-12330182470483676w' for key 'const_init_institutions.uk_name_uscc'")
+  建德市乾潭镇下包村卫生室: (1062, "Duplicate entry '建德市乾潭镇下包村卫生室-12330182470483721x' for key 'const_init_institutions.uk_name_uscc'")
+  宁波市海曙区古林镇古林村卫生室: (1062, "Duplicate entry '宁波市海曙区古林镇古林村卫生室-12330227419611847l' for key 'const_init_institutions.uk_name_uscc'")
+  宁海县前童镇卫生院: (1062, "Duplicate entry '宁海县前童镇卫生院-12330226419591989h' for key 'const_init_institutions.uk_name_uscc'")
+  宁海县梅林街道社区卫生服务中心: (1062, "Duplicate entry '宁海县梅林街道社区卫生服务中心-12330226419591831X' for key 'const_init_institutions.uk_name_uscc'")
+  宁海县越溪乡七市村卫生室: (1062, "Duplicate entry '宁海县越溪乡七市村卫生室-12330226419591874B' for key 'const_init_institutions.uk_name_uscc'")
+  温州市瓯海区泽雅镇周岙村卫生室: (1062, "Duplicate entry '温州市瓯海区泽雅镇周岙村卫生室-12330304470621338h' for key 'const_init_institutions.uk_name_uscc'")
+  嘉善县姚庄镇卫生院: (1062, "Duplicate entry '嘉善县姚庄镇卫生院-12330421471000031K' for key 'const_init_institutions.uk_name_uscc'")
+  嘉兴市秀洲区洪合镇民和社区卫生服务站: (1062, "Duplicate entry '嘉兴市秀洲区洪合镇民和社区卫生服务站-123304117' for key 'const_init_institutions.uk_name_uscc'")
+  嘉兴市秀洲区王江泾镇市泾村卫生室: (1062, "Duplicate entry '嘉兴市秀洲区王江泾镇市泾村卫生室-123304114709701' for key 'const_init_institutions.uk_name_uscc'")
+  义乌市后宅街道金城社区卫生服务站: (1062, "Duplicate entry '义乌市后宅街道金城社区卫生服务站-123307824717719' for key 'const_init_institutions.uk_name_uscc'")
+  永康市唐先镇雅堂村长塘头自然村卫生室: (1062, "Duplicate entry '永康市唐先镇雅堂村长塘头自然村卫生室-54330784m' for key 'const_init_institutions.uk_name_uscc'")
+  衢州市衢江区廿里镇中心卫生院: (1062, "Duplicate entry '衢州市衢江区廿里镇中心卫生院-12330821350110058L' for key 'const_init_institutions.uk_name_uscc'")
+  普陀区沈家门街道社区卫生服务中心西大社区卫生服务站: (1062, "Duplicate entry '普陀区沈家门街道社区卫生服务中心西大社区卫ç' for key 'const_init_institutions.uk_name_uscc'")
+  三门县健跳镇毛叶村卫生室: (1062, "Duplicate entry '三门县健跳镇毛叶村卫生室-12331022769610107p' for key 'const_init_institutions.uk_name_uscc'")
+
+====================================================================================================
