@@ -56,9 +56,9 @@ public class AdminRegistrationController {
     }
 
     @GetMapping("/interview-groups")
-    @Operation(summary = "后台面谈分组")
+    @Operation(summary = "后台面谈分组（仅进阶组）")
     public ApiResponse<List<GroupedRegistrationResponse>> interviewGroups(@RequestParam Long competitionId) {
-        return ApiResponse.ok(registrationService.groupByGroupCode(competitionId));
+        return ApiResponse.ok(registrationService.groupByGroupCode(competitionId, com.trae.pinguan.domain.enums.GroupType.ADVANCED));
     }
 
     @GetMapping("/final-groups")

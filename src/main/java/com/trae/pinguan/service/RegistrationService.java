@@ -406,11 +406,19 @@ public class RegistrationService {
 
     @Transactional(readOnly = true)
     public List<GroupedRegistrationResponse> groupByGroupCode(Long competitionId) {
+        return groupByGroupCode(competitionId, null);
+    }
+    
+    public List<GroupedRegistrationResponse> groupByGroupCode(Long competitionId, com.trae.pinguan.domain.enums.GroupType groupType) {
         List<Registration> registrations = registrationRepository.findByCompetitionIdWithInstitution(competitionId);
         Map<String, List<Registration>> grouped = new LinkedHashMap<>();
         for (Registration registration : registrations) {
             // 只处理已提交状态的报名
             if (registration.getStatus() != com.trae.pinguan.domain.enums.RegistrationStatus.SUBMITTED) {
+                continue;
+            }
+            // 如果指定了 groupType，只处理该类型的报名
+            if (groupType != null && registration.getGroupType() != groupType) {
                 continue;
             }
             String key = registration.getGroupCode() == null || registration.getGroupCode().trim().isEmpty()
