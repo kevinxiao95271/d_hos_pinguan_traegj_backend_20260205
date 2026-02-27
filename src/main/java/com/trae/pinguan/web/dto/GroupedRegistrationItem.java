@@ -2,6 +2,7 @@ package com.trae.pinguan.web.dto;
 
 import com.trae.pinguan.domain.enums.GroupType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -22,9 +23,12 @@ public class GroupedRegistrationItem {
     private GroupType groupType;
     @Schema(example = "M1")
     private String groupCode;
+    @Schema(example = "2026-02-26T10:30:00", description = "报名提交时间")
+    private LocalDateTime submittedAt;
     
     public GroupedRegistrationItem(Long registrationId, String projectName, String institutionName, 
-                                   String institutionLevel, GroupType groupType, String groupCode) {
+                                   String institutionLevel, GroupType groupType, String groupCode, 
+                                   LocalDateTime submittedAt) {
         this.id = registrationId;
         this.registrationId = registrationId;
         this.projectName = projectName;
@@ -32,5 +36,6 @@ public class GroupedRegistrationItem {
         this.institutionLevel = institutionLevel;
         this.groupType = groupType;
         this.groupCode = groupCode;
+        this.submittedAt = submittedAt;
     }
 }

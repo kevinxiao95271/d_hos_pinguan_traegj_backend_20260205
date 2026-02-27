@@ -423,7 +423,8 @@ public class RegistrationService {
                             reg.getInstitution().getName(),
                             reg.getInstitution().getLevel(),
                             reg.getGroupType(),
-                            reg.getGroupCode()
+                            reg.getGroupCode(),
+                            reg.getSubmittedAt()
                     ))
                     .collect(Collectors.toList());
             responses.add(new GroupedRegistrationResponse(entry.getKey(), items));
