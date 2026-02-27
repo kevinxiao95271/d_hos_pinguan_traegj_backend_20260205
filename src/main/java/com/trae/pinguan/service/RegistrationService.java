@@ -239,18 +239,18 @@ public class RegistrationService {
             String experienceImproveLabel = null;
             String qualityTopicLabel = null;
             
-            // 字典标签查询已移除，直接使用code作为label
+            // 从字典表查询label
             if (activity.getMethodCode() != null && !activity.getMethodCode().trim().isEmpty()) {
-                methodLabel = activity.getMethodCode();
+                methodLabel = getLabel(activity.getMethodCode());
             }
             if (activity.getSubjectTypeCode() != null && !activity.getSubjectTypeCode().trim().isEmpty()) {
-                subjectTypeLabel = activity.getSubjectTypeCode();
+                subjectTypeLabel = getLabel(activity.getSubjectTypeCode());
             }
             if (activity.getExperienceImproveCode() != null && !activity.getExperienceImproveCode().trim().isEmpty()) {
-                experienceImproveLabel = activity.getExperienceImproveCode();
+                experienceImproveLabel = getLabel(activity.getExperienceImproveCode());
             }
             if (activity.getQualityTopicCode() != null && !activity.getQualityTopicCode().trim().isEmpty()) {
-                qualityTopicLabel = activity.getQualityTopicCode();
+                qualityTopicLabel = getLabel(activity.getQualityTopicCode());
             }
             activityDetail = new ActivityInfoDetailResponse(
                     activity.getTheme(),
