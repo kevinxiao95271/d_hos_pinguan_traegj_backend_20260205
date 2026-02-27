@@ -409,6 +409,10 @@ public class RegistrationService {
         List<Registration> registrations = registrationRepository.findByCompetitionIdWithInstitution(competitionId);
         Map<String, List<Registration>> grouped = new LinkedHashMap<>();
         for (Registration registration : registrations) {
+            // 只处理已提交状态的报名
+            if (registration.getStatus() != com.trae.pinguan.domain.enums.RegistrationStatus.SUBMITTED) {
+                continue;
+            }
             String key = registration.getGroupCode() == null || registration.getGroupCode().trim().isEmpty()
                     ? registration.getGroupType().name()
                     : registration.getGroupCode();

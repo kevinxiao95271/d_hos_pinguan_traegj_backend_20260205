@@ -25,6 +25,7 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
             "join r.institution i " +
             "left join ActivityInfo a on a.registration = r " +
             "where r.competition.id = :competitionId " +
+            "and r.status = 'SUBMITTED' " +
             "and (:groupType is null or r.groupType = :groupType) " +
             "and (:groupCode is null or r.groupCode = :groupCode) " +
             "and (:projectName is null or r.projectName like concat('%', :projectName, '%')) " +
