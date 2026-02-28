@@ -422,6 +422,14 @@ public class RegistrationService {
         List<Registration> registrations = request.getStatus() == null
                 ? registrationRepository.findByCompetitionId(request.getCompetitionId())
                 : registrationRepository.findByCompetitionIdAndStatus(request.getCompetitionId(), request.getStatus());
+        
+        // 如果指定了 groupType，只处理该组别的报名
+        if (request.getGroupType() != null) {
+            registrations = registrations.stream()
+                    .filter(r -> r.getGroupType() == request.getGroupType())
+                    .collect(java.util.stream.Collectors.toList());
+        }
+        
         registrations.sort(java.util.Comparator.comparing(Registration::getId));
         int groupSize = request.getGroupSize();
         int groupIndex = 1;
