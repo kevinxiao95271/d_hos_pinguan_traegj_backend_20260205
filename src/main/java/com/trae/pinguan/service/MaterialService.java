@@ -55,6 +55,21 @@ public class MaterialService {
             throw new IllegalArgumentException("不支持的文件类型，仅支持: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar, jpg, jpeg, png, gif");
         }
         
+        // 删除该报名下相同type的旧文件（只保留最新的一个）
+        List<MaterialFile> oldFiles = materialFileRepository.findByRegistrationIdAndType(registrationId, type);
+        for (MaterialFile oldFile : oldFiles) {
+            try {
+                // 删除MinIO中的文件
+                fileStorageService.delete(oldFile.getFileUrl());
+            } catch (Exception ex) {
+                // 如果删除MinIO文件失败，记录但继续（避免阻塞上传）
+                // 实际生产环境建议记录日志
+            }
+            // 删除数据库记录
+            materialFileRepository.delete(oldFile);
+        }
+        
+        // 保存新文件
         String path = fileStorageService.store(registrationId, file);
         MaterialFile materialFile = MaterialFile.builder()
                 .registration(registration)

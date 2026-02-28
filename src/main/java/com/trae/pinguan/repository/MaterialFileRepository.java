@@ -10,6 +10,11 @@ public interface MaterialFileRepository extends JpaRepository<MaterialFile, Long
     List<MaterialFile> findByRegistrationId(Long registrationId);
     
     /**
+     * 根据报名ID和文件类型查询（用于删除旧文件）
+     */
+    List<MaterialFile> findByRegistrationIdAndType(Long registrationId, String type);
+    
+    /**
      * 批量查询多个报名的材料文件
      */
     @Query("SELECT m FROM MaterialFile m WHERE m.registration.id IN :registrationIds")
