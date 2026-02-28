@@ -14,6 +14,7 @@ import com.trae.pinguan.web.dto.SystemSettingRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -70,7 +71,12 @@ public class AdminController {
     
     @PostMapping("/current-competition")
     @Operation(summary = "设置当前活跃赛事（全局）")
-    public ApiResponse<String> setCurrentCompetition(@RequestParam Long competitionId) {
+    public ApiResponse<String> setCurrentCompetition(@RequestParam Long competitionId, HttpServletRequest request) {
+        String role = (String) request.getAttribute("role");
+        if (!"COMMITTEE_ADMIN".equals(role) && !"COMMITTEE".equals(role) && !"OPS".equals(role)) {
+            return ApiResponse.fail("权限不足");
+        }
+        
         systemSettingService.setCurrentCompetitionId(competitionId);
         return ApiResponse.ok("已设置当前赛事ID: " + competitionId);
     }
