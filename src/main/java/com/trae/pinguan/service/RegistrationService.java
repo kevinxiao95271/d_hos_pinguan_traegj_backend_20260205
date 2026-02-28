@@ -488,4 +488,44 @@ public class RegistrationService {
                 .map(item -> item.getLabel())
                 .orElse(code);
     }
+    
+    /**
+     * 修复无效的字典code（临时方法）
+     */
+    @Transactional
+    public String fixInvalidDictionaryCodes() {
+        StringBuilder result = new StringBuilder();
+        
+        // 查找所有activity_info
+        List<ActivityInfo> activities = activityInfoRepository.findAll();
+        int fixedCount = 0;
+        
+        for (ActivityInfo activity : activities) {
+            boolean needUpdate = false;
+            
+            // 修复 med_tech -> case_quality
+            if ("med_tech".equals(activity.getSubjectTypeCode())) {
+                activity.setSubjectTypeCode("case_quality");
+                needUpdate = true;
+                result.append(String.format("报名ID=%d: subject_type med_tech -> case_quality\n", 
+                    activity.getRegistration().getId()));
+            }
+            
+            // 修复 multidisciplinary -> other
+            if ("multidisciplinary".equals(activity.getMethodCode())) {
+                activity.setMethodCode("other");
+                needUpdate = true;
+                result.append(String.format("报名ID=%d: method multidisciplinary -> other\n", 
+                    activity.getRegistration().getId()));
+            }
+            
+            if (needUpdate) {
+                activityInfoRepository.save(activity);
+                fixedCount++;
+            }
+        }
+        
+        result.insert(0, String.format("修复完成！共处理 %d 条记录\n\n", fixedCount));
+        return result.toString();
+    }
 }

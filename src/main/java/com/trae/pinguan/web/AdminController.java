@@ -67,4 +67,21 @@ public class AdminController {
     public ApiResponse<CompetitionMergeResponse> mergeCompetitions(@Valid @RequestBody CompetitionMergeRequest request) {
         return ApiResponse.ok(competitionMaintenanceService.mergeCompetitions(request));
     }
+    
+    @PostMapping("/current-competition")
+    @Operation(summary = "设置当前活跃赛事（全局）")
+    public ApiResponse<String> setCurrentCompetition(@RequestParam Long competitionId) {
+        systemSettingService.setCurrentCompetitionId(competitionId);
+        return ApiResponse.ok("已设置当前赛事ID: " + competitionId);
+    }
+    
+    @GetMapping("/current-competition")
+    @Operation(summary = "获取当前活跃赛事ID（全局）")
+    public ApiResponse<Long> getCurrentCompetition() {
+        Long competitionId = systemSettingService.getCurrentCompetitionId();
+        if (competitionId == null) {
+            return ApiResponse.fail("未设置当前赛事");
+        }
+        return ApiResponse.ok(competitionId);
+    }
 }

@@ -66,4 +66,11 @@ public class AdminRegistrationController {
     public ApiResponse<List<GroupedRegistrationResponse>> finalGroups(@RequestParam Long competitionId) {
         return ApiResponse.ok(registrationService.groupByGroupCode(competitionId));
     }
+    
+    @PostMapping("/fix-invalid-codes")
+    @Operation(summary = "修复无效的字典code（临时维护接口）")
+    public ApiResponse<String> fixInvalidCodes() {
+        String result = registrationService.fixInvalidDictionaryCodes();
+        return ApiResponse.ok(result);
+    }
 }
