@@ -33,7 +33,7 @@ public interface DictionaryItemRepository extends JpaRepository<DictionaryItem, 
     List<DictionaryItem> findByActiveTrue();
     
     /**
-     * 根据代码查询字典项
+     * 根据代码查询字典项（取第一个）
      */
-    java.util.Optional<DictionaryItem> findByCode(String code);
+    java.util.Optional<DictionaryItem> findFirstByCode(String code);
 }

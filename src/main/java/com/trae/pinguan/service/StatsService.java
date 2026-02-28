@@ -189,7 +189,7 @@ public class StatsService {
         if (code == null || code.trim().isEmpty()) {
             return "未知";
         }
-        return dictionaryItemRepository.findByCode(code)
+        return dictionaryItemRepository.findFirstByCode(code)
                 .map(item -> item.getLabel())
                 .orElse(code);
     }

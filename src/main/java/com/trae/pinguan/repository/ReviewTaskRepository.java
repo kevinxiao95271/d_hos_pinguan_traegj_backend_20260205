@@ -20,4 +20,10 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
     List<ReviewTask> findByStageAndStatus(ReviewStage stage, ReviewStatus status);
     List<ReviewTask> findByStageAndRegistrationCompetitionId(ReviewStage stage, Long competitionId);
     List<ReviewTask> findByStageAndStatusAndRegistrationCompetitionId(ReviewStage stage, ReviewStatus status, Long competitionId);
+    
+    /**
+     * 检查评委是否有权限查看指定报名的材料（是否有评审任务）
+     */
+    @Query("SELECT COUNT(rt) > 0 FROM ReviewTask rt WHERE rt.reviewer.id = :reviewerId AND rt.registration.id = :registrationId")
+    boolean existsByReviewerIdAndRegistrationId(@Param("reviewerId") Long reviewerId, @Param("registrationId") Long registrationId);
 }

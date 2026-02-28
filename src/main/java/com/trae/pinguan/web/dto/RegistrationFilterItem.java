@@ -2,11 +2,15 @@ package com.trae.pinguan.web.dto;
 
 import com.trae.pinguan.domain.enums.GroupType;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class RegistrationFilterItem {
     private Long id;
     private Long registrationId;
@@ -21,6 +25,8 @@ public class RegistrationFilterItem {
     private String subjectTypeLabel;
     private String methodLabel;
     private String applicantName;
+    
+    private List<MaterialFileSimple> materials = new ArrayList<>();
     
     public RegistrationFilterItem(Long registrationId, String projectName, String institutionName,
                                   String institutionLevel, GroupType groupType, String groupCode,
@@ -39,5 +45,16 @@ public class RegistrationFilterItem {
         this.subjectTypeLabel = subjectTypeLabel;
         this.methodLabel = methodLabel;
         this.applicantName = applicantName;
+        this.materials = new ArrayList<>();
+    }
+    
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class MaterialFileSimple {
+        private Long id;
+        private String type;
+        private String fileName;
+        private String downloadUrl;
     }
 }

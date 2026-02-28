@@ -363,6 +363,7 @@ public class RegistrationService {
         if (items.isEmpty()) {
             return items;
         }
+        
         // 从字典表查询label
         for (RegistrationFilterItem item : items) {
             if (item.getMethodCode() != null) {
@@ -372,6 +373,38 @@ public class RegistrationService {
                 item.setSubjectTypeLabel(getLabel(item.getSubjectTypeCode()));
             }
         }
+        
+        // 批量查询材料文件
+        List<Long> registrationIds = items.stream()
+                .map(RegistrationFilterItem::getRegistrationId)
+                .collect(Collectors.toList());
+        
+        if (!registrationIds.isEmpty()) {
+            // 查询所有材料文件并按 registration_id 分组
+            Map<Long, List<MaterialFile>> materialsMap = materialRepository
+                    .findByRegistrationIdIn(registrationIds)
+                    .stream()
+                    .collect(Collectors.groupingBy((MaterialFile m) -> m.getRegistration().getId()));
+            
+            // 组装材料文件到每个 item
+            for (RegistrationFilterItem item : items) {
+                List<MaterialFile> materials = materialsMap.getOrDefault(
+                        item.getRegistrationId(), new ArrayList<>()
+                );
+                
+                List<RegistrationFilterItem.MaterialFileSimple> materialSimples = materials.stream()
+                        .map(m -> new RegistrationFilterItem.MaterialFileSimple(
+                                m.getId(),
+                                m.getType(),
+                                m.getFileName(),
+                                "/api/materials/" + m.getId() + "/download"
+                        ))
+                        .collect(Collectors.toList());
+                
+                item.setMaterials(materialSimples);
+            }
+        }
+        
         return items;
     }
 
@@ -451,7 +484,7 @@ public class RegistrationService {
         if (code == null || code.trim().isEmpty()) {
             return "未知";
         }
-        return dictionaryItemRepository.findByCode(code)
+        return dictionaryItemRepository.findFirstByCode(code)
                 .map(item -> item.getLabel())
                 .orElse(code);
     }

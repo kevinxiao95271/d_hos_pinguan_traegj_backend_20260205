@@ -28,6 +28,11 @@ public class MaterialService {
     public List<MaterialFile> list(Long registrationId) {
         return materialFileRepository.findByRegistrationId(registrationId);
     }
+    
+    public MaterialFile getById(Long materialId) {
+        return materialFileRepository.findById(materialId)
+                .orElseThrow(() -> new IllegalArgumentException("材料文件不存在"));
+    }
 
     @Transactional
     public MaterialFile upload(Long registrationId, String type, MultipartFile file) {

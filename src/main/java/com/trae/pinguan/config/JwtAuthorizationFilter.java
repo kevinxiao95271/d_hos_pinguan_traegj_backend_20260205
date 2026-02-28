@@ -52,6 +52,14 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        
+        // 5. 系统模版下载接口（公开）
+        if ("GET".equalsIgnoreCase(method) && 
+            (path.equals("/api/system-templates/active") || 
+             path.matches("^/api/system-templates/\\d+/download$"))) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         String token = null;
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (header != null && !header.trim().isEmpty()) {
