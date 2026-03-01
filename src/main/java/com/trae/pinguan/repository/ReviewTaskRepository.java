@@ -20,6 +20,28 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
     List<ReviewTask> findByStageAndStatus(ReviewStage stage, ReviewStatus status);
     List<ReviewTask> findByStageAndRegistrationCompetitionId(ReviewStage stage, Long competitionId);
     List<ReviewTask> findByStageAndStatusAndRegistrationCompetitionId(ReviewStage stage, ReviewStatus status, Long competitionId);
+
+    // JOIN FETCH变体，避免listTasksForAdmin/summaryByStage/feedbackByStage的4N懒加载
+    @Query("SELECT rt FROM ReviewTask rt " +
+           "LEFT JOIN FETCH rt.registration r " +
+           "LEFT JOIN FETCH r.institution " +
+           "LEFT JOIN FETCH rt.reviewer rv " +
+           "LEFT JOIN FETCH rv.institution " +
+           "WHERE rt.stage = :stage AND r.competition.id = :competitionId")
+    List<ReviewTask> findWithDetailsByStageAndCompetitionId(
+            @Param("stage") ReviewStage stage,
+            @Param("competitionId") Long competitionId);
+
+    @Query("SELECT rt FROM ReviewTask rt " +
+           "LEFT JOIN FETCH rt.registration r " +
+           "LEFT JOIN FETCH r.institution " +
+           "LEFT JOIN FETCH rt.reviewer rv " +
+           "LEFT JOIN FETCH rv.institution " +
+           "WHERE rt.stage = :stage AND rt.status = :status AND r.competition.id = :competitionId")
+    List<ReviewTask> findWithDetailsByStageAndStatusAndCompetitionId(
+            @Param("stage") ReviewStage stage,
+            @Param("status") ReviewStatus status,
+            @Param("competitionId") Long competitionId);
     
     /**
      * 检查评委是否有权限查看指定报名的材料（是否有评审任务）

@@ -26,6 +26,9 @@ public class RegistrationMember {
     @JsonIgnore
     private Registration registration;
 
+    @Column(name = "registration_id", insertable = false, updatable = false)
+    private Long registrationId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private MemberRole role;

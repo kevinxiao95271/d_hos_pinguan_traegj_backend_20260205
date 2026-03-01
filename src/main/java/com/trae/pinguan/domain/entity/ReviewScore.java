@@ -26,6 +26,9 @@ public class ReviewScore {
     @JsonIgnore
     private ReviewTask reviewTask;
 
+    @Column(name = "review_task_id", insertable = false, updatable = false)
+    private Long reviewTaskId;
+
     @Column(nullable = false)
     private Double plan;
 

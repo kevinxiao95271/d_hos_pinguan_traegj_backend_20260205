@@ -114,11 +114,11 @@ public class ReviewService {
     public List<com.trae.pinguan.web.dto.AdminReviewTaskItem> listTasksForAdmin(Long competitionId, ReviewStage stage, ReviewStatus status) {
         List<ReviewTask> tasks;
         if (status == null) {
-            tasks = reviewTaskRepository.findByStageAndRegistrationCompetitionId(stage, competitionId);
+            tasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
         } else {
-            tasks = reviewTaskRepository.findByStageAndStatusAndRegistrationCompetitionId(stage, status, competitionId);
+            tasks = reviewTaskRepository.findWithDetailsByStageAndStatusAndCompetitionId(stage, status, competitionId);
         }
-        
+
         return tasks.stream()
                 .map(task -> {
                     Registration reg = task.getRegistration();
@@ -308,20 +308,29 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<ReviewResultItem> resultsByRegistration(Long registrationId) {
+        // 一次查出所有任务，按stage分组，批量加载评分，避免N次单独查询
+        List<ReviewTask> allTasks = reviewTaskRepository.findByRegistrationId(registrationId);
+        Set<Long> scoredTaskIds = allTasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .map(ReviewTask::getId)
+                .collect(Collectors.toSet());
+        Map<Long, ReviewScore> scoreMap = new HashMap<>();
+        if (!scoredTaskIds.isEmpty()) {
+            reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                    .forEach(s -> scoreMap.put(s.getReviewTaskId(), s));
+        }
+        Map<ReviewStage, List<ReviewTask>> tasksByStage = allTasks.stream()
+                .collect(Collectors.groupingBy(ReviewTask::getStage));
         List<ReviewResultItem> results = new ArrayList<>();
         for (ReviewStage stage : ReviewStage.values()) {
-            List<ReviewTask> tasks = reviewTaskRepository.findByRegistrationIdAndStage(registrationId, stage);
+            List<ReviewTask> tasks = tasksByStage.getOrDefault(stage, java.util.Collections.emptyList());
             int taskCount = tasks.size();
             int scoredCount = 0;
             int totalSum = 0;
             for (ReviewTask task : tasks) {
-                if (task.getStatus() != ReviewStatus.SCORED) {
-                    continue;
-                }
-                ReviewScore score = reviewScoreRepository.findByReviewTaskId(task.getId()).orElse(null);
-                if (score == null) {
-                    continue;
-                }
+                if (task.getStatus() != ReviewStatus.SCORED) continue;
+                ReviewScore score = scoreMap.get(task.getId());
+                if (score == null) continue;
                 scoredCount += 1;
                 totalSum += score.getTotal();
             }
@@ -333,29 +342,32 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<ReviewStageScoreSummary> scoreSummaryByRegistration(Long registrationId) {
+        // 一次查出所有任务，批量加载评分
+        List<ReviewTask> allTasks = reviewTaskRepository.findByRegistrationId(registrationId);
+        Set<Long> scoredTaskIds = allTasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .map(ReviewTask::getId)
+                .collect(Collectors.toSet());
+        Map<Long, ReviewScore> scoreMap = new HashMap<>();
+        if (!scoredTaskIds.isEmpty()) {
+            reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                    .forEach(s -> scoreMap.put(s.getReviewTaskId(), s));
+        }
+        Map<ReviewStage, List<ReviewTask>> tasksByStage = allTasks.stream()
+                .collect(Collectors.groupingBy(ReviewTask::getStage));
         List<ReviewStageScoreSummary> results = new ArrayList<>();
         for (ReviewStage stage : ReviewStage.values()) {
-            List<ReviewTask> tasks = reviewTaskRepository.findByRegistrationIdAndStage(registrationId, stage);
+            List<ReviewTask> tasks = tasksByStage.getOrDefault(stage, java.util.Collections.emptyList());
             int taskCount = tasks.size();
             int scoredCount = 0;
-            double planSum = 0;
-            double problemSum = 0;
-            double actionSum = 0;
-            double successSum = 0;
-            double reviewSum = 0;
-            double operationSum = 0;
-            double presentationSum = 0;
-            double totalSum = 0;
+            double planSum = 0, problemSum = 0, actionSum = 0, successSum = 0,
+                   reviewSum = 0, operationSum = 0, presentationSum = 0, totalSum = 0;
             List<String> highlights = new ArrayList<>();
             List<String> weaknesses = new ArrayList<>();
             for (ReviewTask task : tasks) {
-                if (task.getStatus() != ReviewStatus.SCORED) {
-                    continue;
-                }
-                ReviewScore score = reviewScoreRepository.findByReviewTaskId(task.getId()).orElse(null);
-                if (score == null) {
-                    continue;
-                }
+                if (task.getStatus() != ReviewStatus.SCORED) continue;
+                ReviewScore score = scoreMap.get(task.getId());
+                if (score == null) continue;
                 scoredCount += 1;
                 planSum += score.getPlan();
                 problemSum += score.getProblem();
@@ -365,18 +377,12 @@ public class ReviewService {
                 operationSum += score.getOperation();
                 presentationSum += score.getPresentation();
                 totalSum += score.getTotal();
-                if (score.getHighlight() != null && !score.getHighlight().trim().isEmpty()) {
-                    highlights.add(score.getHighlight());
-                }
-                if (score.getWeakness() != null && !score.getWeakness().trim().isEmpty()) {
-                    weaknesses.add(score.getWeakness());
-                }
+                if (score.getHighlight() != null && !score.getHighlight().trim().isEmpty()) highlights.add(score.getHighlight());
+                if (score.getWeakness() != null && !score.getWeakness().trim().isEmpty()) weaknesses.add(score.getWeakness());
             }
             double divisor = scoredCount == 0 ? 1 : scoredCount;
             results.add(new ReviewStageScoreSummary(
-                    stage,
-                    taskCount,
-                    scoredCount,
+                    stage, taskCount, scoredCount,
                     scoredCount == 0 ? null : planSum / divisor,
                     scoredCount == 0 ? null : problemSum / divisor,
                     scoredCount == 0 ? null : actionSum / divisor,
@@ -385,8 +391,7 @@ public class ReviewService {
                     scoredCount == 0 ? null : operationSum / divisor,
                     scoredCount == 0 ? null : presentationSum / divisor,
                     scoredCount == 0 ? null : totalSum / divisor,
-                    highlights,
-                    weaknesses
+                    highlights, weaknesses
             ));
         }
         return results;
@@ -394,13 +399,23 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<ReviewFeedbackItem> feedbackByStage(Long competitionId, ReviewStage stage) {
-        List<ReviewTask> tasks = reviewTaskRepository.findByStageAndRegistrationCompetitionId(stage, competitionId);
+        List<ReviewTask> tasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
+        // 批量加载评分，避免N次单独查询
+        Set<Long> scoredTaskIds = tasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .map(ReviewTask::getId)
+                .collect(Collectors.toSet());
+        Map<Long, ReviewScore> scoreMap = new HashMap<>();
+        if (!scoredTaskIds.isEmpty()) {
+            reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                    .forEach(s -> scoreMap.put(s.getReviewTaskId(), s));
+        }
         List<ReviewFeedbackItem> items = new ArrayList<>();
         for (ReviewTask task : tasks) {
             if (task.getStatus() != ReviewStatus.SCORED) {
                 continue;
             }
-            ReviewScore score = reviewScoreRepository.findByReviewTaskId(task.getId()).orElse(null);
+            ReviewScore score = scoreMap.get(task.getId());
             if (score == null) {
                 continue;
             }
@@ -466,13 +481,23 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<ReviewSummaryItem> summaryByStage(Long competitionId, ReviewStage stage) {
-        List<ReviewTask> tasks = reviewTaskRepository.findByStageAndRegistrationCompetitionId(stage, competitionId);
+        List<ReviewTask> tasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
+        // 批量加载评分，避免N次单独查询
+        Set<Long> scoredTaskIds = tasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .map(ReviewTask::getId)
+                .collect(Collectors.toSet());
+        Map<Long, ReviewScore> scoreMap = new HashMap<>();
+        if (!scoredTaskIds.isEmpty()) {
+            reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                    .forEach(s -> scoreMap.put(s.getReviewTaskId(), s));
+        }
         Map<Long, SummaryAccumulator> accumulators = new HashMap<>();
         for (ReviewTask task : tasks) {
             if (task.getStatus() != ReviewStatus.SCORED) {
                 continue;
             }
-            ReviewScore score = reviewScoreRepository.findByReviewTaskId(task.getId()).orElse(null);
+            ReviewScore score = scoreMap.get(task.getId());
             if (score == null) {
                 continue;
             }

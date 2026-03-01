@@ -53,100 +53,101 @@ public class StatsService {
         Competition competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
 
-        List<Registration> registrations = registrationRepository.findByCompetitionId(competitionId);
+        // 一次性加载所有报名及其机构（JOIN FETCH，避免N次懒加载）
+        List<Registration> registrations = registrationRepository.findByCompetitionIdWithInstitution(competitionId);
         Map<String, Integer> regionCounts = new HashMap<>();
         for (Registration registration : registrations) {
-            String region = null;
-            if (registration.getInstitution() != null) {
-                region = registration.getInstitution().getRegion();
-            }
-            if (region == null || region.trim().isEmpty()) {
-                region = "未知";
-            }
+            String region = registration.getInstitution() != null ? registration.getInstitution().getRegion() : null;
+            if (region == null || region.trim().isEmpty()) region = "未知";
             regionCounts.put(region, regionCounts.getOrDefault(region, 0) + 1);
+        }
+
+        // 批量加载所有ActivityInfo（1次查询），避免循环内N次单独查询
+        List<Long> regIds = registrations.stream().map(Registration::getId).collect(Collectors.toList());
+        Map<Long, ActivityInfo> activityMap = new HashMap<>();
+        if (!regIds.isEmpty()) {
+            activityInfoRepository.findByRegistrationIdIn(regIds)
+                    .forEach(ai -> activityMap.put(ai.getRegistrationId(), ai));
+        }
+
+        // 收集所有需要翻译的code，批量查一次字典
+        Set<String> codes = new HashSet<>();
+        for (Registration registration : registrations) {
+            ActivityInfo info = activityMap.get(registration.getId());
+            if (info != null) {
+                if (info.getSubjectTypeCode() != null && !info.getSubjectTypeCode().trim().isEmpty())
+                    codes.add(info.getSubjectTypeCode());
+                if (info.getMethodCode() != null && !info.getMethodCode().trim().isEmpty())
+                    codes.add(info.getMethodCode());
+            }
+        }
+        Map<String, String> labelMap = new HashMap<>();
+        if (!codes.isEmpty()) {
+            dictionaryItemRepository.findByCodes(codes)
+                    .forEach(d -> labelMap.putIfAbsent(d.getCode(), d.getLabel()));
         }
 
         Set<String> toolTypes = new HashSet<>();
         Map<String, Integer> subjectTypeCounts = new HashMap<>();
         Map<String, Integer> methodCounts = new HashMap<>();
-        
         for (Registration registration : registrations) {
-            ActivityInfo info = activityInfoRepository.findByRegistrationId(registration.getId()).orElse(null);
-            if (info != null && info.getMethodCode() != null) {
-                toolTypes.add(info.getMethodCode());
-            }
+            ActivityInfo info = activityMap.get(registration.getId());
+            if (info != null && info.getMethodCode() != null) toolTypes.add(info.getMethodCode());
+
             String subjectTypeCode = info == null ? null : info.getSubjectTypeCode();
-            if (subjectTypeCode == null || subjectTypeCode.trim().isEmpty()) {
-                subjectTypeCounts.put("未知", subjectTypeCounts.getOrDefault("未知", 0) + 1);
-            } else {
-                // 将code转换为label
-                String label = getLabel(subjectTypeCode);
-                subjectTypeCounts.put(label, subjectTypeCounts.getOrDefault(label, 0) + 1);
-            }
-            
-            // 统计品管工具分布
+            String subjectLabel = (subjectTypeCode == null || subjectTypeCode.trim().isEmpty())
+                    ? "未知" : labelMap.getOrDefault(subjectTypeCode, subjectTypeCode);
+            subjectTypeCounts.put(subjectLabel, subjectTypeCounts.getOrDefault(subjectLabel, 0) + 1);
+
             String methodCode = info == null ? null : info.getMethodCode();
-            if (methodCode == null || methodCode.trim().isEmpty()) {
-                methodCounts.put("未知", methodCounts.getOrDefault("未知", 0) + 1);
-            } else {
-                // 将code转换为label
-                String label = getLabel(methodCode);
-                methodCounts.put(label, methodCounts.getOrDefault(label, 0) + 1);
-            }
+            String methodLabel = (methodCode == null || methodCode.trim().isEmpty())
+                    ? "未知" : labelMap.getOrDefault(methodCode, methodCode);
+            methodCounts.put(methodLabel, methodCounts.getOrDefault(methodLabel, 0) + 1);
         }
 
-        // 统计项目负责人职称分布
+        // 批量加载所有成员（1次查询），按registrationId分组，避免N次单独查询
+        Map<Long, List<RegistrationMember>> membersMap = new HashMap<>();
+        if (!regIds.isEmpty()) {
+            memberRepository.findByRegistrationIdIn(regIds)
+                    .forEach(m -> membersMap.computeIfAbsent(m.getRegistrationId(), k -> new java.util.ArrayList<>()).add(m));
+        }
         Map<String, Integer> leaderTitleCounts = new HashMap<>();
         for (Registration registration : registrations) {
-            List<RegistrationMember> members = memberRepository.findByRegistrationId(registration.getId());
+            List<RegistrationMember> members = membersMap.getOrDefault(registration.getId(), java.util.Collections.emptyList());
             for (RegistrationMember member : members) {
                 if (member.getRole() == com.trae.pinguan.domain.enums.MemberRole.PARTICIPANT) {
                     String title = member.getTitle();
-                    if (title == null || title.trim().isEmpty()) {
-                        title = "未知";
-                    }
+                    if (title == null || title.trim().isEmpty()) title = "未知";
                     leaderTitleCounts.put(title, leaderTitleCounts.getOrDefault(title, 0) + 1);
-                    break;  // 每个项目只统计一个负责人
+                    break;
                 }
             }
         }
 
-        List<UserAccount> reviewers = userAccountRepository.findAll().stream()
-                .filter(user -> user.getRole() == RoleType.REVIEWER)
-                .collect(Collectors.toList());
+        // 用 JOIN FETCH 一次性加载评委及其机构，避免N次懒加载
+        List<UserAccount> reviewers = userAccountRepository.findByRoleWithInstitution(RoleType.REVIEWER);
         Set<Long> reviewerInstitutions = new HashSet<>();
         for (UserAccount reviewer : reviewers) {
-            if (reviewer.getInstitution() != null) {
-                reviewerInstitutions.add(reviewer.getInstitution().getId());
-            }
+            if (reviewer.getInstitution() != null) reviewerInstitutions.add(reviewer.getInstitution().getId());
         }
 
         List<ReviewTask> bookTasks = reviewTaskRepository.findByStageAndRegistrationCompetitionId(
                 ReviewStage.BOOK, competitionId);
         Set<Long> bookTaskIds = new HashSet<>();
-        for (ReviewTask task : bookTasks) {
-            bookTaskIds.add(task.getId());
-        }
+        for (ReviewTask task : bookTasks) bookTaskIds.add(task.getId());
 
-        List<ReviewScore> allScores = reviewScoreRepository.findAll();
+        // 批量加载该赛事BOOK阶段的评分（避免findAll加载全量+N次懒加载getReviewTask()）
         Map<Long, ReviewScore> bookScores = new HashMap<>();
-        for (ReviewScore score : allScores) {
-            ReviewTask task = score.getReviewTask();
-            if (task != null && bookTaskIds.contains(task.getId())) {
-                bookScores.put(task.getId(), score);
-            }
+        if (!bookTaskIds.isEmpty()) {
+            reviewScoreRepository.findByReviewTaskIdIn(bookTaskIds)
+                    .forEach(score -> bookScores.put(score.getReviewTaskId(), score));
         }
 
         int scoredCount = bookScores.size();
         int unscoredCount = bookTaskIds.size() - scoredCount;
 
-        double planSum = 0;
-        double problemSum = 0;
-        double actionSum = 0;
-        double successSum = 0;
-        double reviewSum = 0;
-        double operationSum = 0;
-        double presentationSum = 0;
+        double planSum = 0, problemSum = 0, actionSum = 0, successSum = 0,
+               reviewSum = 0, operationSum = 0, presentationSum = 0;
         for (ReviewScore score : bookScores.values()) {
             planSum += score.getPlan();
             problemSum += score.getProblem();
@@ -180,17 +181,5 @@ public class StatsService {
                 operationSum / divisor,
                 presentationSum / divisor
         );
-    }
-    
-    /**
-     * 根据code获取label，如果找不到则返回code本身
-     */
-    private String getLabel(String code) {
-        if (code == null || code.trim().isEmpty()) {
-            return "未知";
-        }
-        return dictionaryItemRepository.findFirstByCode(code)
-                .map(item -> item.getLabel())
-                .orElse(code);
     }
 }

@@ -25,6 +25,9 @@ public class ActivityInfo {
     @JsonIgnore
     private Registration registration;
 
+    @Column(name = "registration_id", insertable = false, updatable = false)
+    private Long registrationId;
+
     @Column(nullable = false, length = 120)
     private String theme;
 
