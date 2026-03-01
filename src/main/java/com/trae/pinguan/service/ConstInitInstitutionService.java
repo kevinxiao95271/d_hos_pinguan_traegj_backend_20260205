@@ -36,11 +36,15 @@ public class ConstInitInstitutionService {
      */
     public Page<ConstInitInstitution> search(String keyword, String region, String level, 
                                               int page, int size, String sortBy, String sortDirection) {
-        // 使用自定义排序：等级优先（降序），然后按名称（升序）
         Pageable pageable = PageRequest.of(page, size);
         
-        // 智能地区扩展（市 -> 区县）
         if (region != null && !region.trim().isEmpty()) {
+            // 省级：city='省级' 且 region='省级'，走 Specification 路径按 city 字段匹配
+            if ("省级".equals(region.trim())) {
+                return searchWithCityFilter(keyword, "省级", level, pageable);
+            }
+            
+            // 智能地区扩展（市 -> 区县）
             List<String> expandedRegions = RegionUtils.expandRegionQuery(region);
             
             if (expandedRegions.size() > 1) {
@@ -51,6 +55,45 @@ public class ConstInitInstitutionService {
         }
         
         return constInitInstitutionRepository.searchInstitutions(keyword, region, level, pageable);
+    }
+    
+    /**
+     * 按 city 字段精确匹配搜索（用于省级等特殊城市分类）
+     */
+    private Page<ConstInitInstitution> searchWithCityFilter(String keyword, String city,
+                                                             String level, Pageable pageable) {
+        Specification<ConstInitInstitution> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                Predicate nameLike = cb.like(root.get("name"), "%" + keyword + "%");
+                predicates.add(nameLike);
+            }
+            
+            predicates.add(cb.equal(root.get("city"), city));
+            
+            if (level != null && !level.trim().isEmpty()) {
+                predicates.add(cb.equal(root.get("level"), level));
+            }
+            
+            // 排序仅对内容查询生效，count 查询跳过
+            if (query != null && !Long.class.equals(query.getResultType())) {
+                query.orderBy(
+                    cb.asc(
+                        cb.selectCase()
+                            .when(cb.equal(root.get("level"), "三级"), 1)
+                            .when(cb.equal(root.get("level"), "二级"), 2)
+                            .when(cb.equal(root.get("level"), "一级"), 3)
+                            .otherwise(4)
+                    ),
+                    cb.asc(root.get("name"))
+                );
+            }
+            
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        
+        return constInitInstitutionRepository.findAll(spec, pageable);
     }
     
     /**
@@ -90,8 +133,8 @@ public class ConstInitInstitutionService {
                 predicates.add(cb.equal(root.get("level"), level));
             }
             
-            // 自定义排序：等级优先（三级>二级>一级>其他），然后按名称
-            if (query != null) {
+            // 自定义排序仅对内容查询生效，count 查询跳过
+            if (query != null && !Long.class.equals(query.getResultType())) {
                 query.orderBy(
                     cb.asc(
                         cb.selectCase()

@@ -24,7 +24,7 @@ public interface ConstInitInstitutionRepository extends JpaRepository<ConstInitI
      * 高性能搜索（注册时使用）
      * 排序规则：等级优先（三级>二级>一级>其他），然后按名称
      */
-    @Query("SELECT c FROM ConstInitInstitution c WHERE " +
+    @Query(value = "SELECT c FROM ConstInitInstitution c WHERE " +
            "(:keyword IS NULL OR :keyword = '' OR c.name LIKE CONCAT('%', :keyword, '%') OR c.region LIKE CONCAT('%', :keyword, '%')) AND " +
            "(:region IS NULL OR :region = '' OR c.region = :region) AND " +
            "(:level IS NULL OR :level = '' OR c.level = :level) " +
@@ -35,7 +35,11 @@ public interface ConstInitInstitutionRepository extends JpaRepository<ConstInitI
            "  WHEN c.level = '一级' THEN 3 " +
            "  ELSE 4 " +
            "END, " +
-           "c.name ASC")
+           "c.name ASC",
+           countQuery = "SELECT COUNT(c) FROM ConstInitInstitution c WHERE " +
+           "(:keyword IS NULL OR :keyword = '' OR c.name LIKE CONCAT('%', :keyword, '%') OR c.region LIKE CONCAT('%', :keyword, '%')) AND " +
+           "(:region IS NULL OR :region = '' OR c.region = :region) AND " +
+           "(:level IS NULL OR :level = '' OR c.level = :level)")
     Page<ConstInitInstitution> searchInstitutions(
             @Param("keyword") String keyword,
             @Param("region") String region,

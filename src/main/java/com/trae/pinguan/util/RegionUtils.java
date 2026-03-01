@@ -131,11 +131,12 @@ public class RegionUtils {
     }
     
     /**
-     * 获取所有市级列表
+     * 获取所有市级列表（含"省级"选项，用于搜索省直属机构）
      */
     public static List<String> getAllCities() {
         List<String> cities = new ArrayList<>(CITY_TO_DISTRICTS.keySet());
         Collections.sort(cities);
+        cities.add(0, "省级");
         return cities;
     }
     
