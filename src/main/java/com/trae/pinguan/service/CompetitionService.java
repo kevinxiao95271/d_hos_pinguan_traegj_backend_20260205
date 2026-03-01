@@ -5,7 +5,6 @@ import com.trae.pinguan.domain.enums.CompetitionStage;
 import com.trae.pinguan.repository.CompetitionRepository;
 import com.trae.pinguan.web.dto.CompetitionCreateRequest;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +26,7 @@ public class CompetitionService {
     }
     
     public Optional<Competition> getLatest() {
-        return competitionRepository.findAll().stream()
-                .max(Comparator.comparing(Competition::getId));
+        return competitionRepository.findTop1ByOrderByIdDesc();
     }
 
     @Transactional

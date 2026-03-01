@@ -13,7 +13,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserAccountRepository extends JpaRepository<UserAccount, Long>, JpaSpecificationExecutor<UserAccount> {
-    Optional<UserAccount> findByPhone(String phone);
+    @Query("SELECT u FROM UserAccount u LEFT JOIN FETCH u.institution WHERE u.phone = :phone")
+    Optional<UserAccount> findByPhone(@Param("phone") String phone);
     List<UserAccount> findByRole(RoleType role);
     
     // 优化：使用JOIN FETCH一次性加载评委和关联的机构

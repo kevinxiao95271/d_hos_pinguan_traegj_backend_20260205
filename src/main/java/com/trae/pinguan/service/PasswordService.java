@@ -10,7 +10,7 @@ public class PasswordService {
      * 加密密码
      */
     public String encode(String rawPassword) {
-        return BCrypt.hashpw(rawPassword, BCrypt.gensalt());
+        return BCrypt.hashpw(rawPassword, BCrypt.gensalt(8));
     }
     
     /**

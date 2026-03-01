@@ -4,4 +4,5 @@ import com.trae.pinguan.domain.entity.Competition;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CompetitionRepository extends JpaRepository<Competition, Long> {
+    java.util.Optional<Competition> findTop1ByOrderByIdDesc();
 }
