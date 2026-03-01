@@ -65,7 +65,7 @@ public class StatsService {
                 .distinct().count();
         Map<String, Integer> regionCounts = new HashMap<>();
         for (Registration registration : registrations) {
-            String region = registration.getInstitution() != null ? registration.getInstitution().getRegion() : null;
+            String region = registration.getInstitution() != null ? registration.getInstitution().getCity() : null;
             if (region == null || region.trim().isEmpty()) region = "未知";
             regionCounts.put(region, regionCounts.getOrDefault(region, 0) + 1);
         }
