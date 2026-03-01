@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.trae.pinguan.web.dto.PageResult;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
@@ -39,23 +40,27 @@ public class AdminRegistrationController {
     }
 
     @GetMapping("/filter")
-    @Operation(summary = "后台报名筛选")
-    public ApiResponse<List<RegistrationFilterItem>> filter(@RequestParam Long competitionId,
-                                                            @RequestParam(required = false) com.trae.pinguan.domain.enums.GroupType groupType,
-                                                            @RequestParam(required = false) String groupCode,
-                                                            @RequestParam(required = false) String projectName,
-                                                            @RequestParam(required = false) String institutionName,
-                                                            @RequestParam(required = false) String methodCode,
-                                                            @RequestParam(required = false) String subjectTypeCode) {
-        return ApiResponse.ok(registrationService.filterRegistrations(
+    @Operation(summary = "后台报名筛选（分页，page从1开始）")
+    public ApiResponse<PageResult<RegistrationFilterItem>> filter(@RequestParam Long competitionId,
+                                                                  @RequestParam(required = false) com.trae.pinguan.domain.enums.GroupType groupType,
+                                                                  @RequestParam(required = false) String groupCode,
+                                                                  @RequestParam(required = false) String projectName,
+                                                                  @RequestParam(required = false) String institutionName,
+                                                                  @RequestParam(required = false) String methodCode,
+                                                                  @RequestParam(required = false) String subjectTypeCode,
+                                                                  @RequestParam(defaultValue = "1") int page,
+                                                                  @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(PageResult.of(registrationService.filterRegistrations(
                 competitionId,
                 groupType,
                 groupCode,
                 projectName,
                 institutionName,
                 methodCode,
-                subjectTypeCode
-        ));
+                subjectTypeCode,
+                page,
+                size
+        )));
     }
 
     @GetMapping("/interview-groups")

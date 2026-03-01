@@ -36,6 +36,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -342,29 +348,35 @@ public class RegistrationService {
         return registrationRepository.findByInstitutionId(institutionId);
     }
 
-    public List<RegistrationFilterItem> filterRegistrations(Long competitionId,
+    public Page<RegistrationFilterItem> filterRegistrations(Long competitionId,
                                                             com.trae.pinguan.domain.enums.GroupType groupType,
                                                             String groupCode,
                                                             String projectName,
                                                             String institutionName,
                                                             String methodCode,
-                                                            String subjectTypeCode) {
+                                                            String subjectTypeCode,
+                                                            int page,
+                                                            int size) {
         String groupCodeValue = groupCode == null || groupCode.trim().isEmpty() ? null : groupCode.trim();
         String projectNameValue = projectName == null || projectName.trim().isEmpty() ? null : projectName.trim();
         String institutionNameValue = institutionName == null || institutionName.trim().isEmpty() ? null : institutionName.trim();
         String methodCodeValue = methodCode == null || methodCode.trim().isEmpty() ? null : methodCode.trim();
         String subjectTypeCodeValue = subjectTypeCode == null || subjectTypeCode.trim().isEmpty() ? null : subjectTypeCode.trim();
-        List<RegistrationFilterItem> items = registrationRepository.filterRegistrations(
+        // page 参数从1开始，转为0-based传给JPA
+        PageRequest pageable = PageRequest.of(Math.max(0, page - 1), size, Sort.by(Sort.Direction.ASC, "id"));
+        Page<RegistrationFilterItem> pageResult = registrationRepository.filterRegistrations(
                 competitionId,
                 groupType,
                 groupCodeValue,
                 projectNameValue,
                 institutionNameValue,
                 methodCodeValue,
-                subjectTypeCodeValue
+                subjectTypeCodeValue,
+                pageable
         );
+        List<RegistrationFilterItem> items = pageResult.getContent();
         if (items.isEmpty()) {
-            return items;
+            return pageResult;
         }
 
         // 批量查询字典label（1次DB，替代原来每条N次）
@@ -418,7 +430,7 @@ public class RegistrationService {
             }
         }
 
-        return items;
+        return pageResult;
     }
 
     @Transactional
