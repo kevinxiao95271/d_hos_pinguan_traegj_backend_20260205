@@ -36,4 +36,10 @@ public interface DictionaryItemRepository extends JpaRepository<DictionaryItem, 
      * 根据代码查询字典项（取第一个）
      */
     java.util.Optional<DictionaryItem> findFirstByCode(String code);
+
+    /**
+     * 批量根据代码查询字典项
+     */
+    @Query("SELECT d FROM DictionaryItem d WHERE d.code IN :codes")
+    List<DictionaryItem> findByCodes(@Param("codes") java.util.Collection<String> codes);
 }

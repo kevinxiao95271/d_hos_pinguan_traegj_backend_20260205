@@ -26,6 +26,9 @@ public class MaterialFile {
     @JsonIgnore
     private Registration registration;
 
+    @Column(name = "registration_id", insertable = false, updatable = false)
+    private Long registrationId;
+
     @Column(nullable = false, length = 64)
     private String type;
 

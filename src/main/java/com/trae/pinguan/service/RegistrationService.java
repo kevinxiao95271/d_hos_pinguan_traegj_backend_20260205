@@ -366,35 +366,45 @@ public class RegistrationService {
         if (items.isEmpty()) {
             return items;
         }
-        
-        // 从字典表查询label
+
+        // 批量查询字典label（1次DB，替代原来每条N次）
+        java.util.Set<String> codes = new java.util.HashSet<>();
+        for (RegistrationFilterItem item : items) {
+            if (item.getMethodCode() != null) codes.add(item.getMethodCode());
+            if (item.getSubjectTypeCode() != null) codes.add(item.getSubjectTypeCode());
+        }
+        Map<String, String> labelMap = new java.util.HashMap<>();
+        if (!codes.isEmpty()) {
+            dictionaryItemRepository.findByCodes(codes)
+                    .forEach(d -> labelMap.putIfAbsent(d.getCode(), d.getLabel()));
+        }
         for (RegistrationFilterItem item : items) {
             if (item.getMethodCode() != null) {
-                item.setMethodLabel(getLabel(item.getMethodCode()));
+                item.setMethodLabel(labelMap.getOrDefault(item.getMethodCode(), item.getMethodCode()));
             }
             if (item.getSubjectTypeCode() != null) {
-                item.setSubjectTypeLabel(getLabel(item.getSubjectTypeCode()));
+                item.setSubjectTypeLabel(labelMap.getOrDefault(item.getSubjectTypeCode(), item.getSubjectTypeCode()));
             }
         }
-        
+
         // 批量查询材料文件
         List<Long> registrationIds = items.stream()
                 .map(RegistrationFilterItem::getRegistrationId)
                 .collect(Collectors.toList());
-        
+
         if (!registrationIds.isEmpty()) {
-            // 查询所有材料文件并按 registration_id 分组
+            // 查询所有材料文件并按 registration_id 分组（用registrationId避免触发懒加载）
             Map<Long, List<MaterialFile>> materialsMap = materialRepository
                     .findByRegistrationIdIn(registrationIds)
                     .stream()
-                    .collect(Collectors.groupingBy((MaterialFile m) -> m.getRegistration().getId()));
-            
+                    .collect(Collectors.groupingBy((MaterialFile m) -> m.getRegistrationId()));
+
             // 组装材料文件到每个 item
             for (RegistrationFilterItem item : items) {
                 List<MaterialFile> materials = materialsMap.getOrDefault(
                         item.getRegistrationId(), new ArrayList<>()
                 );
-                
+
                 List<RegistrationFilterItem.MaterialFileSimple> materialSimples = materials.stream()
                         .map(m -> new RegistrationFilterItem.MaterialFileSimple(
                                 m.getId(),
@@ -403,11 +413,11 @@ public class RegistrationService {
                                 "/api/materials/" + m.getId() + "/download"
                         ))
                         .collect(Collectors.toList());
-                
+
                 item.setMaterials(materialSimples);
             }
         }
-        
+
         return items;
     }
 
