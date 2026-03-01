@@ -31,9 +31,15 @@ public class Institution {
 
     @Column(length = 64)
     private String region;
-    
+
+    @Column(length = 50)
+    private String city;
+
     @Column(length = 32)
     private String level;
+
+    @Column(nullable = false, columnDefinition = "tinyint default 0")
+    private Boolean isExt;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
