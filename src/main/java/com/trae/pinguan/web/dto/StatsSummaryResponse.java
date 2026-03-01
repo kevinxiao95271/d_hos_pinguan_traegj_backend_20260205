@@ -2,6 +2,7 @@ package com.trae.pinguan.web.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -10,6 +11,7 @@ public class StatsSummaryResponse {
     private Long competitionId;
     private String competitionName;
     private Integer registrationCount;
+    private Integer institutionCount;
     private Integer toolTypeCount;
     private Integer reviewerCount;
     private Integer reviewerInstitutionCount;
@@ -19,6 +21,7 @@ public class StatsSummaryResponse {
     private Map<String, Integer> subjectTypeCounts;
     private Map<String, Integer> methodCounts;
     private Map<String, Integer> leaderTitleCounts;
+    private List<GroupTypeStatItem> groupTypeStats;
     private Double avgPlan;
     private Double avgProblem;
     private Double avgAction;

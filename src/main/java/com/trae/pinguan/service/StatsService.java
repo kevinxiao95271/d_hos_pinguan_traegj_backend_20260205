@@ -7,6 +7,7 @@ import com.trae.pinguan.domain.entity.RegistrationMember;
 import com.trae.pinguan.domain.entity.ReviewScore;
 import com.trae.pinguan.domain.entity.ReviewTask;
 import com.trae.pinguan.domain.entity.UserAccount;
+import com.trae.pinguan.domain.enums.GroupType;
 import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.repository.ActivityInfoRepository;
@@ -16,7 +17,9 @@ import com.trae.pinguan.repository.RegistrationRepository;
 import com.trae.pinguan.repository.ReviewScoreRepository;
 import com.trae.pinguan.repository.ReviewTaskRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
+import com.trae.pinguan.web.dto.GroupTypeStatItem;
 import com.trae.pinguan.web.dto.StatsSummaryResponse;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,6 +58,11 @@ public class StatsService {
 
         // 一次性加载所有报名及其机构（JOIN FETCH，避免N次懒加载）
         List<Registration> registrations = registrationRepository.findByCompetitionIdWithInstitution(competitionId);
+        // 报名机构去重总数
+        long institutionCount = registrations.stream()
+                .filter(r -> r.getInstitution() != null)
+                .map(r -> r.getInstitution().getId())
+                .distinct().count();
         Map<String, Integer> regionCounts = new HashMap<>();
         for (Registration registration : registrations) {
             String region = registration.getInstitution() != null ? registration.getInstitution().getRegion() : null;
@@ -160,10 +168,38 @@ public class StatsService {
 
         double divisor = scoredCount == 0 ? 1 : scoredCount;
 
+        // 组别统计（利用已加载的registrations，institution已JOIN FETCH）
+        int totalCount = registrations.size();
+        Map<GroupType, Set<Long>> groupInstIds = new HashMap<>();
+        Map<GroupType, Integer> groupProjCounts = new HashMap<>();
+        for (GroupType gt : GroupType.values()) {
+            groupInstIds.put(gt, new HashSet<>());
+            groupProjCounts.put(gt, 0);
+        }
+        for (Registration reg : registrations) {
+            GroupType gt = reg.getGroupType();
+            if (gt == null) continue;
+            groupProjCounts.put(gt, groupProjCounts.get(gt) + 1);
+            if (reg.getInstitution() != null) groupInstIds.get(gt).add(reg.getInstitution().getId());
+        }
+        Map<GroupType, String> groupTypeNames = new HashMap<>();
+        groupTypeNames.put(GroupType.BASIC, "基层组");
+        groupTypeNames.put(GroupType.COMPREHENSIVE, "综合组");
+        groupTypeNames.put(GroupType.ADVANCED, "进阶组");
+        List<GroupTypeStatItem> groupTypeStats = new ArrayList<>();
+        for (GroupType gt : GroupType.values()) {
+            int projCount = groupProjCounts.get(gt);
+            int instCount = groupInstIds.get(gt).size();
+            double pct = totalCount == 0 ? 0.0 : Math.round(projCount * 1000.0 / totalCount) / 10.0;
+            double avg = instCount == 0 ? 0.0 : Math.round(projCount * 100.0 / instCount) / 100.0;
+            groupTypeStats.add(new GroupTypeStatItem(groupTypeNames.get(gt), instCount, projCount, pct, avg));
+        }
+
         return new StatsSummaryResponse(
                 competitionId,
                 competition.getName(),
                 registrations.size(),
+                (int) institutionCount,
                 toolTypes.size(),
                 reviewers.size(),
                 reviewerInstitutions.size(),
@@ -173,6 +209,7 @@ public class StatsService {
                 subjectTypeCounts,
                 methodCounts,
                 leaderTitleCounts,
+                groupTypeStats,
                 planSum / divisor,
                 problemSum / divisor,
                 actionSum / divisor,
