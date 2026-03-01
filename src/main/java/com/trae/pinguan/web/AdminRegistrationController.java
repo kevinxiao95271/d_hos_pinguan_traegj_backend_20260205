@@ -1,6 +1,7 @@
 package com.trae.pinguan.web;
 
 import com.trae.pinguan.domain.entity.Registration;
+import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.service.RegistrationService;
 import com.trae.pinguan.web.dto.ApiResponse;
 import com.trae.pinguan.web.dto.AutoGroupRequest;
@@ -8,9 +9,11 @@ import com.trae.pinguan.web.dto.BatchClassificationRequest;
 import com.trae.pinguan.web.dto.GroupedRegistrationResponse;
 import com.trae.pinguan.web.dto.RegistrationFilterItem;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -72,5 +75,22 @@ public class AdminRegistrationController {
     public ApiResponse<String> fixInvalidCodes() {
         String result = registrationService.fixInvalidDictionaryCodes();
         return ApiResponse.ok(result);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "删除报名（仅OPS）", description = "级联删除报名及所有关联数据，仅供测试数据清理")
+    public ApiResponse<String> deleteRegistration(
+            @Parameter(description = "报名ID", required = true) @PathVariable Long id,
+            HttpServletRequest request) {
+        String role = (String) request.getAttribute("role");
+        if (!RoleType.OPS.name().equals(role)) {
+            return ApiResponse.fail("仅系统运维可操作");
+        }
+        try {
+            registrationService.deleteRegistration(id);
+            return ApiResponse.ok("报名已删除");
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.fail(e.getMessage());
+        }
     }
 }

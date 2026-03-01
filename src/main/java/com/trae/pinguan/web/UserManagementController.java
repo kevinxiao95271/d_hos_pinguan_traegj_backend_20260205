@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +24,43 @@ import java.util.Map;
 public class UserManagementController {
     
     private final UserService userService;
+
+    @PostMapping("/{userId}/reset-password")
+    @Operation(summary = "重置用户密码（仅OPS）", description = "直接重置为新的6位随机密码，无需旧密码")
+    public ApiResponse<Map<String, String>> resetPassword(
+            @Parameter(description = "用户ID", required = true) @PathVariable Long userId,
+            HttpServletRequest request) {
+        String role = (String) request.getAttribute("role");
+        if (!RoleType.OPS.name().equals(role)) {
+            return ApiResponse.fail("仅系统运维可操作");
+        }
+        try {
+            String newPassword = userService.resetPassword(userId);
+            Map<String, String> result = new HashMap<>();
+            result.put("newPassword", newPassword);
+            return ApiResponse.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{userId}/reset-phone")
+    @Operation(summary = "重置用户手机号（仅OPS）", description = "将用户的登录手机号更新为新号码")
+    public ApiResponse<String> resetPhone(
+            @Parameter(description = "用户ID", required = true) @PathVariable Long userId,
+            @Parameter(description = "新手机号", required = true) @RequestParam String newPhone,
+            HttpServletRequest request) {
+        String role = (String) request.getAttribute("role");
+        if (!RoleType.OPS.name().equals(role)) {
+            return ApiResponse.fail("仅系统运维可操作");
+        }
+        try {
+            userService.resetPhone(userId, newPhone);
+            return ApiResponse.ok("手机号已更新");
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.fail(e.getMessage());
+        }
+    }
     
     @PostMapping("/query")
     @Operation(summary = "查询用户列表", description = "支持多条件筛选、分页查询")

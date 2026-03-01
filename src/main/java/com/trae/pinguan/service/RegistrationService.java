@@ -17,6 +17,7 @@ import com.trae.pinguan.repository.ProjectSummaryRepository;
 import com.trae.pinguan.repository.RegistrationMemberRepository;
 import com.trae.pinguan.repository.RegistrationRepository;
 import com.trae.pinguan.repository.ReviewTaskRepository;
+import com.trae.pinguan.repository.ReviewScoreRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.web.dto.ActivityInfoRequest;
 import com.trae.pinguan.web.dto.ActivityInfoDetailResponse;
@@ -54,6 +55,8 @@ public class RegistrationService {
     private final ProjectSummaryRepository summaryRepository;
     private final MaterialFileRepository materialRepository;
     private final ReviewTaskRepository reviewTaskRepository;
+    private final ReviewScoreRepository reviewScoreRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional
     public Registration create(RegistrationCreateRequest request) {
@@ -535,5 +538,51 @@ public class RegistrationService {
         
         result.insert(0, String.format("修复完成！共处理 %d 条记录\n\n", fixedCount));
         return result.toString();
+    }
+
+    /**
+     * OPS删除报名及所有关联数据（级联删除）
+     */
+    @Transactional
+    public void deleteRegistration(Long registrationId) {
+        if (!registrationRepository.existsById(registrationId)) {
+            throw new IllegalArgumentException("报名不存在");
+        }
+
+        // 1. 删除评审分数（ReviewScore）
+        List<com.trae.pinguan.domain.entity.ReviewTask> tasks = reviewTaskRepository.findByRegistrationId(registrationId);
+        for (com.trae.pinguan.domain.entity.ReviewTask task : tasks) {
+            reviewScoreRepository.findByReviewTaskId(task.getId()).ifPresent(score -> reviewScoreRepository.delete(score));
+        }
+
+        // 2. 删除评审任务（ReviewTask）
+        reviewTaskRepository.deleteAll(tasks);
+
+        // 3. 删除材料文件（MaterialFile）及 MinIO 对象
+        List<com.trae.pinguan.domain.entity.MaterialFile> files = materialRepository.findByRegistrationId(registrationId);
+        for (com.trae.pinguan.domain.entity.MaterialFile file : files) {
+            try {
+                if (file.getFileUrl() != null) {
+                    fileStorageService.delete(file.getFileUrl());
+                }
+            } catch (Exception e) {
+                log.warn("删除MinIO文件失败，忽略继续: {}", file.getFileUrl(), e);
+            }
+        }
+        materialRepository.deleteAll(files);
+
+        // 4. 删除成员（RegistrationMember）
+        memberRepository.deleteAll(memberRepository.findByRegistrationId(registrationId));
+
+        // 5. 删除活动信息（ActivityInfo）
+        activityInfoRepository.findByRegistrationId(registrationId).ifPresent(activityInfoRepository::delete);
+
+        // 6. 删除项目摘要（ProjectSummary）
+        summaryRepository.findByRegistrationId(registrationId).ifPresent(summaryRepository::delete);
+
+        // 7. 删除报名主记录
+        registrationRepository.deleteById(registrationId);
+
+        log.info("OPS已删除报名 id={} 及所有关联数据", registrationId);
     }
 }

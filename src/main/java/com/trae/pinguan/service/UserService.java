@@ -406,6 +406,33 @@ public class UserService {
     }
     
     /**
+     * OPS重置用户密码（直接重置，无需旧密码）
+     */
+    @Transactional
+    public String resetPassword(Long userId) {
+        UserAccount user = userAccountRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        String newPassword = generateInitialPassword();
+        user.setPassword(passwordService.encode(newPassword));
+        userAccountRepository.save(user);
+        return newPassword;
+    }
+
+    /**
+     * OPS重置用户手机号
+     */
+    @Transactional
+    public void resetPhone(Long userId, String newPhone) {
+        UserAccount user = userAccountRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        if (userAccountRepository.findByPhone(newPhone).isPresent()) {
+            throw new IllegalArgumentException("该手机号已被其他用户使用");
+        }
+        user.setPhone(newPhone);
+        userAccountRepository.save(user);
+    }
+
+    /**
      * 生成6位随机初始密码
      */
     private String generateInitialPassword() {
