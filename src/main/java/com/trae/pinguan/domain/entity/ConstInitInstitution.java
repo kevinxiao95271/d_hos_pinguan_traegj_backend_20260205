@@ -61,6 +61,7 @@ public class ConstInitInstitution {
                 .uscc(this.uscc)
                 .name(this.name)
                 .region(this.region)
+                .city(this.city)
                 .level(this.level)
                 .createdAt(java.time.LocalDateTime.now())
                 .build();
