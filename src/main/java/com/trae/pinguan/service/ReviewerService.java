@@ -28,6 +28,7 @@ public class ReviewerService {
         // 优化：使用JOIN FETCH一次性加载所有关联数据，避免N+1问题
         List<UserAccount> reviewers = userAccountRepository.findByRoleWithInstitution(RoleType.REVIEWER);
         return reviewers.stream()
+                .filter(user -> Boolean.TRUE.equals(user.getEnabled()))
                 .filter(user -> institutionId == null || (user.getInstitution() != null
                         && institutionId.equals(user.getInstitution().getId())))
                 .filter(user -> reviewerGroupCode == null || reviewerGroupCode.equals(user.getReviewerGroupCode()))
