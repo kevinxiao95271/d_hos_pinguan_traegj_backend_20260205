@@ -63,6 +63,7 @@ public class ConstInitInstitution {
                 .region(this.region)
                 .city(this.city)
                 .level(this.level)
+                .isExt(false)
                 .createdAt(java.time.LocalDateTime.now())
                 .build();
     }

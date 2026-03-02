@@ -38,6 +38,9 @@ public class MaterialFile {
     @Column(nullable = false, length = 300)
     private String fileUrl;
 
+    @Column(name = "file_hash", length = 64)
+    private String fileHash;
+
     @Column(nullable = false)
     private LocalDateTime uploadedAt;
 }

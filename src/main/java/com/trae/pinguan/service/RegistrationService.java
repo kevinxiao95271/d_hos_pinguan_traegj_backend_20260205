@@ -422,7 +422,8 @@ public class RegistrationService {
                                 m.getId(),
                                 m.getType(),
                                 m.getFileName(),
-                                "/api/materials/" + m.getId() + "/download"
+                                "/api/materials/" + m.getId() + "/download",
+                                m.getUploadedAt()
                         ))
                         .collect(Collectors.toList());
 

@@ -56,5 +56,6 @@ public class RegistrationFilterItem {
         private String type;
         private String fileName;
         private String downloadUrl;
+        private LocalDateTime uploadedAt;
     }
 }
