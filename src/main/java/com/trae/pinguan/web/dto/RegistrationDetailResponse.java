@@ -38,4 +38,7 @@ public class RegistrationDetailResponse {
     
     @Schema(description = "材料列表")
     private List<MaterialFile> materials;
+
+    @Schema(description = "缴费回执列表")
+    private List<MaterialFile> paymentProofs;
 }

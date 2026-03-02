@@ -33,7 +33,10 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
             "and (:projectName is null or r.projectName like concat('%', :projectName, '%')) " +
             "and (:institutionName is null or i.name like concat('%', :institutionName, '%')) " +
             "and (:methodCode is null or a.methodCode = :methodCode) " +
-            "and (:subjectTypeCode is null or a.subjectTypeCode = :subjectTypeCode)",
+            "and (:subjectTypeCode is null or a.subjectTypeCode = :subjectTypeCode) " +
+            "and (:hasPaymentProof is null or " +
+            "(:hasPaymentProof = true and exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')) or " +
+            "(:hasPaymentProof = false and not exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')))",
             countQuery = "select count(r) " +
             "from Registration r " +
             "join r.institution i " +
@@ -45,7 +48,10 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
             "and (:projectName is null or r.projectName like concat('%', :projectName, '%')) " +
             "and (:institutionName is null or i.name like concat('%', :institutionName, '%')) " +
             "and (:methodCode is null or a.methodCode = :methodCode) " +
-            "and (:subjectTypeCode is null or a.subjectTypeCode = :subjectTypeCode)")
+            "and (:subjectTypeCode is null or a.subjectTypeCode = :subjectTypeCode) " +
+            "and (:hasPaymentProof is null or " +
+            "(:hasPaymentProof = true and exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')) or " +
+            "(:hasPaymentProof = false and not exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')))")
     Page<RegistrationFilterItem> filterRegistrations(@Param("competitionId") Long competitionId,
                                                      @Param("groupType") GroupType groupType,
                                                      @Param("groupCode") String groupCode,
@@ -53,5 +59,6 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
                                                      @Param("institutionName") String institutionName,
                                                      @Param("methodCode") String methodCode,
                                                      @Param("subjectTypeCode") String subjectTypeCode,
+                                                     @Param("hasPaymentProof") Boolean hasPaymentProof,
                                                      Pageable pageable);
 }

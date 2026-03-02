@@ -48,6 +48,7 @@ public class AdminRegistrationController {
                                                                   @RequestParam(required = false) String institutionName,
                                                                   @RequestParam(required = false) String methodCode,
                                                                   @RequestParam(required = false) String subjectTypeCode,
+                                                                  @RequestParam(required = false) Boolean hasPaymentProof,
                                                                   @RequestParam(defaultValue = "1") int page,
                                                                   @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.ok(PageResult.of(registrationService.filterRegistrations(
@@ -58,6 +59,7 @@ public class AdminRegistrationController {
                 institutionName,
                 methodCode,
                 subjectTypeCode,
+                hasPaymentProof,
                 page,
                 size
         )));

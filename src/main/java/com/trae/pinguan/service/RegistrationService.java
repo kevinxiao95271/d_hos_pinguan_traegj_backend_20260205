@@ -63,6 +63,7 @@ public class RegistrationService {
     private final ReviewTaskRepository reviewTaskRepository;
     private final ReviewScoreRepository reviewScoreRepository;
     private final FileStorageService fileStorageService;
+    private static final String PAYMENT_PROOF_TYPE = "payment_proof";
 
     @Transactional
     public Registration create(RegistrationCreateRequest request) {
@@ -240,7 +241,13 @@ public class RegistrationService {
         List<RegistrationMember> members = memberRepository.findByRegistrationId(registrationId);
         ActivityInfo activity = activityInfoRepository.findByRegistrationId(registrationId).orElse(null);
         ProjectSummary summary = summaryRepository.findByRegistrationId(registrationId).orElse(null);
-        List<MaterialFile> materials = materialRepository.findByRegistrationId(registrationId);
+        List<MaterialFile> allMaterials = materialRepository.findByRegistrationId(registrationId);
+        List<MaterialFile> paymentProofs = allMaterials.stream()
+                .filter(m -> PAYMENT_PROOF_TYPE.equalsIgnoreCase(m.getType()))
+                .collect(Collectors.toList());
+        List<MaterialFile> materials = allMaterials.stream()
+                .filter(m -> !PAYMENT_PROOF_TYPE.equalsIgnoreCase(m.getType()))
+                .collect(Collectors.toList());
         ActivityInfoDetailResponse activityDetail = null;
         if (activity != null) {
             String methodLabel = null;
@@ -300,6 +307,7 @@ public class RegistrationService {
                 .activityInfo(activityDetail)
                 .projectSummary(summary)
                 .materials(materials)
+                .paymentProofs(paymentProofs)
                 .build();
     }
 
@@ -355,6 +363,7 @@ public class RegistrationService {
                                                             String institutionName,
                                                             String methodCode,
                                                             String subjectTypeCode,
+                                                            Boolean hasPaymentProof,
                                                             int page,
                                                             int size) {
         String groupCodeValue = groupCode == null || groupCode.trim().isEmpty() ? null : groupCode.trim();
@@ -372,6 +381,7 @@ public class RegistrationService {
                 institutionNameValue,
                 methodCodeValue,
                 subjectTypeCodeValue,
+                hasPaymentProof,
                 pageable
         );
         List<RegistrationFilterItem> items = pageResult.getContent();
@@ -427,7 +437,15 @@ public class RegistrationService {
                         ))
                         .collect(Collectors.toList());
 
-                item.setMaterials(materialSimples);
+                List<RegistrationFilterItem.MaterialFileSimple> paymentProofs = materialSimples.stream()
+                        .filter(m -> PAYMENT_PROOF_TYPE.equalsIgnoreCase(m.getType()))
+                        .collect(Collectors.toList());
+                List<RegistrationFilterItem.MaterialFileSimple> normalMaterials = materialSimples.stream()
+                        .filter(m -> !PAYMENT_PROOF_TYPE.equalsIgnoreCase(m.getType()))
+                        .collect(Collectors.toList());
+
+                item.setMaterials(normalMaterials);
+                item.setPaymentProofs(paymentProofs);
             }
         }
 

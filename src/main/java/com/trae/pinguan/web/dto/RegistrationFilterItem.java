@@ -27,6 +27,7 @@ public class RegistrationFilterItem {
     private String applicantName;
     
     private List<MaterialFileSimple> materials = new ArrayList<>();
+    private List<MaterialFileSimple> paymentProofs = new ArrayList<>();
     
     public RegistrationFilterItem(Long registrationId, String projectName, String institutionName,
                                   String institutionLevel, GroupType groupType, String groupCode,
@@ -46,6 +47,7 @@ public class RegistrationFilterItem {
         this.methodLabel = methodLabel;
         this.applicantName = applicantName;
         this.materials = new ArrayList<>();
+        this.paymentProofs = new ArrayList<>();
     }
     
     @Data
