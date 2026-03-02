@@ -436,10 +436,40 @@ public class RegistrationService {
     @Transactional
     public List<Registration> batchClassify(BatchClassificationRequest request) {
         List<Registration> registrations = registrationRepository.findAllById(request.getRegistrationIds());
+        String newGroupCode = request.getGroupCode();
         for (Registration registration : registrations) {
-            registration.setGroupCode(request.getGroupCode());
+            String expectedPrefix = groupTypeToPrefix(registration.getGroupType());
+            if (!newGroupCode.startsWith(expectedPrefix)) {
+                throw new IllegalArgumentException(
+                        "项目 [" + registration.getProjectName() + "] 属于" +
+                        groupTypeLabel(registration.getGroupType()) +
+                        ", groupCode must start with '" + expectedPrefix + "', but got: " + newGroupCode);
+            }
+        }
+        for (Registration registration : registrations) {
+            registration.setGroupCode(newGroupCode);
         }
         return registrationRepository.saveAll(registrations);
+    }
+
+    private String groupTypeToPrefix(com.trae.pinguan.domain.enums.GroupType groupType) {
+        if (groupType == null) return "";
+        switch (groupType) {
+            case BASIC:         return "A";
+            case COMPREHENSIVE: return "B";
+            case ADVANCED:      return "C";
+            default:            return "";
+        }
+    }
+
+    private String groupTypeLabel(com.trae.pinguan.domain.enums.GroupType groupType) {
+        if (groupType == null) return "未知组";
+        switch (groupType) {
+            case BASIC:         return "基层组";
+            case COMPREHENSIVE: return "综合组";
+            case ADVANCED:      return "进阶组";
+            default:            return groupType.name();
+        }
     }
 
     @Transactional
