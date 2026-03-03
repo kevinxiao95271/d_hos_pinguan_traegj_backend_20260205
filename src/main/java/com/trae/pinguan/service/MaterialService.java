@@ -26,6 +26,8 @@ public class MaterialService {
     
     private static final long MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB
     private static final String PAYMENT_PROOF_TYPE = "payment_proof";
+    private static final String REGISTRATION_FORM_DOC_TYPE = "REGISTRATION_FORM_DOC";
+    private static final String REGISTRATION_FORM_PDF_TYPE = "REGISTRATION_FORM_PDF";
     private static final String[] ALLOWED_EXTENSIONS = {
         "pdf", "doc", "docx", "xls", "xlsx", 
         "ppt", "pptx", "zip", "rar", 
@@ -33,6 +35,12 @@ public class MaterialService {
     };
     private static final Set<String> PAYMENT_PROOF_ALLOWED_EXTENSIONS = new HashSet<>(
             Arrays.asList("jpg", "jpeg", "png", "gif", "webp")
+    );
+    private static final Set<String> REG_FORM_DOC_ALLOWED_EXTENSIONS = new HashSet<>(
+            Arrays.asList("doc", "docx")
+    );
+    private static final Set<String> REG_FORM_PDF_ALLOWED_EXTENSIONS = new HashSet<>(
+            Arrays.asList("pdf")
     );
 
     public List<MaterialFile> list(Long registrationId) {
@@ -66,6 +74,7 @@ public class MaterialService {
         if (isPaymentProof && !isPaymentProofExtension(extension)) {
             throw new IllegalArgumentException("支付凭证仅支持图片格式: jpg, jpeg, png, gif, webp");
         }
+        validateTypeSpecificExtension(normalizedType, extension);
         if (!isAllowedExtension(extension)) {
             throw new IllegalArgumentException("不支持的文件类型，仅支持: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar, jpg, jpeg, png, gif");
         }
@@ -134,6 +143,18 @@ public class MaterialService {
 
     private boolean isPaymentProofExtension(String extension) {
         return PAYMENT_PROOF_ALLOWED_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT));
+    }
+
+    private void validateTypeSpecificExtension(String type, String extension) {
+        String ext = extension.toLowerCase(Locale.ROOT);
+        if (REGISTRATION_FORM_DOC_TYPE.equalsIgnoreCase(type)
+                && !REG_FORM_DOC_ALLOWED_EXTENSIONS.contains(ext)) {
+            throw new IllegalArgumentException("REGISTRATION_FORM_DOC 仅支持 Word: doc, docx");
+        }
+        if (REGISTRATION_FORM_PDF_TYPE.equalsIgnoreCase(type)
+                && !REG_FORM_PDF_ALLOWED_EXTENSIONS.contains(ext)) {
+            throw new IllegalArgumentException("REGISTRATION_FORM_PDF 仅支持 PDF");
+        }
     }
 
     private String normalizeType(String type) {

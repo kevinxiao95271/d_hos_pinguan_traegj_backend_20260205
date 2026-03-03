@@ -64,6 +64,8 @@ public class RegistrationService {
     private final ReviewScoreRepository reviewScoreRepository;
     private final FileStorageService fileStorageService;
     private static final String PAYMENT_PROOF_TYPE = "payment_proof";
+    private static final String REGISTRATION_FORM_DOC_TYPE = "REGISTRATION_FORM_DOC";
+    private static final String REGISTRATION_FORM_PDF_TYPE = "REGISTRATION_FORM_PDF";
 
     @Transactional
     public Registration create(RegistrationCreateRequest request) {
@@ -189,6 +191,7 @@ public class RegistrationService {
     public Registration submit(Long registrationId) {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new IllegalArgumentException("报名不存在"));
+        validateRequiredMaterialsBeforeSubmit(registrationId);
         registration.setStatus(RegistrationStatus.SUBMITTED);
         registration.setSubmittedAt(LocalDateTime.now());
         return registrationRepository.save(registration);
@@ -569,6 +572,17 @@ public class RegistrationService {
         return dictionaryItemRepository.findFirstByCode(code)
                 .map(item -> item.getLabel())
                 .orElse(code);
+    }
+
+    private void validateRequiredMaterialsBeforeSubmit(Long registrationId) {
+        List<MaterialFile> files = materialRepository.findByRegistrationId(registrationId);
+        boolean hasRegFormDoc = files.stream()
+                .anyMatch(m -> REGISTRATION_FORM_DOC_TYPE.equalsIgnoreCase(m.getType()));
+        boolean hasRegFormPdf = files.stream()
+                .anyMatch(m -> REGISTRATION_FORM_PDF_TYPE.equalsIgnoreCase(m.getType()));
+        if (!hasRegFormDoc || !hasRegFormPdf) {
+            throw new IllegalArgumentException("提交前需同时上传报名表Word和PDF（盖章扫描件）");
+        }
     }
     
     /**
