@@ -90,6 +90,8 @@ public class RegistrationService {
             }
             log.info("创建报名：用户 {} 使用所属机构 {} 报名", applicant.getName(), institution.getName());
         }
+
+        validateBasicGroupEligibility(institution, request.getGroupType());
         
         Registration registration = Registration.builder()
                 .competition(competition)
@@ -123,6 +125,8 @@ public class RegistrationService {
                     .orElseThrow(() -> new IllegalArgumentException("机构不存在"));
             registration.setInstitution(institution);
         }
+
+        validateBasicGroupEligibility(registration.getInstitution(), registration.getGroupType());
         return registrationRepository.save(registration);
     }
 
@@ -582,6 +586,18 @@ public class RegistrationService {
                 .anyMatch(m -> REGISTRATION_FORM_PDF_TYPE.equalsIgnoreCase(m.getType()));
         if (!hasRegFormDoc || !hasRegFormPdf) {
             throw new IllegalArgumentException("提交前需同时上传报名表Word和PDF（盖章扫描件）");
+        }
+    }
+
+    private void validateBasicGroupEligibility(Institution institution, com.trae.pinguan.domain.enums.GroupType groupType) {
+        if (institution == null || groupType == null) {
+            return;
+        }
+        if (groupType == com.trae.pinguan.domain.enums.GroupType.BASIC) {
+            String level = institution.getLevel() == null ? "" : institution.getLevel().trim();
+            if (level.startsWith("三级")) {
+                throw new IllegalArgumentException("三级医疗机构不可选择基层组，请选择综合组或进阶组");
+            }
         }
     }
     
