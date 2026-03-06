@@ -205,10 +205,6 @@ public class RegistrationService {
     public Registration returnForEdit(Long registrationId) {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new IllegalArgumentException("报名不存在"));
-        Competition competition = registration.getCompetition();
-        if (competition.getRegisterEnd() != null && LocalDateTime.now().isAfter(competition.getRegisterEnd())) {
-            throw new IllegalArgumentException("报名已截止");
-        }
         boolean scored = reviewTaskRepository.findByRegistrationId(registrationId).stream()
                 .anyMatch(task -> task.getStatus() == com.trae.pinguan.domain.enums.ReviewStatus.SCORED);
         if (scored) {
@@ -216,6 +212,17 @@ public class RegistrationService {
         }
         registration.setStatus(RegistrationStatus.RETURNED);
         return registrationRepository.save(registration);
+    }
+
+    @Transactional(readOnly = true)
+    public long countByInstitution(Long competitionId, Long applicantId) {
+        UserAccount user = userAccountRepository.findById(applicantId)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        if (user.getInstitution() == null) {
+            return 0L;
+        }
+        return registrationRepository.countActiveByCompetitionAndInstitution(
+                competitionId, user.getInstitution().getId());
     }
 
     @Transactional

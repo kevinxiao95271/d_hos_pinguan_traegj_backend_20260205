@@ -20,6 +20,13 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     @Query("select r from Registration r join fetch r.institution where r.competition.id = :competitionId")
     List<Registration> findByCompetitionIdWithInstitution(@Param("competitionId") Long competitionId);
 
+    @Query("select count(r) from Registration r where r.competition.id = :competitionId " +
+            "and r.institution.id = :institutionId " +
+            "and r.status in (com.trae.pinguan.domain.enums.RegistrationStatus.SUBMITTED, " +
+            "com.trae.pinguan.domain.enums.RegistrationStatus.APPROVED)")
+    long countActiveByCompetitionAndInstitution(@Param("competitionId") Long competitionId,
+                                                @Param("institutionId") Long institutionId);
+
     @Query(value = "select new com.trae.pinguan.web.dto.RegistrationFilterItem(" +
             "r.id, r.projectName, i.name, i.level, r.groupType, r.groupCode, r.submittedAt, " +
             "a.subjectTypeCode, a.methodCode, '', '', r.applicant.name) " +

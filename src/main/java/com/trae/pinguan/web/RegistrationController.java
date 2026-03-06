@@ -146,6 +146,13 @@ public class RegistrationController {
         return ApiResponse.ok(registrationService.listByInstitution(institutionId));
     }
 
+    @GetMapping("/count-by-institution")
+    @Operation(summary = "当前机构在指定赛事的有效报名数（不含已被驳回）")
+    public ApiResponse<Long> countByInstitution(@RequestParam Long competitionId) {
+        Long applicantId = getCurrentUserId();
+        return ApiResponse.ok(registrationService.countByInstitution(competitionId, applicantId));
+    }
+
     @PostMapping("/{id}/materials")
     @Operation(summary = "上传报名材料")
     public ApiResponse<MaterialFile> upload(@PathVariable Long id,
