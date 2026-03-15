@@ -26,13 +26,13 @@ public class UserManagementController {
     private final UserService userService;
 
     @PostMapping("/{userId}/reset-password")
-    @Operation(summary = "重置用户密码（仅OPS）", description = "直接重置为新的6位随机密码，无需旧密码")
+    @Operation(summary = "重置用户密码（OPS或委员会管理员）", description = "直接重置为新的6位随机密码，无需旧密码")
     public ApiResponse<Map<String, String>> resetPassword(
             @Parameter(description = "用户ID", required = true) @PathVariable Long userId,
             HttpServletRequest request) {
         String role = (String) request.getAttribute("role");
-        if (!RoleType.OPS.name().equals(role)) {
-            return ApiResponse.fail("仅系统运维可操作");
+        if (!RoleType.OPS.name().equals(role) && !RoleType.COMMITTEE_ADMIN.name().equals(role)) {
+            return ApiResponse.fail("无权限");
         }
         try {
             String newPassword = userService.resetPassword(userId);
@@ -45,14 +45,14 @@ public class UserManagementController {
     }
 
     @PostMapping("/{userId}/reset-phone")
-    @Operation(summary = "重置用户手机号（仅OPS）", description = "将用户的登录手机号更新为新号码")
+    @Operation(summary = "重置用户手机号（OPS或委员会管理员）", description = "将用户的登录手机号更新为新号码")
     public ApiResponse<String> resetPhone(
             @Parameter(description = "用户ID", required = true) @PathVariable Long userId,
             @Parameter(description = "新手机号", required = true) @RequestParam String newPhone,
             HttpServletRequest request) {
         String role = (String) request.getAttribute("role");
-        if (!RoleType.OPS.name().equals(role)) {
-            return ApiResponse.fail("仅系统运维可操作");
+        if (!RoleType.OPS.name().equals(role) && !RoleType.COMMITTEE_ADMIN.name().equals(role)) {
+            return ApiResponse.fail("无权限");
         }
         try {
             userService.resetPhone(userId, newPhone);

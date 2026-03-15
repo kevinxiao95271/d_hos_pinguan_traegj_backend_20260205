@@ -28,10 +28,10 @@ public class AdminInstitutionController {
     private final InstitutionService institutionService;
     private final HttpServletRequest request;
 
-    private void requireOpsRole() {
+    private void requireCommitteeOrOps() {
         Object roleObj = request.getAttribute("role");
         String role = roleObj == null ? null : roleObj.toString();
-        if (!"OPS".equals(role)) {
+        if (!"OPS".equals(role) && !"COMMITTEE_ADMIN".equals(role) && !"COMMITTEE".equals(role)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权限");
         }
     }
@@ -39,7 +39,7 @@ public class AdminInstitutionController {
     @GetMapping("/export")
     @Operation(summary = "导出机构列表")
     public ApiResponse<List<Institution>> export(@RequestParam(required = false, defaultValue = "false") Boolean unknownRegionOnly) {
-        requireOpsRole();
+        requireCommitteeOrOps();
         List<Institution> all = institutionService.listAll();
         if (unknownRegionOnly != null && unknownRegionOnly) {
             List<Institution> filtered = new ArrayList<>();
@@ -56,7 +56,7 @@ public class AdminInstitutionController {
     @PostMapping("/import/precheck")
     @Operation(summary = "机构导入预检（不落库）")
     public ApiResponse<InstitutionImportPrecheckResponse> importPrecheck(@Valid @RequestBody InstitutionImportRequest requestBody) {
-        requireOpsRole();
+        requireCommitteeOrOps();
         List<Institution> existing = institutionService.listAll();
         Set<String> existingNames = new HashSet<>();
         Set<String> existingUscc = new HashSet<>();
@@ -83,7 +83,7 @@ public class AdminInstitutionController {
     @PostMapping("/import/confirm")
     @Operation(summary = "机构导入确认（落库，仅导入非重复项）")
     public ApiResponse<List<Institution>> importConfirm(@Valid @RequestBody InstitutionImportRequest requestBody) {
-        requireOpsRole();
+        requireCommitteeOrOps();
         List<Institution> existing = institutionService.listAll();
         Set<String> existingNames = new HashSet<>();
         Set<String> existingUscc = new HashSet<>();
@@ -107,7 +107,7 @@ public class AdminInstitutionController {
     @PutMapping("/{id}/region")
     @Operation(summary = "更新机构地区")
     public ApiResponse<Institution> updateRegion(@PathVariable Long id, @RequestParam String region) {
-        requireOpsRole();
+        requireCommitteeOrOps();
         com.trae.pinguan.web.dto.InstitutionUpdateRequest req = new com.trae.pinguan.web.dto.InstitutionUpdateRequest();
         req.setRegion(region);
         return ApiResponse.ok(institutionService.update(id, req));

@@ -85,13 +85,13 @@ public class AdminRegistrationController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "删除报名（仅OPS）", description = "级联删除报名及所有关联数据，仅供测试数据清理")
+    @Operation(summary = "删除报名（OPS或委员会管理员）", description = "级联删除报名及所有关联数据")
     public ApiResponse<String> deleteRegistration(
             @Parameter(description = "报名ID", required = true) @PathVariable Long id,
             HttpServletRequest request) {
         String role = (String) request.getAttribute("role");
-        if (!RoleType.OPS.name().equals(role)) {
-            return ApiResponse.fail("仅系统运维可操作");
+        if (!RoleType.OPS.name().equals(role) && !RoleType.COMMITTEE_ADMIN.name().equals(role)) {
+            return ApiResponse.fail("无权限");
         }
         try {
             registrationService.deleteRegistration(id);
