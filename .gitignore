@@ -42,3 +42,8 @@ __pycache__/
 scripts/db_config.py
 application.yml
 src/main/resources/application.yml
+
+# Sensitive data files - never commit
+scripts/insert_experts.sql
+scripts/expert_passwords.json
+scripts/shen_guo_pwd.json
