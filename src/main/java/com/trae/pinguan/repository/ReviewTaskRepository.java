@@ -17,7 +17,6 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
     List<ReviewTask> findByReviewerId(@Param("reviewerId") Long reviewerId);
     
     List<ReviewTask> findByReviewerIdAndStage(Long reviewerId, ReviewStage stage);
-    List<ReviewTask> findByStageAndStatus(ReviewStage stage, ReviewStatus status);
     List<ReviewTask> findByStageAndRegistrationCompetitionId(ReviewStage stage, Long competitionId);
     List<ReviewTask> findByStageAndStatusAndRegistrationCompetitionId(ReviewStage stage, ReviewStatus status, Long competitionId);
 
