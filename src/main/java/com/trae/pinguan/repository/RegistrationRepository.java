@@ -28,13 +28,14 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
                                                 @Param("institutionId") Long institutionId);
 
     @Query(value = "select new com.trae.pinguan.web.dto.RegistrationFilterItem(" +
-            "r.id, r.projectName, i.name, i.level, r.groupType, r.groupCode, r.submittedAt, " +
+            "r.id, r.projectName, i.name, i.level, r.groupType, r.groupCode, r.status, r.submittedAt, " +
             "a.subjectTypeCode, a.methodCode, '', '', r.applicant.name) " +
             "from Registration r " +
             "join r.institution i " +
             "left join ActivityInfo a on a.registration = r " +
             "where r.competition.id = :competitionId " +
-            "and r.status = 'SUBMITTED' " +
+            "and r.status <> com.trae.pinguan.domain.enums.RegistrationStatus.DRAFT " +
+            "and (:status is null or r.status = :status) " +
             "and (:groupType is null or r.groupType = :groupType) " +
             "and (:groupCode is null or r.groupCode = :groupCode) " +
             "and (:projectName is null or r.projectName like concat('%', :projectName, '%')) " +
@@ -49,7 +50,8 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
             "join r.institution i " +
             "left join ActivityInfo a on a.registration = r " +
             "where r.competition.id = :competitionId " +
-            "and r.status = 'SUBMITTED' " +
+            "and r.status <> com.trae.pinguan.domain.enums.RegistrationStatus.DRAFT " +
+            "and (:status is null or r.status = :status) " +
             "and (:groupType is null or r.groupType = :groupType) " +
             "and (:groupCode is null or r.groupCode = :groupCode) " +
             "and (:projectName is null or r.projectName like concat('%', :projectName, '%')) " +
@@ -60,6 +62,7 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
             "(:hasPaymentProof = true and exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')) or " +
             "(:hasPaymentProof = false and not exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')))")
     Page<RegistrationFilterItem> filterRegistrations(@Param("competitionId") Long competitionId,
+                                                     @Param("status") RegistrationStatus status,
                                                      @Param("groupType") GroupType groupType,
                                                      @Param("groupCode") String groupCode,
                                                      @Param("projectName") String projectName,

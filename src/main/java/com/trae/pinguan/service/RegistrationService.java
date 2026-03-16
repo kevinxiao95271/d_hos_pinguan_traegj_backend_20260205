@@ -371,6 +371,7 @@ public class RegistrationService {
     }
 
     public Page<RegistrationFilterItem> filterRegistrations(Long competitionId,
+                                                            com.trae.pinguan.domain.enums.RegistrationStatus status,
                                                             com.trae.pinguan.domain.enums.GroupType groupType,
                                                             String groupCode,
                                                             String projectName,
@@ -389,6 +390,7 @@ public class RegistrationService {
         PageRequest pageable = PageRequest.of(Math.max(0, page - 1), size, Sort.by(Sort.Direction.ASC, "id"));
         Page<RegistrationFilterItem> pageResult = registrationRepository.filterRegistrations(
                 competitionId,
+                status,
                 groupType,
                 groupCodeValue,
                 projectNameValue,

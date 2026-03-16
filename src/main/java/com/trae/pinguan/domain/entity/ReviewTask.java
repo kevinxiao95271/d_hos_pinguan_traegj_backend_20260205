@@ -43,4 +43,7 @@ public class ReviewTask {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column
+    private LocalDateTime updatedAt;
 }

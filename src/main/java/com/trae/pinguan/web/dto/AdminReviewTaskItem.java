@@ -19,6 +19,7 @@ public class AdminReviewTaskItem {
     private ReviewStage stage;
     private ReviewStatus status;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     
     // 报名信息
     private Long registrationId;

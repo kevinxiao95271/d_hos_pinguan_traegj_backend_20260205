@@ -1,6 +1,7 @@
 package com.trae.pinguan.web.dto;
 
 import com.trae.pinguan.domain.enums.GroupType;
+import com.trae.pinguan.domain.enums.RegistrationStatus;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ public class RegistrationFilterItem {
     private String institutionLevel;
     private GroupType groupType;
     private String groupCode;
+    private RegistrationStatus status;
     private LocalDateTime submittedAt;
     private String subjectTypeCode;
     private String methodCode;
@@ -31,7 +33,8 @@ public class RegistrationFilterItem {
     
     public RegistrationFilterItem(Long registrationId, String projectName, String institutionName,
                                   String institutionLevel, GroupType groupType, String groupCode,
-                                  LocalDateTime submittedAt, String subjectTypeCode, String methodCode,
+                                  RegistrationStatus status, LocalDateTime submittedAt,
+                                  String subjectTypeCode, String methodCode,
                                   String subjectTypeLabel, String methodLabel, String applicantName) {
         this.id = registrationId;
         this.registrationId = registrationId;
@@ -40,6 +43,7 @@ public class RegistrationFilterItem {
         this.institutionLevel = institutionLevel;
         this.groupType = groupType;
         this.groupCode = groupCode;
+        this.status = status;
         this.submittedAt = submittedAt;
         this.subjectTypeCode = subjectTypeCode;
         this.methodCode = methodCode;

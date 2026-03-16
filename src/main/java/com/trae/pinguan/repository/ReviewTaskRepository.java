@@ -27,7 +27,8 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
            "LEFT JOIN FETCH r.institution " +
            "LEFT JOIN FETCH rt.reviewer rv " +
            "LEFT JOIN FETCH rv.institution " +
-           "WHERE rt.stage = :stage AND r.competition.id = :competitionId")
+           "WHERE rt.stage = :stage AND r.competition.id = :competitionId " +
+           "ORDER BY COALESCE(rt.updatedAt, rt.createdAt) DESC")
     List<ReviewTask> findWithDetailsByStageAndCompetitionId(
             @Param("stage") ReviewStage stage,
             @Param("competitionId") Long competitionId);
@@ -37,7 +38,8 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
            "LEFT JOIN FETCH r.institution " +
            "LEFT JOIN FETCH rt.reviewer rv " +
            "LEFT JOIN FETCH rv.institution " +
-           "WHERE rt.stage = :stage AND rt.status = :status AND r.competition.id = :competitionId")
+           "WHERE rt.stage = :stage AND rt.status = :status AND r.competition.id = :competitionId " +
+           "ORDER BY COALESCE(rt.updatedAt, rt.createdAt) DESC")
     List<ReviewTask> findWithDetailsByStageAndStatusAndCompetitionId(
             @Param("stage") ReviewStage stage,
             @Param("status") ReviewStatus status,

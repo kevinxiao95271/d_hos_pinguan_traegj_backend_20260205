@@ -67,12 +67,14 @@ public class ReviewService {
         if (currentLoad >= maxLoad) {
             throw new IllegalArgumentException("评审负荷已满");
         }
+        LocalDateTime now = LocalDateTime.now();
         ReviewTask task = ReviewTask.builder()
                 .registration(registration)
                 .reviewer(reviewer)
                 .stage(request.getStage())
                 .status(ReviewStatus.PENDING)
-                .createdAt(LocalDateTime.now())
+                .createdAt(now)
+                .updatedAt(now)
                 .build();
         return reviewTaskRepository.save(task);
     }
@@ -82,6 +84,7 @@ public class ReviewService {
         ReviewTask task = reviewTaskRepository.findById(request.getReviewTaskId())
                 .orElseThrow(() -> new IllegalArgumentException("评审任务不存在"));
         task.setStatus(request.getStatus());
+        task.setUpdatedAt(LocalDateTime.now());
         return reviewTaskRepository.save(task);
     }
 
@@ -129,6 +132,7 @@ public class ReviewService {
                             .stage(task.getStage())
                             .status(task.getStatus())
                             .createdAt(task.getCreatedAt())
+                            .updatedAt(task.getUpdatedAt())
                             // 报名信息
                             .registrationId(reg != null ? reg.getId() : null)
                             .projectName(reg != null ? reg.getProjectName() : null)

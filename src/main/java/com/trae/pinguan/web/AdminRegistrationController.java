@@ -42,6 +42,7 @@ public class AdminRegistrationController {
     @GetMapping("/filter")
     @Operation(summary = "后台报名筛选（分页，page从1开始）")
     public ApiResponse<PageResult<RegistrationFilterItem>> filter(@RequestParam Long competitionId,
+                                                                  @RequestParam(required = false) com.trae.pinguan.domain.enums.RegistrationStatus status,
                                                                   @RequestParam(required = false) com.trae.pinguan.domain.enums.GroupType groupType,
                                                                   @RequestParam(required = false) String groupCode,
                                                                   @RequestParam(required = false) String projectName,
@@ -53,6 +54,7 @@ public class AdminRegistrationController {
                                                                   @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.ok(PageResult.of(registrationService.filterRegistrations(
                 competitionId,
+                status,
                 groupType,
                 groupCode,
                 projectName,
