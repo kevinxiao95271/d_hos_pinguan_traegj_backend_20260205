@@ -505,19 +505,48 @@ public class RegistrationService {
         }
     }
 
+    private static final java.util.Set<String> VALID_PREFIXES =
+            java.util.Collections.unmodifiableSet(new java.util.HashSet<>(java.util.Arrays.asList("A", "B", "C")));
+
     @Transactional
     public List<Registration> autoGroup(AutoGroupRequest request) {
+        // ── 前缀校验与推导 ──────────────────────────────────────────────────────
+        String resolvedPrefix;
+        if (request.getGroupPrefix() != null) {
+            String p = request.getGroupPrefix().trim().toUpperCase();
+            if (!VALID_PREFIXES.contains(p)) {
+                throw new IllegalArgumentException(
+                        "groupPrefix 非法：'" + request.getGroupPrefix() + "'，只允许 A（基层组）/ B（综合组）/ C（进阶组）");
+            }
+            if (request.getGroupType() != null) {
+                String expected = groupTypeToPrefix(request.getGroupType());
+                if (!p.equals(expected)) {
+                    throw new IllegalArgumentException(
+                            "groupPrefix '" + p + "' 与 groupType " + groupTypeLabel(request.getGroupType())
+                            + " 不匹配，应为 '" + expected + "'");
+                }
+            }
+            resolvedPrefix = p;
+        } else {
+            if (request.getGroupType() == null) {
+                throw new IllegalArgumentException(
+                        "groupType 与 groupPrefix 不能同时为空，请至少指定其中一个");
+            }
+            resolvedPrefix = groupTypeToPrefix(request.getGroupType());
+        }
+
+        // ── 查询报名记录 ────────────────────────────────────────────────────────
         List<Registration> registrations = request.getStatus() == null
                 ? registrationRepository.findByCompetitionId(request.getCompetitionId())
                 : registrationRepository.findByCompetitionIdAndStatus(request.getCompetitionId(), request.getStatus());
-        
-        // 如果指定了 groupType，只处理该组别的报名
+
         if (request.getGroupType() != null) {
             registrations = registrations.stream()
                     .filter(r -> r.getGroupType() == request.getGroupType())
                     .collect(java.util.stream.Collectors.toList());
         }
-        
+
+        // ── 分组编号 ────────────────────────────────────────────────────────────
         registrations.sort(java.util.Comparator.comparing(Registration::getId));
         int groupSize = request.getGroupSize();
         int groupIndex = 1;
@@ -527,7 +556,7 @@ public class RegistrationService {
                 groupIndex += 1;
                 counter = 0;
             }
-            registration.setGroupCode(request.getGroupPrefix() + groupIndex);
+            registration.setGroupCode(resolvedPrefix + groupIndex);
             counter += 1;
         }
         return registrationRepository.saveAll(registrations);
