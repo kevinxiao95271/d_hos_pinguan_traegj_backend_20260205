@@ -162,9 +162,7 @@ public class ReviewService {
                 .orElse(20);
 
         List<Registration> registrations = registrationRepository.findByCompetitionId(request.getCompetitionId());
-        List<UserAccount> reviewers = userAccountRepository.findAll().stream()
-                .filter(user -> user.getRole() == com.trae.pinguan.domain.enums.RoleType.REVIEWER)
-                .collect(Collectors.toList());
+        List<UserAccount> reviewers = userAccountRepository.findByRoleWithInstitution(com.trae.pinguan.domain.enums.RoleType.REVIEWER);
 
         Map<Long, Integer> reviewerLoad = new HashMap<>();
         for (UserAccount reviewer : reviewers) {
