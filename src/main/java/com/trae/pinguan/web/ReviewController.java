@@ -1,5 +1,6 @@
 package com.trae.pinguan.web;
 
+import com.trae.pinguan.domain.entity.InterviewScore;
 import com.trae.pinguan.domain.entity.Registration;
 import com.trae.pinguan.domain.entity.ReviewScore;
 import com.trae.pinguan.domain.entity.ReviewTask;
@@ -8,6 +9,7 @@ import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.domain.enums.ReviewStatus;
 import com.trae.pinguan.service.ReviewService;
 import com.trae.pinguan.web.dto.ApiResponse;
+import com.trae.pinguan.web.dto.InterviewScoreRequest;
 import com.trae.pinguan.web.dto.ReviewAutoAssignRequest;
 import com.trae.pinguan.web.dto.ReviewRankingItem;
 import com.trae.pinguan.web.dto.ReviewScoreRequest;
@@ -136,5 +138,20 @@ public class ReviewController {
                                                          @RequestParam ReviewStage stage,
                                                          @RequestParam(required = false) GroupType groupType) {
         return ApiResponse.ok(reviewService.rankingByStage(competitionId, stage, groupType));
+    }
+
+    @PostMapping("/interview-scores")
+    @Operation(summary = "提交面谈评分（评委端）")
+    public ApiResponse<InterviewScore> submitInterviewScore(
+            @Valid @RequestBody InterviewScoreRequest req) {
+        return ApiResponse.ok(reviewService.submitInterviewScore(req));
+    }
+
+    @GetMapping("/interview-scores/{reviewTaskId}")
+    @Operation(summary = "查询面谈评分详情")
+    public ApiResponse<InterviewScore> getInterviewScore(@PathVariable Long reviewTaskId) {
+        return reviewService.getInterviewScore(reviewTaskId)
+                .map(ApiResponse::ok)
+                .orElseGet(() -> ApiResponse.fail("面谈评分不存在"));
     }
 }

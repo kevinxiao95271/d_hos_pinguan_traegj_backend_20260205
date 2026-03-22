@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.trae.pinguan.domain.enums.GroupType;
 import com.trae.pinguan.domain.enums.RegistrationStatus;
+import com.trae.pinguan.domain.enums.ShortlistOverride;
 import java.time.LocalDateTime;
 import javax.persistence.*;
 import lombok.AllArgsConstructor;
@@ -56,4 +57,11 @@ public class Registration {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private ShortlistOverride shortlistOverride;
+
+    @Column(length = 200)
+    private String shortlistNote;
 }

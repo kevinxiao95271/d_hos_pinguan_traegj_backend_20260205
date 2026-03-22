@@ -1,17 +1,22 @@
 package com.trae.pinguan.service;
 
+import com.trae.pinguan.domain.entity.InterviewScore;
 import com.trae.pinguan.domain.entity.Registration;
 import com.trae.pinguan.domain.entity.ReviewScore;
 import com.trae.pinguan.domain.entity.ReviewTask;
+import com.trae.pinguan.domain.entity.ScoringSnapshot;
 import com.trae.pinguan.domain.entity.UserAccount;
 import com.trae.pinguan.domain.enums.GroupType;
 import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.domain.enums.ReviewStatus;
+import com.trae.pinguan.repository.InterviewScoreRepository;
 import com.trae.pinguan.repository.RegistrationRepository;
 import com.trae.pinguan.repository.ReviewScoreRepository;
 import com.trae.pinguan.repository.ReviewTaskRepository;
+import com.trae.pinguan.repository.ScoringSnapshotRepository;
 import com.trae.pinguan.repository.SystemSettingRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
+import com.trae.pinguan.web.dto.InterviewScoreRequest;
 import com.trae.pinguan.web.dto.ReviewFeedbackItem;
 import com.trae.pinguan.web.dto.ReviewRankingItem;
 import com.trae.pinguan.web.dto.ReviewAutoAssignRequest;
@@ -24,12 +29,15 @@ import com.trae.pinguan.web.dto.ReviewTaskStatusRequest;
 import com.trae.pinguan.web.dto.ReviewScoreReturnRequest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +49,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReviewService {
     private final ReviewTaskRepository reviewTaskRepository;
     private final ReviewScoreRepository reviewScoreRepository;
+    private final InterviewScoreRepository interviewScoreRepository;
+    private final ScoringSnapshotRepository scoringSnapshotRepository;
     private final RegistrationRepository registrationRepository;
     private final UserAccountRepository userAccountRepository;
     private final SystemSettingRepository systemSettingRepository;
@@ -325,7 +335,7 @@ public class ReviewService {
                 .collect(Collectors.groupingBy(ReviewTask::getStage));
         List<ReviewResultItem> results = new ArrayList<>();
         for (ReviewStage stage : ReviewStage.values()) {
-            List<ReviewTask> tasks = tasksByStage.getOrDefault(stage, java.util.Collections.emptyList());
+            List<ReviewTask> tasks = tasksByStage.getOrDefault(stage, Collections.emptyList());
             int taskCount = tasks.size();
             int scoredCount = 0;
             int totalSum = 0;
@@ -359,7 +369,7 @@ public class ReviewService {
                 .collect(Collectors.groupingBy(ReviewTask::getStage));
         List<ReviewStageScoreSummary> results = new ArrayList<>();
         for (ReviewStage stage : ReviewStage.values()) {
-            List<ReviewTask> tasks = tasksByStage.getOrDefault(stage, java.util.Collections.emptyList());
+            List<ReviewTask> tasks = tasksByStage.getOrDefault(stage, Collections.emptyList());
             int taskCount = tasks.size();
             int scoredCount = 0;
             double planSum = 0, problemSum = 0, actionSum = 0, successSum = 0,
@@ -532,17 +542,505 @@ public class ReviewService {
         List<ReviewRankingItem> ranking = new ArrayList<>();
         int rank = 1;
         for (ReviewSummaryItem item : filtered) {
-            ranking.add(new ReviewRankingItem(
-                    rank++,
-                    item.getRegistrationId(),
-                    item.getProjectName(),
-                    item.getInstitutionName(),
-                    item.getGroupType(),
-                    item.getStage(),
-                    item.getAvgTotal()
-            ));
+            ranking.add(ReviewRankingItem.builder()
+                    .irank(rank++)
+                    .registrationId(item.getRegistrationId())
+                    .projectName(item.getProjectName())
+                    .institutionName(item.getInstitutionName())
+                    .groupType(item.getGroupType())
+                    .stage(item.getStage())
+                    .avgTotal(item.getAvgTotal())
+                    .build());
         }
         return ranking;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // 面谈评分
+    // ─────────────────────────────────────────────────────────
+
+    @Transactional
+    public InterviewScore submitInterviewScore(InterviewScoreRequest request) {
+        ReviewTask task = reviewTaskRepository.findById(request.getReviewTaskId())
+                .orElseThrow(() -> new IllegalArgumentException("评审任务不存在"));
+        if (task.getStage() != ReviewStage.INTERVIEW) {
+            throw new IllegalArgumentException("该任务不属于面谈阶段");
+        }
+        double total = request.getTopic() + request.getProcess()
+                + request.getOperation() + request.getResult();
+        InterviewScore score = interviewScoreRepository.findByReviewTaskId(task.getId())
+                .orElse(InterviewScore.builder().reviewTask(task).build());
+        score.setTopic(request.getTopic());
+        score.setProcess(request.getProcess());
+        score.setOperation(request.getOperation());
+        score.setResult(request.getResult());
+        score.setTotal(total);
+        score.setHighlight(request.getHighlight());
+        score.setWeakness(request.getWeakness());
+        score.setSubmittedAt(LocalDateTime.now());
+        InterviewScore saved = interviewScoreRepository.save(score);
+        task.setStatus(ReviewStatus.SCORED);
+        task.setUpdatedAt(LocalDateTime.now());
+        reviewTaskRepository.save(task);
+        return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<InterviewScore> getInterviewScore(Long reviewTaskId) {
+        return interviewScoreRepository.findByReviewTaskId(reviewTaskId);
+    }
+
+    @Transactional
+    public void returnInterviewScore(Long reviewTaskId) {
+        ReviewTask task = reviewTaskRepository.findById(reviewTaskId)
+                .orElseThrow(() -> new IllegalArgumentException("评审任务不存在"));
+        if (task.getStatus() != ReviewStatus.SCORED) {
+            throw new IllegalArgumentException("评审未完成，无需退回");
+        }
+        String publishKey = "publish_" + task.getRegistration().getCompetition().getId()
+                + "_" + task.getStage().name();
+        boolean published = systemSettingRepository.findBySettingKey(publishKey)
+                .map(s -> "true".equalsIgnoreCase(s.getSettingValue()))
+                .orElse(false);
+        if (published) {
+            throw new IllegalArgumentException("已公布，无法退回");
+        }
+        interviewScoreRepository.findByReviewTaskId(task.getId())
+                .ifPresent(interviewScoreRepository::delete);
+        task.setStatus(ReviewStatus.RETURNED);
+        task.setUpdatedAt(LocalDateTime.now());
+        reviewTaskRepository.save(task);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> interviewSummaryByCompetition(Long competitionId) {
+        List<ReviewTask> tasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(
+                ReviewStage.INTERVIEW, competitionId);
+        Set<Long> scoredIds = tasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .map(ReviewTask::getId)
+                .collect(Collectors.toSet());
+        Map<Long, InterviewScore> scoreMap = new HashMap<>();
+        if (!scoredIds.isEmpty()) {
+            interviewScoreRepository.findByReviewTaskIdIn(scoredIds)
+                    .forEach(s -> scoreMap.put(s.getReviewTaskId(), s));
+        }
+
+        // 按 registrationId 聚合
+        Map<Long, Map<String, Object>> byReg = new java.util.LinkedHashMap<>();
+        for (ReviewTask task : tasks) {
+            Long regId = task.getRegistration().getId();
+            Map<String, Object> item = byReg.computeIfAbsent(regId, id -> {
+                Map<String, Object> m = new java.util.LinkedHashMap<>();
+                m.put("registrationId", id);
+                m.put("projectName", task.getRegistration().getProjectName());
+                m.put("institutionName", task.getRegistration().getInstitution() != null
+                        ? task.getRegistration().getInstitution().getName() : null);
+                m.put("groupCode", task.getRegistration().getGroupCode());
+                m.put("reviewerScores", new ArrayList<>());
+                return m;
+            });
+
+            InterviewScore score = scoreMap.get(task.getId());
+            Map<String, Object> reviewerScore = new HashMap<>();
+            reviewerScore.put("reviewerId", task.getReviewer() != null ? task.getReviewer().getId() : null);
+            reviewerScore.put("reviewerName", task.getReviewer() != null ? task.getReviewer().getName() : null);
+            reviewerScore.put("status", task.getStatus().name());
+            if (score != null) {
+                reviewerScore.put("topic", score.getTopic());
+                reviewerScore.put("process", score.getProcess());
+                reviewerScore.put("operation", score.getOperation());
+                reviewerScore.put("result", score.getResult());
+                reviewerScore.put("total", score.getTotal());
+            }
+            ((List<Map<String, Object>>) item.get("reviewerScores")).add(reviewerScore);
+        }
+
+        // 计算每个项目的均分
+        for (Map<String, Object> item : byReg.values()) {
+            List<Map<String, Object>> scores = (List<Map<String, Object>>) item.get("reviewerScores");
+            OptionalDouble avg = scores.stream()
+                    .filter(s -> s.containsKey("total"))
+                    .mapToDouble(s -> (Double) s.get("total"))
+                    .average();
+            item.put("avgTotal", avg.isPresent() ? avg.getAsDouble() : null);
+        }
+        return new ArrayList<>(byReg.values());
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // 系数调整排名计算（书审 / 面谈 / 决赛通用）
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * 计算系数调整排名并持久化到 scoring_snapshots。
+     * 逻辑：
+     *   An = 小组内所有个人打分的均值（去除 <65 和 >95 的分数）
+     *   B  = 全大组内所有个人打分的均值（去除 <65 和 >95 的分数）
+     *   Cn = An / B（无效时取 1.0）
+     *   D  = 项目原始均分 / Cn
+     */
+    @Transactional
+    public List<ScoringSnapshot> computeAndSaveRanking(Long competitionId, ReviewStage stage, GroupType filterGroupType) {
+        // 1. 取该赛事该阶段的所有任务（带关联数据）
+        List<ReviewTask> allTasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
+
+        // 2. 获取各任务的原始分数（按阶段路由到对应表）
+        Map<Long, Double> taskScores = getRawScoresByStage(stage, allTasks);
+
+        // 3. 确定需要处理的 groupType 列表
+        List<GroupType> groupTypes = filterGroupType != null
+                ? Collections.singletonList(filterGroupType)
+                : Arrays.asList(GroupType.values());
+
+        // 4. 删除旧快照（本次重新计算的范围）
+        if (filterGroupType != null) {
+            scoringSnapshotRepository.deleteByCompetitionIdAndStageAndGroupType(competitionId, stage, filterGroupType);
+        } else {
+            scoringSnapshotRepository.deleteByCompetitionIdAndStage(competitionId, stage);
+        }
+
+        List<ScoringSnapshot> saved = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (GroupType groupType : groupTypes) {
+            // 5a. 进阶组 + 面谈阶段：走合分逻辑
+            if (groupType == GroupType.ADVANCED && stage == ReviewStage.INTERVIEW) {
+                List<ScoringSnapshot> advSnaps = computeAdvancedCombinedRanking(
+                        competitionId, allTasks, taskScores, now);
+                saved.addAll(advSnaps);
+                continue;
+            }
+
+            // 5. 过滤出该 groupType 的已打分任务
+            List<ReviewTask> groupTypeTasks = allTasks.stream()
+                    .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                    .filter(t -> t.getRegistration() != null
+                            && t.getRegistration().getGroupType() == groupType)
+                    .collect(Collectors.toList());
+            if (groupTypeTasks.isEmpty()) {
+                continue;
+            }
+
+            // 6. 计算全大组均分 B（去极值）
+            List<Double> allScoresForB = groupTypeTasks.stream()
+                    .map(t -> taskScores.get(t.getId()))
+                    .filter(s -> s != null && s >= 65 && s <= 95)
+                    .collect(Collectors.toList());
+            double overallAvg = allScoresForB.isEmpty() ? 0.0
+                    : allScoresForB.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+
+            // 7. 按 groupCode 分组，计算各小组均分 An 及系数 Cn
+            Map<String, List<ReviewTask>> byGroupCode = groupTypeTasks.stream()
+                    .collect(Collectors.groupingBy(t -> {
+                        String gc = t.getRegistration().getGroupCode();
+                        return gc != null ? gc : "__NONE__";
+                    }));
+            Map<String, Double> groupCoefficients = new HashMap<>();
+            Map<String, Double> groupAvgs = new HashMap<>();
+            for (Map.Entry<String, List<ReviewTask>> entry : byGroupCode.entrySet()) {
+                String gc = entry.getKey();
+                List<Double> groupScores = entry.getValue().stream()
+                        .map(t -> taskScores.get(t.getId()))
+                        .filter(s -> s != null && s >= 65 && s <= 95)
+                        .collect(Collectors.toList());
+                double groupAvg = groupScores.isEmpty() ? overallAvg
+                        : groupScores.stream().mapToDouble(Double::doubleValue).average().orElse(overallAvg);
+                groupAvgs.put(gc, groupAvg);
+                double cn = (overallAvg > 0) ? groupAvg / overallAvg : 1.0;
+                groupCoefficients.put(gc, cn);
+            }
+
+            // 8. 按 registrationId 分组，计算项目原始均分和调整后分数
+            Map<Long, List<ReviewTask>> byRegistration = groupTypeTasks.stream()
+                    .collect(Collectors.groupingBy(t -> t.getRegistration().getId()));
+
+            List<ScoringSnapshot> groupSnapshots = new ArrayList<>();
+            for (Map.Entry<Long, List<ReviewTask>> entry : byRegistration.entrySet()) {
+                Long registrationId = entry.getKey();
+                List<ReviewTask> regTasks = entry.getValue();
+                Registration reg = regTasks.get(0).getRegistration();
+
+                List<Double> scores = regTasks.stream()
+                        .map(t -> taskScores.get(t.getId()))
+                        .filter(s -> s != null)
+                        .collect(Collectors.toList());
+                if (scores.isEmpty()) {
+                    continue;
+                }
+                double rawAvg = scores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+
+                String gc = reg.getGroupCode() != null ? reg.getGroupCode() : "__NONE__";
+                double cn = groupCoefficients.getOrDefault(gc, 1.0);
+                double groupAvgVal = groupAvgs.getOrDefault(gc, overallAvg);
+                double adjustedScore = cn > 0 ? rawAvg / cn : rawAvg;
+
+                groupSnapshots.add(ScoringSnapshot.builder()
+                        .competitionId(competitionId)
+                        .registrationId(registrationId)
+                        .stage(stage)
+                        .groupCode(reg.getGroupCode())
+                        .groupType(groupType)
+                        .rawAvg(rawAvg)
+                        .groupAvg(groupAvgVal)
+                        .overallAvg(overallAvg)
+                        .coefficient(cn)
+                        .adjustedScore(adjustedScore)
+                        .calculatedAt(now)
+                        .build());
+            }
+
+            // 9. 按调整后分数降序排名
+            groupSnapshots.sort(Comparator.comparing(ScoringSnapshot::getAdjustedScore).reversed());
+            for (int i = 0; i < groupSnapshots.size(); i++) {
+                groupSnapshots.get(i).setIrank(i + 1);
+            }
+            saved.addAll(scoringSnapshotRepository.saveAll(groupSnapshots));
+        }
+        return saved;
+    }
+
+    /**
+     * 进阶组面谈阶段合分：书审调整分 × bookWeight + 面谈调整分 × interviewWeight。
+     * 支持两种模式（系统设置 advanced_ranking_mode）：
+     *   ADJUST_THEN_WEIGHT：各阶段分别系数调整后加权（默认）
+     *   WEIGHT_THEN_ADJUST：先用原始分加权，再对加权分整体做系数调整
+     */
+    private List<ScoringSnapshot> computeAdvancedCombinedRanking(
+            Long competitionId,
+            List<ReviewTask> allInterviewTasks,
+            Map<Long, Double> interviewTaskScores,
+            LocalDateTime now) {
+
+        double bookWeight = Double.parseDouble(
+                systemSettingRepository.findBySettingKey("advanced_book_weight")
+                        .map(s -> s.getSettingValue()).orElse("0.4"));
+        double interviewWeight = Double.parseDouble(
+                systemSettingRepository.findBySettingKey("advanced_interview_weight")
+                        .map(s -> s.getSettingValue()).orElse("0.6"));
+        String mode = systemSettingRepository.findBySettingKey("advanced_ranking_mode")
+                .map(s -> s.getSettingValue()).orElse("ADJUST_THEN_WEIGHT");
+
+        // 取进阶组面谈已打分任务
+        List<ReviewTask> advTasks = allInterviewTasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .filter(t -> t.getRegistration() != null
+                        && t.getRegistration().getGroupType() == GroupType.ADVANCED)
+                .collect(Collectors.toList());
+        if (advTasks.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 按项目分组，计算面谈原始均分
+        Map<Long, List<ReviewTask>> byReg = advTasks.stream()
+                .collect(Collectors.groupingBy(t -> t.getRegistration().getId()));
+
+        Map<Long, Double> interviewRawAvg = new HashMap<>();
+        Map<Long, Registration> regMap = new HashMap<>();
+        for (Map.Entry<Long, List<ReviewTask>> e : byReg.entrySet()) {
+            Registration reg = e.getValue().get(0).getRegistration();
+            regMap.put(e.getKey(), reg);
+            List<Double> scores = e.getValue().stream()
+                    .map(t -> interviewTaskScores.get(t.getId()))
+                    .filter(s -> s != null).collect(Collectors.toList());
+            if (!scores.isEmpty()) {
+                interviewRawAvg.put(e.getKey(), scores.stream()
+                        .mapToDouble(Double::doubleValue).average().orElse(0));
+            }
+        }
+
+        // 读书审快照（BOOK + ADVANCED）
+        List<ScoringSnapshot> bookSnaps = scoringSnapshotRepository
+                .findByCompetitionIdAndStageAndGroupTypeOrderByIrankAsc(
+                        competitionId, ReviewStage.BOOK, GroupType.ADVANCED);
+        Map<Long, Double> bookAdjusted = bookSnaps.stream()
+                .filter(s -> s.getAdjustedScore() != null)
+                .collect(Collectors.toMap(ScoringSnapshot::getRegistrationId,
+                        ScoringSnapshot::getAdjustedScore, (a, b) -> a));
+        Map<Long, Double> bookRawAvgMap = bookSnaps.stream()
+                .filter(s -> s.getRawAvg() != null)
+                .collect(Collectors.toMap(ScoringSnapshot::getRegistrationId,
+                        ScoringSnapshot::getRawAvg, (a, b) -> a));
+
+        List<ScoringSnapshot> result = new ArrayList<>();
+
+        if ("WEIGHT_THEN_ADJUST".equalsIgnoreCase(mode)) {
+            // 先加权原始分，再整体系数调整（用面谈 groupCode）
+            Map<Long, Double> combinedRaw = new HashMap<>();
+            for (Long regId : interviewRawAvg.keySet()) {
+                double iRaw = interviewRawAvg.get(regId);
+                double bRaw = bookRawAvgMap.getOrDefault(regId, iRaw); // 若无书审数据则用面谈分
+                combinedRaw.put(regId, bRaw * bookWeight + iRaw * interviewWeight);
+            }
+
+            // 全组均值 B（去极值 65~95，但合分可能超出范围，此处不去极值）
+            double overallAvg = combinedRaw.values().stream()
+                    .mapToDouble(Double::doubleValue).average().orElse(0);
+
+            // 按面谈 groupCode 分小组均值 An
+            Map<String, List<Long>> gcToRegs = new HashMap<>();
+            for (Long regId : combinedRaw.keySet()) {
+                String gc = Optional.ofNullable(regMap.get(regId))
+                        .map(Registration::getGroupCode).orElse("__NONE__");
+                gcToRegs.computeIfAbsent(gc, k -> new ArrayList<>()).add(regId);
+            }
+            Map<String, Double> gcAvg = new HashMap<>();
+            for (Map.Entry<String, List<Long>> e : gcToRegs.entrySet()) {
+                double avg = e.getValue().stream()
+                        .mapToDouble(id -> combinedRaw.getOrDefault(id, 0.0))
+                        .average().orElse(overallAvg);
+                gcAvg.put(e.getKey(), avg);
+            }
+
+            for (Long regId : combinedRaw.keySet()) {
+                Registration reg = regMap.get(regId);
+                String gc = reg != null && reg.getGroupCode() != null
+                        ? reg.getGroupCode() : "__NONE__";
+                double an = gcAvg.getOrDefault(gc, overallAvg);
+                double cn = overallAvg > 0 ? an / overallAvg : 1.0;
+                double raw = combinedRaw.get(regId);
+                double d = cn > 0 ? raw / cn : raw;
+                result.add(ScoringSnapshot.builder()
+                        .competitionId(competitionId)
+                        .registrationId(regId)
+                        .stage(ReviewStage.INTERVIEW)
+                        .groupCode(reg != null ? reg.getGroupCode() : null)
+                        .groupType(GroupType.ADVANCED)
+                        .rawAvg(raw)           // 合权后的原始分
+                        .groupAvg(an)
+                        .overallAvg(overallAvg)
+                        .coefficient(cn)
+                        .adjustedScore(d)
+                        .calculatedAt(now)
+                        .build());
+            }
+        } else {
+            // ADJUST_THEN_WEIGHT（默认）：各阶段分别系数调整后加权
+            // 先算面谈的调整分（复用小组系数逻辑）
+            List<Double> allInterviewScoresForB = advTasks.stream()
+                    .map(t -> interviewTaskScores.get(t.getId()))
+                    .filter(s -> s != null && s >= 65 && s <= 95)
+                    .collect(Collectors.toList());
+            double interviewOverallAvg = allInterviewScoresForB.isEmpty() ? 0
+                    : allInterviewScoresForB.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+
+            Map<String, List<ReviewTask>> byGc = advTasks.stream()
+                    .collect(Collectors.groupingBy(t -> {
+                        String gc = t.getRegistration().getGroupCode();
+                        return gc != null ? gc : "__NONE__";
+                    }));
+            Map<String, Double> gcCoeff = new HashMap<>();
+            Map<String, Double> gcAvg   = new HashMap<>();
+            for (Map.Entry<String, List<ReviewTask>> e : byGc.entrySet()) {
+                List<Double> gs = e.getValue().stream()
+                        .map(t -> interviewTaskScores.get(t.getId()))
+                        .filter(s -> s != null && s >= 65 && s <= 95)
+                        .collect(Collectors.toList());
+                double an = gs.isEmpty() ? interviewOverallAvg
+                        : gs.stream().mapToDouble(Double::doubleValue).average().orElse(interviewOverallAvg);
+                gcAvg.put(e.getKey(), an);
+                gcCoeff.put(e.getKey(), interviewOverallAvg > 0 ? an / interviewOverallAvg : 1.0);
+            }
+
+            for (Long regId : interviewRawAvg.keySet()) {
+                Registration reg = regMap.get(regId);
+                String gc = reg != null && reg.getGroupCode() != null
+                        ? reg.getGroupCode() : "__NONE__";
+                double iRaw = interviewRawAvg.get(regId);
+                double cn   = gcCoeff.getOrDefault(gc, 1.0);
+                double dInterview = cn > 0 ? iRaw / cn : iRaw;
+                double dBook = bookAdjusted.getOrDefault(regId, iRaw); // 无书审快照则用面谈分替代
+                double combined = dBook * bookWeight + dInterview * interviewWeight;
+
+                result.add(ScoringSnapshot.builder()
+                        .competitionId(competitionId)
+                        .registrationId(regId)
+                        .stage(ReviewStage.INTERVIEW)
+                        .groupCode(reg != null ? reg.getGroupCode() : null)
+                        .groupType(GroupType.ADVANCED)
+                        .rawAvg(iRaw)                  // 面谈原始均分
+                        .groupAvg(gcAvg.getOrDefault(gc, interviewOverallAvg))
+                        .overallAvg(interviewOverallAvg)
+                        .coefficient(cn)
+                        .adjustedScore(combined)       // 最终合权分
+                        .calculatedAt(now)
+                        .build());
+            }
+        }
+
+        // 按合权分降序排名
+        result.sort(Comparator.comparing(ScoringSnapshot::getAdjustedScore).reversed());
+        for (int i = 0; i < result.size(); i++) {
+            result.get(i).setIrank(i + 1);
+        }
+        return scoringSnapshotRepository.saveAll(result);
+    }
+
+    /**
+     * 按阶段路由取原始分数（taskId → total）。
+     * 将来新增阶段只需在此方法中加一个 else-if 分支。
+     */
+    private Map<Long, Double> getRawScoresByStage(ReviewStage stage, List<ReviewTask> tasks) {
+        Set<Long> scoredTaskIds = tasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .map(ReviewTask::getId)
+                .collect(Collectors.toSet());
+        if (scoredTaskIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        Map<Long, Double> result = new HashMap<>();
+        if (stage == ReviewStage.BOOK) {
+            reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                    .forEach(s -> result.put(s.getReviewTaskId(), s.getTotal()));
+        } else if (stage == ReviewStage.INTERVIEW) {
+            interviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                    .forEach(s -> result.put(s.getReviewTaskId(), s.getTotal()));
+        }
+        // FINAL: 待 final_scores 表设计完成后在此补充
+        return result;
+    }
+
+    /**
+     * 从快照读取排名列表（触发计算后调用）。
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewRankingItem> rankingFromSnapshot(Long competitionId, ReviewStage stage, GroupType groupType) {
+        List<ScoringSnapshot> snapshots = groupType != null
+                ? scoringSnapshotRepository.findByCompetitionIdAndStageAndGroupTypeOrderByIrankAsc(
+                        competitionId, stage, groupType)
+                : scoringSnapshotRepository.findByCompetitionIdAndStageOrderByIrankAsc(competitionId, stage);
+
+        // 若快照为空则降级到实时均分排名
+        if (snapshots.isEmpty()) {
+            return rankingByStage(competitionId, stage, groupType);
+        }
+
+        // 批量加载项目名称、机构名称
+        Set<Long> regIds = snapshots.stream()
+                .map(ScoringSnapshot::getRegistrationId)
+                .collect(Collectors.toSet());
+        Map<Long, Registration> regMap = registrationRepository.findAllById(regIds).stream()
+                .collect(Collectors.toMap(Registration::getId, r -> r));
+
+        return snapshots.stream().map(s -> {
+            Registration reg = regMap.get(s.getRegistrationId());
+            return ReviewRankingItem.builder()
+                    .irank(s.getIrank())
+                    .registrationId(s.getRegistrationId())
+                    .projectName(reg != null ? reg.getProjectName() : null)
+                    .institutionName(reg != null && reg.getInstitution() != null
+                            ? reg.getInstitution().getName() : null)
+                    .groupType(s.getGroupType())
+                    .groupCode(s.getGroupCode())
+                    .stage(s.getStage())
+                    .avgTotal(s.getRawAvg())
+                    .groupAvg(s.getGroupAvg())
+                    .overallAvg(s.getOverallAvg())
+                    .coefficient(s.getCoefficient())
+                    .adjustedScore(s.getAdjustedScore())
+                    .calculatedAt(s.getCalculatedAt())
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     private static class SummaryAccumulator {

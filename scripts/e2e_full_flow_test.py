@@ -595,7 +595,7 @@ class APITester:
                 top3 = rankings[:3]
                 self.log("前三名:", [
                     {
-                        "rank": r["rank"],
+                        "irank": r["irank"],
                         "projectName": r["projectName"],
                         "avgTotal": r["avgTotal"]
                     } for r in top3

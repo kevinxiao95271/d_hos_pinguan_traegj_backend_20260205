@@ -1,11 +1,13 @@
 package com.trae.pinguan.web;
 
 import com.trae.pinguan.domain.entity.ReviewTask;
+import com.trae.pinguan.domain.entity.ScoringSnapshot;
 import com.trae.pinguan.domain.enums.GroupType;
 import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.domain.enums.ReviewStatus;
 import com.trae.pinguan.service.ReviewService;
 import com.trae.pinguan.web.dto.ApiResponse;
+import com.trae.pinguan.web.dto.ComputeRankingRequest;
 import com.trae.pinguan.web.dto.ReviewAutoAssignRequest;
 import com.trae.pinguan.web.dto.ReviewFeedbackItem;
 import com.trae.pinguan.web.dto.ReviewRankingItem;
@@ -57,12 +59,20 @@ public class AdminReviewController {
         return ApiResponse.ok(reviewService.summaryByStage(competitionId, stage));
     }
 
+    @PostMapping("/compute-ranking")
+    @Operation(summary = "触发系数调整排名计算（结果写入快照表）")
+    public ApiResponse<Integer> computeRanking(@Valid @RequestBody ComputeRankingRequest request) {
+        List<ScoringSnapshot> snapshots = reviewService.computeAndSaveRanking(
+                request.getCompetitionId(), request.getStage(), request.getGroupType());
+        return ApiResponse.ok(snapshots.size());
+    }
+
     @GetMapping("/rankings")
-    @Operation(summary = "后台评分排名")
+    @Operation(summary = "后台评分排名（优先读快照，无快照则实时计算均分）")
     public ApiResponse<List<ReviewRankingItem>> rankings(@RequestParam Long competitionId,
                                                          @RequestParam ReviewStage stage,
                                                          @RequestParam(required = false) GroupType groupType) {
-        return ApiResponse.ok(reviewService.rankingByStage(competitionId, stage, groupType));
+        return ApiResponse.ok(reviewService.rankingFromSnapshot(competitionId, stage, groupType));
     }
 
     @GetMapping("/reviewers")
@@ -99,8 +109,22 @@ public class AdminReviewController {
     }
 
     @PostMapping("/scores/return")
-    @Operation(summary = "后台退回评审评分")
+    @Operation(summary = "后台退回书审评分")
     public ApiResponse<ReviewTask> returnScore(@Valid @RequestBody ReviewScoreReturnRequest request) {
         return ApiResponse.ok(reviewService.returnScore(request));
+    }
+
+    @PostMapping("/interview-scores/return")
+    @Operation(summary = "后台退回面谈评分")
+    public ApiResponse<Void> returnInterviewScore(@RequestParam Long reviewTaskId) {
+        reviewService.returnInterviewScore(reviewTaskId);
+        return ApiResponse.ok(null);
+    }
+
+    @GetMapping("/interview-summary")
+    @Operation(summary = "面谈打分汇总（各评委得分 + 均分）")
+    public ApiResponse<List<java.util.Map<String, Object>>> interviewSummary(
+            @RequestParam Long competitionId) {
+        return ApiResponse.ok(reviewService.interviewSummaryByCompetition(competitionId));
     }
 }
