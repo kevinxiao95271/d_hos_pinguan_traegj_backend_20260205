@@ -494,28 +494,31 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public List<ReviewSummaryItem> summaryByStage(Long competitionId, ReviewStage stage) {
         List<ReviewTask> tasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
-        // 批量加载评分，避免N次单独查询
         Set<Long> scoredTaskIds = tasks.stream()
                 .filter(t -> t.getStatus() == ReviewStatus.SCORED)
                 .map(ReviewTask::getId)
                 .collect(Collectors.toSet());
-        Map<Long, ReviewScore> scoreMap = new HashMap<>();
+
+        // 按阶段路由到正确的评分表
+        Map<Long, Double> totalByTaskId = new HashMap<>();
         if (!scoredTaskIds.isEmpty()) {
-            reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
-                    .forEach(s -> scoreMap.put(s.getReviewTaskId(), s));
+            if (stage == ReviewStage.INTERVIEW) {
+                interviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                        .forEach(s -> totalByTaskId.put(s.getReviewTaskId(), s.getTotal()));
+            } else {
+                reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                        .forEach(s -> totalByTaskId.put(s.getReviewTaskId(), s.getTotal()));
+            }
         }
+
         Map<Long, SummaryAccumulator> accumulators = new HashMap<>();
         for (ReviewTask task : tasks) {
-            if (task.getStatus() != ReviewStatus.SCORED) {
-                continue;
-            }
-            ReviewScore score = scoreMap.get(task.getId());
-            if (score == null) {
-                continue;
-            }
+            if (task.getStatus() != ReviewStatus.SCORED) continue;
+            Double total = totalByTaskId.get(task.getId());
+            if (total == null) continue;
             Long registrationId = task.getRegistration().getId();
             SummaryAccumulator acc = accumulators.computeIfAbsent(registrationId, id -> new SummaryAccumulator(task));
-            acc.add(score.getTotal());
+            acc.add(total);
         }
         List<ReviewSummaryItem> result = new ArrayList<>();
         for (SummaryAccumulator acc : accumulators.values()) {
@@ -795,7 +798,7 @@ public class ReviewService {
             for (int i = 0; i < groupSnapshots.size(); i++) {
                 groupSnapshots.get(i).setIrank(i + 1);
             }
-            saved.addAll(scoringSnapshotRepository.saveAll(groupSnapshots));
+            saved.addAll(saveAllInBatches(groupSnapshots));
         }
         return saved;
     }
@@ -973,7 +976,7 @@ public class ReviewService {
         for (int i = 0; i < result.size(); i++) {
             result.get(i).setIrank(i + 1);
         }
-        return scoringSnapshotRepository.saveAll(result);
+        return saveAllInBatches(result);
     }
 
     /**
@@ -1069,5 +1072,20 @@ public class ReviewService {
             }
             return totalSum / count;
         }
+    }
+
+    /**
+     * 分批保存快照，避免大量项目时单次 saveAll 产生过多 INSERT 语句积压。
+     * 每批 500 条，配合 JDBC URL rewriteBatchedStatements=true 效果最佳。
+     */
+    private List<ScoringSnapshot> saveAllInBatches(List<ScoringSnapshot> snapshots) {
+        final int BATCH = 500;
+        List<ScoringSnapshot> result = new ArrayList<>(snapshots.size());
+        for (int i = 0; i < snapshots.size(); i += BATCH) {
+            List<ScoringSnapshot> chunk = snapshots.subList(i, Math.min(i + BATCH, snapshots.size()));
+            result.addAll(scoringSnapshotRepository.saveAll(chunk));
+            scoringSnapshotRepository.flush();
+        }
+        return result;
     }
 }

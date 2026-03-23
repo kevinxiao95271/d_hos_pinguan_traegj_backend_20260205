@@ -3,6 +3,7 @@ package com.trae.pinguan.service;
 import com.trae.pinguan.domain.entity.Competition;
 import com.trae.pinguan.domain.enums.CompetitionStage;
 import com.trae.pinguan.repository.CompetitionRepository;
+import com.trae.pinguan.web.dto.CompetitionConfigRequest;
 import com.trae.pinguan.web.dto.CompetitionCreateRequest;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -52,6 +53,22 @@ public class CompetitionService {
         Competition competition = competitionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
         competition.setStage(stage);
+        return competitionRepository.save(competition);
+    }
+
+    @Transactional
+    public Competition updateConfig(Long id, CompetitionConfigRequest req) {
+        Competition competition = competitionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
+        if (req.getStage()           != null) competition.setStage(req.getStage());
+        if (req.getRegisterStart()   != null) competition.setRegisterStart(req.getRegisterStart());
+        if (req.getRegisterEnd()     != null) competition.setRegisterEnd(req.getRegisterEnd());
+        if (req.getBookReviewStart() != null) competition.setBookReviewStart(req.getBookReviewStart());
+        if (req.getBookReviewEnd()   != null) competition.setBookReviewEnd(req.getBookReviewEnd());
+        if (req.getInterviewStart()  != null) competition.setInterviewStart(req.getInterviewStart());
+        if (req.getInterviewEnd()    != null) competition.setInterviewEnd(req.getInterviewEnd());
+        if (req.getFinalStart()      != null) competition.setFinalStart(req.getFinalStart());
+        if (req.getFinalEnd()        != null) competition.setFinalEnd(req.getFinalEnd());
         return competitionRepository.save(competition);
     }
 }

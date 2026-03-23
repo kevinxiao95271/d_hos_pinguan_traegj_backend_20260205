@@ -4,6 +4,7 @@ import com.trae.pinguan.domain.entity.Competition;
 import com.trae.pinguan.service.CompetitionMaintenanceService;
 import com.trae.pinguan.service.CompetitionService;
 import com.trae.pinguan.web.dto.ApiResponse;
+import com.trae.pinguan.web.dto.CompetitionConfigRequest;
 import com.trae.pinguan.web.dto.CompetitionCreateRequest;
 import com.trae.pinguan.web.dto.CompetitionMergeRequest;
 import com.trae.pinguan.web.dto.CompetitionMergeResponse;
@@ -56,6 +57,14 @@ public class CompetitionController {
     public ApiResponse<Competition> updateStage(@PathVariable Long id,
                                                 @Valid @RequestBody CompetitionStageUpdateRequest request) {
         return ApiResponse.ok(competitionService.updateStage(id, request.getStage()));
+    }
+
+    @PutMapping("/{id}/config")
+    @Operation(summary = "更新赛事配置（时间窗口 + 阶段，字段均可选）",
+               description = "只更新请求体中非 null 的字段，未传字段保持不变。可同时设置 stage + 各阶段起止时间。")
+    public ApiResponse<Competition> updateConfig(@PathVariable Long id,
+                                                 @RequestBody CompetitionConfigRequest request) {
+        return ApiResponse.ok(competitionService.updateConfig(id, request));
     }
 
     @PostMapping("/merge")
