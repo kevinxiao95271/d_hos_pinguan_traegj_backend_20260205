@@ -27,6 +27,8 @@ import com.trae.pinguan.web.dto.ReviewSummaryItem;
 import com.trae.pinguan.web.dto.ReviewTaskAssignRequest;
 import com.trae.pinguan.web.dto.ReviewTaskStatusRequest;
 import com.trae.pinguan.web.dto.ReviewScoreReturnRequest;
+import com.trae.pinguan.web.dto.ScoreListItem;
+import com.trae.pinguan.web.dto.ScoreListItem.ReviewerScoreDetail;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1072,6 +1074,106 @@ public class ReviewService {
             }
             return totalSum / count;
         }
+    }
+
+    /**
+     * 得分明细列表（书审 / 面谈通用）。
+     * 每条记录对应一个参赛项目，嵌套每位评委的维度分和打分状态。
+     */
+    @Transactional(readOnly = true)
+    public List<ScoreListItem> scoreListByStage(Long competitionId, ReviewStage stage) {
+        List<ReviewTask> tasks = reviewTaskRepository
+                .findWithDetailsByStageAndCompetitionId(stage, competitionId);
+
+        // 批量加载该阶段的所有评分
+        Set<Long> scoredTaskIds = tasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .map(ReviewTask::getId)
+                .collect(Collectors.toSet());
+
+        Map<Long, ReviewScore>     bookScoreMap = new HashMap<>();
+        Map<Long, InterviewScore>  intScoreMap  = new HashMap<>();
+        if (!scoredTaskIds.isEmpty()) {
+            if (stage == ReviewStage.INTERVIEW) {
+                interviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                        .forEach(s -> intScoreMap.put(s.getReviewTaskId(), s));
+            } else {
+                reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                        .forEach(s -> bookScoreMap.put(s.getReviewTaskId(), s));
+            }
+        }
+
+        // 按 registrationId 聚合
+        Map<Long, List<ReviewTask>> byReg = tasks.stream()
+                .collect(Collectors.groupingBy(t -> t.getRegistration().getId()));
+
+        List<ScoreListItem> result = new ArrayList<>();
+        for (Map.Entry<Long, List<ReviewTask>> entry : byReg.entrySet()) {
+            Long regId = entry.getKey();
+            List<ReviewTask> regTasks = entry.getValue();
+            Registration reg = regTasks.get(0).getRegistration();
+
+            List<ReviewerScoreDetail> reviewerScores = new ArrayList<>();
+            double totalSum = 0;
+            int scoredCount = 0;
+
+            for (ReviewTask task : regTasks) {
+                ReviewerScoreDetail.ReviewerScoreDetailBuilder b = ReviewerScoreDetail.builder()
+                        .reviewTaskId(task.getId())
+                        .reviewerId(task.getReviewer() != null ? task.getReviewer().getId() : null)
+                        .reviewerName(task.getReviewer() != null ? task.getReviewer().getName() : null)
+                        .status(task.getStatus().name());
+
+                if (stage == ReviewStage.INTERVIEW) {
+                    InterviewScore s = intScoreMap.get(task.getId());
+                    if (s != null) {
+                        b.topic(s.getTopic())
+                         .process(s.getProcess())
+                         .interviewOperation(s.getOperation())
+                         .result(s.getResult())
+                         .total(s.getTotal())
+                         .highlight(s.getHighlight())
+                         .weakness(s.getWeakness())
+                         .submittedAt(s.getSubmittedAt());
+                        totalSum += s.getTotal();
+                        scoredCount++;
+                    }
+                } else {
+                    ReviewScore s = bookScoreMap.get(task.getId());
+                    if (s != null) {
+                        b.plan(s.getPlan())
+                         .problem(s.getProblem())
+                         .action(s.getAction())
+                         .success(s.getSuccess())
+                         .review(s.getReview())
+                         .operation(s.getOperation())
+                         .presentation(s.getPresentation())
+                         .total(s.getTotal())
+                         .highlight(s.getHighlight())
+                         .weakness(s.getWeakness())
+                         .submittedAt(s.getSubmittedAt());
+                        totalSum += s.getTotal();
+                        scoredCount++;
+                    }
+                }
+                reviewerScores.add(b.build());
+            }
+
+            result.add(ScoreListItem.builder()
+                    .registrationId(regId)
+                    .projectName(reg.getProjectName())
+                    .institutionName(reg.getInstitution() != null ? reg.getInstitution().getName() : null)
+                    .institutionLevel(reg.getInstitution() != null ? reg.getInstitution().getLevel() : null)
+                    .groupType(reg.getGroupType())
+                    .groupCode(reg.getGroupCode())
+                    .stage(stage)
+                    .reviewerScores(reviewerScores)
+                    .scoredCount(scoredCount)
+                    .totalReviewers(regTasks.size())
+                    .avgTotal(scoredCount > 0 ? totalSum / scoredCount : null)
+                    .build());
+        }
+        return result;
     }
 
     /**

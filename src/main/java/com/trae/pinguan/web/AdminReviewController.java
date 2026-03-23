@@ -14,6 +14,7 @@ import com.trae.pinguan.web.dto.ReviewRankingItem;
 import com.trae.pinguan.web.dto.ReviewSummaryItem;
 import com.trae.pinguan.web.dto.ReviewTaskAssignRequest;
 import com.trae.pinguan.web.dto.ReviewScoreReturnRequest;
+import com.trae.pinguan.web.dto.ScoreListItem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -126,5 +127,17 @@ public class AdminReviewController {
     public ApiResponse<List<java.util.Map<String, Object>>> interviewSummary(
             @RequestParam Long competitionId) {
         return ApiResponse.ok(reviewService.interviewSummaryByCompetition(competitionId));
+    }
+
+    @GetMapping("/score-list")
+    @Operation(summary = "得分明细列表（书审 / 面谈通用）",
+               description = "用 stage=BOOK 查书审得分列表，stage=INTERVIEW 查面谈得分列表。" +
+                             "每条记录含项目信息（机构等级、分组）及每位评委的维度得分和打分状态。" +
+                             "书审维度：plan/problem/action/success/review/operation/presentation。" +
+                             "面谈维度：topic/process/interviewOperation/result。")
+    public ApiResponse<List<ScoreListItem>> scoreList(
+            @RequestParam Long competitionId,
+            @RequestParam ReviewStage stage) {
+        return ApiResponse.ok(reviewService.scoreListByStage(competitionId, stage));
     }
 }
