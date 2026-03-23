@@ -1103,13 +1103,20 @@ public class ReviewService {
             }
         }
 
-        // 按 registrationId 聚合
+        // 按 registrationId 聚合，只保留有 SCORED 任务的项目
         Map<Long, List<ReviewTask>> byReg = tasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
                 .collect(Collectors.groupingBy(t -> t.getRegistration().getId()));
+
+        // 用于查询总任务数（含 PENDING/RETURNED），供 totalReviewers 字段使用
+        Map<Long, Long> totalTaskCountByReg = tasks.stream()
+                .collect(Collectors.groupingBy(
+                        t -> t.getRegistration().getId(), Collectors.counting()));
 
         List<ScoreListItem> result = new ArrayList<>();
         for (Map.Entry<Long, List<ReviewTask>> entry : byReg.entrySet()) {
             Long regId = entry.getKey();
+            // 只取 SCORED 的任务
             List<ReviewTask> regTasks = entry.getValue();
             Registration reg = regTasks.get(0).getRegistration();
 
@@ -1169,7 +1176,7 @@ public class ReviewService {
                     .stage(stage)
                     .reviewerScores(reviewerScores)
                     .scoredCount(scoredCount)
-                    .totalReviewers(regTasks.size())
+                    .totalReviewers(totalTaskCountByReg.getOrDefault(regId, 0L).intValue())
                     .avgTotal(scoredCount > 0 ? totalSum / scoredCount : null)
                     .build());
         }
