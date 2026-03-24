@@ -1,0 +1,7 @@
+feat: score-list API only returns SCORED reviewer entries
+
+- Filter out PENDING/RETURNED tasks before grouping by registration,
+  so only projects with at least one SCORED task appear in the list
+- Within each project, reviewerScores now contains only SCORED entries
+- totalReviewers still reflects the full assigned count (pre-filter)
+  to preserve the "X of Y reviewers scored" semantics
