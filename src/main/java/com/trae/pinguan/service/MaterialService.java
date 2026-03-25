@@ -194,6 +194,13 @@ public class MaterialService {
 
     @Transactional
     public void delete(Long materialId) {
-        materialFileRepository.deleteById(materialId);
+        materialFileRepository.findById(materialId).ifPresent(material -> {
+            try {
+                fileStorageService.delete(material.getFileUrl());
+            } catch (Exception ex) {
+                // MinIO 删除失败不阻塞业务
+            }
+            materialFileRepository.delete(material);
+        });
     }
 }
