@@ -24,7 +24,7 @@ public class MaterialService {
     private final MaterialFileRepository materialFileRepository;
     private final FileStorageService fileStorageService;
     
-    private static final long MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB
+    private static final long MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
     private static final String PAYMENT_PROOF_TYPE = "payment_proof";
     private static final String REGISTRATION_FORM_DOC_TYPE = "REGISTRATION_FORM_DOC";
     private static final String REGISTRATION_FORM_PDF_TYPE = "REGISTRATION_FORM_PDF";
@@ -61,7 +61,7 @@ public class MaterialService {
         
         // 验证文件大小
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("文件大小不能超过30MB");
+            throw new IllegalArgumentException("文件大小不能超过200MB");
         }
         
         // 验证文件类型
