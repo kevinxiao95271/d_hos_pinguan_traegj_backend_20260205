@@ -26,6 +26,8 @@ public class MaterialService {
     
     private static final long MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
     private static final String PAYMENT_PROOF_TYPE = "payment_proof";
+    private static final String EVIDENCE_TYPE = "EVIDENCE";
+    private static final int EVIDENCE_MAX_COUNT = 5;
     private static final String REGISTRATION_FORM_DOC_TYPE = "REGISTRATION_FORM_DOC";
     private static final String REGISTRATION_FORM_PDF_TYPE = "REGISTRATION_FORM_PDF";
     private static final String[] ALLOWED_EXTENSIONS = {
@@ -82,7 +84,9 @@ public class MaterialService {
         String fileHash = isPaymentProof ? computeSha256(file) : null;
         validateTypeAndHashRule(normalizedType, fileHash);
 
-        // payment_proof：多次上传，重复文件忽略；其他类型维持“只保留最新”
+        // payment_proof: append, ignore duplicates
+        // EVIDENCE: append, max 5 files
+        // other types: keep only latest
         if (isPaymentProof) {
             MaterialFile existing = materialFileRepository
                     .findFirstByRegistrationIdAndTypeAndFileHash(registrationId, normalizedType, fileHash)
@@ -90,13 +94,18 @@ public class MaterialService {
             if (existing != null) {
                 return existing;
             }
+        } else if (EVIDENCE_TYPE.equalsIgnoreCase(normalizedType)) {
+            List<MaterialFile> existing = materialFileRepository.findByRegistrationIdAndType(registrationId, normalizedType);
+            if (existing.size() >= EVIDENCE_MAX_COUNT) {
+                throw new IllegalArgumentException("佐证材料最多上传 " + EVIDENCE_MAX_COUNT + " 个文件");
+            }
         } else {
             List<MaterialFile> oldFiles = materialFileRepository.findByRegistrationIdAndType(registrationId, normalizedType);
             for (MaterialFile oldFile : oldFiles) {
                 try {
                     fileStorageService.delete(oldFile.getFileUrl());
                 } catch (Exception ex) {
-                    // 删除存储失败时忽略，避免阻塞业务
+                    // ignore MinIO delete failure
                 }
                 materialFileRepository.delete(oldFile);
             }
