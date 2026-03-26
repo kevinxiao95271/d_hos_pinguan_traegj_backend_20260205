@@ -95,6 +95,18 @@
             <artifactId>minio</artifactId>
             <version>8.5.7</version>
         </dependency>
+        <!-- Apache POI for Excel export -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+        <!-- Override commons-compress to satisfy POI 5.2.5 (MinIO pulls older version) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.26.1</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

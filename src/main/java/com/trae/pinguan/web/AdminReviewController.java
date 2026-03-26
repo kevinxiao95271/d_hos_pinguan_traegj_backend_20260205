@@ -14,13 +14,28 @@ import com.trae.pinguan.web.dto.ReviewRankingItem;
 import com.trae.pinguan.web.dto.ReviewSummaryItem;
 import com.trae.pinguan.web.dto.ReviewTaskAssignRequest;
 import com.trae.pinguan.web.dto.ReviewScoreReturnRequest;
+import com.trae.pinguan.web.dto.ScoreExportRow;
 import com.trae.pinguan.web.dto.ScoreListItem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -139,5 +154,114 @@ public class AdminReviewController {
             @RequestParam Long competitionId,
             @RequestParam ReviewStage stage) {
         return ApiResponse.ok(reviewService.scoreListByStage(competitionId, stage));
+    }
+
+    @GetMapping("/score-export")
+    @Operation(summary = "导出打分快照为 Excel",
+               description = "需先触发 compute-ranking 生成快照，再调用本接口导出。" +
+                             "列：排名 / 组别 / 小组 / 项目编号 / 项目名称 / 医院名称 / 评审1..N / " +
+                             "平均分 / 小组均分(An) / 全组均分(B) / 系数(Cn) / 调整后分数(D)")
+    public void scoreExport(@RequestParam Long competitionId,
+                            @RequestParam ReviewStage stage,
+                            HttpServletResponse response) throws IOException {
+        List<ScoreExportRow> rows = reviewService.buildScoreExportRows(competitionId, stage);
+
+        int maxReviewers = rows.stream()
+                .mapToInt(r -> r.getReviewerScores() != null ? r.getReviewerScores().size() : 0)
+                .max().orElse(0);
+
+        String stageName = ReviewStage.BOOK == stage ? "书审" : "面谈";
+        String filename = URLEncoder.encode("打分数据-" + stageName + ".xlsx", StandardCharsets.UTF_8.name());
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + filename);
+
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet(stageName + "打分数据");
+
+            // 表头样式
+            CellStyle headerStyle = wb.createCellStyle();
+            headerStyle.setFillForegroundColor(IndexedColors.CORNFLOWER_BLUE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            Font headerFont = wb.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(headerFont);
+
+            Row header = sheet.createRow(0);
+            int col = 0;
+            String[] fixedHeaders = {"排名", "组别", "小组", "项目编号", "项目名称", "医院名称"};
+            for (String h : fixedHeaders) {
+                Cell c = header.createCell(col++);
+                c.setCellValue(h);
+                c.setCellStyle(headerStyle);
+            }
+            for (int i = 1; i <= maxReviewers; i++) {
+                Cell c = header.createCell(col++);
+                c.setCellValue("评审" + i);
+                c.setCellStyle(headerStyle);
+            }
+            String[] tailHeaders = {"平均分", "小组均分(An)", "全组均分(B)", "系数(Cn)", "调整后分数(D)"};
+            for (String h : tailHeaders) {
+                Cell c = header.createCell(col++);
+                c.setCellValue(h);
+                c.setCellStyle(headerStyle);
+            }
+
+            // 数字格式
+            CellStyle numStyle = wb.createCellStyle();
+            numStyle.setDataFormat(wb.createDataFormat().getFormat("0.00"));
+
+            // 数据行
+            int rowIdx = 1;
+            for (ScoreExportRow r : rows) {
+                Row row = sheet.createRow(rowIdx++);
+                col = 0;
+                row.createCell(col++).setCellValue(r.getIrank() != null ? r.getIrank() : 0);
+                row.createCell(col++).setCellValue(groupTypeLabel(r.getGroupType()));
+                row.createCell(col++).setCellValue(r.getGroupCode() != null ? r.getGroupCode() : "");
+                row.createCell(col++).setCellValue(r.getRegistrationId() != null ? r.getRegistrationId() : 0L);
+                row.createCell(col++).setCellValue(r.getProjectName() != null ? r.getProjectName() : "");
+                row.createCell(col++).setCellValue(r.getInstitutionName() != null ? r.getInstitutionName() : "");
+                List<Double> scores = r.getReviewerScores() != null ? r.getReviewerScores() : Collections.emptyList();
+                for (int i = 0; i < maxReviewers; i++) {
+                    Cell c = row.createCell(col++);
+                    if (i < scores.size() && scores.get(i) != null) {
+                        c.setCellValue(scores.get(i));
+                        c.setCellStyle(numStyle);
+                    }
+                }
+                setNum(row, col++, r.getRawAvg(), numStyle);
+                setNum(row, col++, r.getGroupAvg(), numStyle);
+                setNum(row, col++, r.getOverallAvg(), numStyle);
+                setNum(row, col++, r.getCoefficient(), numStyle);
+                setNum(row, col++, r.getAdjustedScore(), numStyle);
+            }
+
+            // 自适应列宽（跳过评审N列，内容短）
+            int totalCols = 6 + maxReviewers + 5;
+            for (int i = 0; i < totalCols; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            wb.write(response.getOutputStream());
+        }
+    }
+
+    private String groupTypeLabel(com.trae.pinguan.domain.enums.GroupType gt) {
+        if (gt == null) return "";
+        switch (gt) {
+            case BASIC:         return "基层组";
+            case COMPREHENSIVE: return "综合组";
+            case ADVANCED:      return "进阶组";
+            default:            return gt.name();
+        }
+    }
+
+    private void setNum(Row row, int col, Double val, CellStyle style) {
+        Cell c = row.createCell(col);
+        if (val != null) {
+            c.setCellValue(val);
+            c.setCellStyle(style);
+        }
     }
 }

@@ -1184,6 +1184,64 @@ public class ReviewService {
     }
 
     /**
+     * 构造导出行数据：快照（排名/系数/调整分）+ 每位评委个人分。
+     * 按 irank 升序排列，同组别内连续。
+     */
+    @Transactional(readOnly = true)
+    public List<com.trae.pinguan.web.dto.ScoreExportRow> buildScoreExportRows(
+            Long competitionId, ReviewStage stage) {
+
+        List<ScoringSnapshot> snapshots = scoringSnapshotRepository
+                .findByCompetitionIdAndStageOrderByIrankAsc(competitionId, stage);
+        if (snapshots.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 个人得分明细（只含 SCORED）
+        List<ScoreListItem> scoreList = scoreListByStage(competitionId, stage);
+        Map<Long, ScoreListItem> scoreMap = scoreList.stream()
+                .collect(Collectors.toMap(ScoreListItem::getRegistrationId, s -> s, (a, b) -> a));
+
+        // 报名基本信息
+        Set<Long> regIds = snapshots.stream()
+                .map(ScoringSnapshot::getRegistrationId).collect(Collectors.toSet());
+        Map<Long, Registration> regMap = registrationRepository.findAllById(regIds).stream()
+                .collect(Collectors.toMap(Registration::getId, r -> r));
+
+        List<com.trae.pinguan.web.dto.ScoreExportRow> rows = new ArrayList<>();
+        for (ScoringSnapshot snap : snapshots) {
+            Long regId = snap.getRegistrationId();
+            Registration reg = regMap.get(regId);
+            ScoreListItem scoreItem = scoreMap.get(regId);
+
+            List<Double> reviewerScores = new ArrayList<>();
+            if (scoreItem != null) {
+                for (ScoreListItem.ReviewerScoreDetail rd : scoreItem.getReviewerScores()) {
+                    reviewerScores.add(rd.getTotal());
+                }
+            }
+
+            rows.add(com.trae.pinguan.web.dto.ScoreExportRow.builder()
+                    .irank(snap.getIrank())
+                    .groupType(snap.getGroupType())
+                    .groupCode(snap.getGroupCode())
+                    .stage(stage)
+                    .registrationId(regId)
+                    .projectName(reg != null ? reg.getProjectName() : null)
+                    .institutionName(reg != null && reg.getInstitution() != null
+                            ? reg.getInstitution().getName() : null)
+                    .reviewerScores(reviewerScores)
+                    .rawAvg(snap.getRawAvg())
+                    .groupAvg(snap.getGroupAvg())
+                    .overallAvg(snap.getOverallAvg())
+                    .coefficient(snap.getCoefficient())
+                    .adjustedScore(snap.getAdjustedScore())
+                    .build());
+        }
+        return rows;
+    }
+
+    /**
      * 分批保存快照，避免大量项目时单次 saveAll 产生过多 INSERT 语句积压。
      * 每批 500 条，配合 JDBC URL rewriteBatchedStatements=true 效果最佳。
      */
