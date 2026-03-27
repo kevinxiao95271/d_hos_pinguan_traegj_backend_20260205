@@ -13,7 +13,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "institutions")
+@Table(name = "institutions",
+       uniqueConstraints = @UniqueConstraint(name = "uk_uscc_name", columnNames = {"uscc", "name"}))
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Institution {
     @Id
@@ -23,10 +24,10 @@ public class Institution {
     @Column(nullable = false, length = 200)
     private String name;
 
-    @Column(nullable = false, length = 64, unique = true)
+    @Column(nullable = false, length = 64)
     private String code;
 
-    @Column(nullable = false, length = 32, unique = true)
+    @Column(nullable = false, length = 32)
     private String uscc;
 
     @Column(length = 64)

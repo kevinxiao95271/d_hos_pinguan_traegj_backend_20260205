@@ -214,8 +214,8 @@ public class ConstInitInstitutionService {
         ConstInitInstitution constInst = constInitInstitutionRepository.findById(constInstitutionId)
                 .orElseThrow(() -> new IllegalArgumentException("机构不存在: " + constInstitutionId));
         
-        // 检查是否已经激活（在 institutions 表中存在）
-        Institution existing = institutionRepository.findByUscc(constInst.getUscc()).orElse(null);
+        // 检查是否已经激活（在 institutions 表中存在），按 USCC+name 联合匹配，避免同 USCC 不同名机构被错误归并
+        Institution existing = institutionRepository.findByUsccAndName(constInst.getUscc(), constInst.getName()).orElse(null);
         
         if (existing != null) {
             log.info("机构已激活: {} (ID: {})", constInst.getName(), existing.getId());

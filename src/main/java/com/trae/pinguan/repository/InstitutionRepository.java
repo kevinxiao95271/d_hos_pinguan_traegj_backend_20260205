@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface InstitutionRepository extends JpaRepository<Institution, Long>, JpaSpecificationExecutor<Institution> {
     Optional<Institution> findByUscc(String uscc);
+
+    Optional<Institution> findByUsccAndName(String uscc, String name);
     
     /**
      * 高性能搜索：支持多条件组合查询
