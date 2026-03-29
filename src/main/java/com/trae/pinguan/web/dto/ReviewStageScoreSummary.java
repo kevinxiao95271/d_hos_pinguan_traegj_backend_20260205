@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import static com.trae.pinguan.web.dto.ScoreListItem.ReviewerScoreDetail;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -33,4 +35,7 @@ public class ReviewStageScoreSummary {
     private Double avgTotal;
     private List<String> highlights;
     private List<String> weaknesses;
+
+    /** 面谈阶段逐评委明细（stage=INTERVIEW 时填充，其余阶段为 null） */
+    private List<ReviewerScoreDetail> reviewerScores;
 }

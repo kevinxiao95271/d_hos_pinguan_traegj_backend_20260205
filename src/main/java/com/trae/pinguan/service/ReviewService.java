@@ -388,18 +388,29 @@ public class ReviewService {
 
             if (stage == ReviewStage.INTERVIEW) {
                 double topicSum = 0, processSum = 0, opSum = 0, resultSum = 0, totalSum = 0;
+                List<ReviewerScoreDetail> reviewerScores = new ArrayList<>();
                 for (ReviewTask task : tasks) {
-                    if (task.getStatus() != ReviewStatus.SCORED) continue;
                     com.trae.pinguan.domain.entity.InterviewScore s = intScoreMap.get(task.getId());
-                    if (s == null) continue;
-                    scoredCount++;
-                    topicSum   += s.getTopic();
-                    processSum += s.getProcess();
-                    opSum      += s.getOperation();
-                    resultSum  += s.getResult();
-                    totalSum   += s.getTotal();
-                    if (s.getHighlight() != null && !s.getHighlight().trim().isEmpty()) highlights.add(s.getHighlight());
-                    if (s.getWeakness()  != null && !s.getWeakness().trim().isEmpty())  weaknesses.add(s.getWeakness());
+                    ReviewerScoreDetail.ReviewerScoreDetailBuilder rb = ReviewerScoreDetail.builder()
+                            .reviewTaskId(task.getId())
+                            .reviewerId(task.getReviewer() != null ? task.getReviewer().getId() : null)
+                            .reviewerName(task.getReviewer() != null ? task.getReviewer().getName() : null)
+                            .status(task.getStatus().name());
+                    if (task.getStatus() == ReviewStatus.SCORED && s != null) {
+                        rb.topic(s.getTopic()).process(s.getProcess())
+                          .interviewOperation(s.getOperation()).result(s.getResult())
+                          .total(s.getTotal()).highlight(s.getHighlight()).weakness(s.getWeakness())
+                          .submittedAt(s.getSubmittedAt());
+                        scoredCount++;
+                        topicSum   += s.getTopic();
+                        processSum += s.getProcess();
+                        opSum      += s.getOperation();
+                        resultSum  += s.getResult();
+                        totalSum   += s.getTotal();
+                        if (s.getHighlight() != null && !s.getHighlight().trim().isEmpty()) highlights.add(s.getHighlight());
+                        if (s.getWeakness()  != null && !s.getWeakness().trim().isEmpty())  weaknesses.add(s.getWeakness());
+                    }
+                    reviewerScores.add(rb.build());
                 }
                 double d = scoredCount == 0 ? 1 : scoredCount;
                 results.add(ReviewStageScoreSummary.builder()
@@ -410,6 +421,7 @@ public class ReviewService {
                         .avgResult(scoredCount == 0 ? null : resultSum / d)
                         .avgTotal(scoredCount == 0 ? null : totalSum / d)
                         .highlights(highlights).weaknesses(weaknesses)
+                        .reviewerScores(reviewerScores)
                         .build());
             } else {
                 double planSum = 0, problemSum = 0, actionSum = 0, successSum = 0,
