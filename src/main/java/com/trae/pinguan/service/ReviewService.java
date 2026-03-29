@@ -356,57 +356,94 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<ReviewStageScoreSummary> scoreSummaryByRegistration(Long registrationId) {
-        // 一次查出所有任务，批量加载评分
         List<ReviewTask> allTasks = reviewTaskRepository.findByRegistrationId(registrationId);
         Set<Long> scoredTaskIds = allTasks.stream()
                 .filter(t -> t.getStatus() == ReviewStatus.SCORED)
                 .map(ReviewTask::getId)
                 .collect(Collectors.toSet());
-        Map<Long, ReviewScore> scoreMap = new HashMap<>();
+
+        // 书审评分 map
+        Map<Long, ReviewScore> bookScoreMap = new HashMap<>();
         if (!scoredTaskIds.isEmpty()) {
             reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
-                    .forEach(s -> scoreMap.put(s.getReviewTaskId(), s));
+                    .forEach(s -> bookScoreMap.put(s.getReviewTaskId(), s));
         }
+        // 面谈评分 map
+        Map<Long, com.trae.pinguan.domain.entity.InterviewScore> intScoreMap = new HashMap<>();
+        if (!scoredTaskIds.isEmpty()) {
+            interviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                    .forEach(s -> intScoreMap.put(s.getReviewTaskId(), s));
+        }
+
         Map<ReviewStage, List<ReviewTask>> tasksByStage = allTasks.stream()
                 .collect(Collectors.groupingBy(ReviewTask::getStage));
         List<ReviewStageScoreSummary> results = new ArrayList<>();
+
         for (ReviewStage stage : ReviewStage.values()) {
             List<ReviewTask> tasks = tasksByStage.getOrDefault(stage, Collections.emptyList());
             int taskCount = tasks.size();
             int scoredCount = 0;
-            double planSum = 0, problemSum = 0, actionSum = 0, successSum = 0,
-                   reviewSum = 0, operationSum = 0, presentationSum = 0, totalSum = 0;
             List<String> highlights = new ArrayList<>();
             List<String> weaknesses = new ArrayList<>();
-            for (ReviewTask task : tasks) {
-                if (task.getStatus() != ReviewStatus.SCORED) continue;
-                ReviewScore score = scoreMap.get(task.getId());
-                if (score == null) continue;
-                scoredCount += 1;
-                planSum += score.getPlan();
-                problemSum += score.getProblem();
-                actionSum += score.getAction();
-                successSum += score.getSuccess();
-                reviewSum += score.getReview();
-                operationSum += score.getOperation();
-                presentationSum += score.getPresentation();
-                totalSum += score.getTotal();
-                if (score.getHighlight() != null && !score.getHighlight().trim().isEmpty()) highlights.add(score.getHighlight());
-                if (score.getWeakness() != null && !score.getWeakness().trim().isEmpty()) weaknesses.add(score.getWeakness());
+
+            if (stage == ReviewStage.INTERVIEW) {
+                double topicSum = 0, processSum = 0, opSum = 0, resultSum = 0, totalSum = 0;
+                for (ReviewTask task : tasks) {
+                    if (task.getStatus() != ReviewStatus.SCORED) continue;
+                    com.trae.pinguan.domain.entity.InterviewScore s = intScoreMap.get(task.getId());
+                    if (s == null) continue;
+                    scoredCount++;
+                    topicSum   += s.getTopic();
+                    processSum += s.getProcess();
+                    opSum      += s.getOperation();
+                    resultSum  += s.getResult();
+                    totalSum   += s.getTotal();
+                    if (s.getHighlight() != null && !s.getHighlight().trim().isEmpty()) highlights.add(s.getHighlight());
+                    if (s.getWeakness()  != null && !s.getWeakness().trim().isEmpty())  weaknesses.add(s.getWeakness());
+                }
+                double d = scoredCount == 0 ? 1 : scoredCount;
+                results.add(ReviewStageScoreSummary.builder()
+                        .stage(stage).taskCount(taskCount).scoredCount(scoredCount)
+                        .avgTopic(scoredCount == 0 ? null : topicSum / d)
+                        .avgProcess(scoredCount == 0 ? null : processSum / d)
+                        .avgInterviewOperation(scoredCount == 0 ? null : opSum / d)
+                        .avgResult(scoredCount == 0 ? null : resultSum / d)
+                        .avgTotal(scoredCount == 0 ? null : totalSum / d)
+                        .highlights(highlights).weaknesses(weaknesses)
+                        .build());
+            } else {
+                double planSum = 0, problemSum = 0, actionSum = 0, successSum = 0,
+                       reviewSum = 0, operationSum = 0, presentationSum = 0, totalSum = 0;
+                for (ReviewTask task : tasks) {
+                    if (task.getStatus() != ReviewStatus.SCORED) continue;
+                    ReviewScore score = bookScoreMap.get(task.getId());
+                    if (score == null) continue;
+                    scoredCount++;
+                    planSum         += score.getPlan();
+                    problemSum      += score.getProblem();
+                    actionSum       += score.getAction();
+                    successSum      += score.getSuccess();
+                    reviewSum       += score.getReview();
+                    operationSum    += score.getOperation();
+                    presentationSum += score.getPresentation();
+                    totalSum        += score.getTotal();
+                    if (score.getHighlight() != null && !score.getHighlight().trim().isEmpty()) highlights.add(score.getHighlight());
+                    if (score.getWeakness()  != null && !score.getWeakness().trim().isEmpty())  weaknesses.add(score.getWeakness());
+                }
+                double d = scoredCount == 0 ? 1 : scoredCount;
+                results.add(ReviewStageScoreSummary.builder()
+                        .stage(stage).taskCount(taskCount).scoredCount(scoredCount)
+                        .avgPlan(scoredCount == 0 ? null : planSum / d)
+                        .avgProblem(scoredCount == 0 ? null : problemSum / d)
+                        .avgAction(scoredCount == 0 ? null : actionSum / d)
+                        .avgSuccess(scoredCount == 0 ? null : successSum / d)
+                        .avgReview(scoredCount == 0 ? null : reviewSum / d)
+                        .avgOperation(scoredCount == 0 ? null : operationSum / d)
+                        .avgPresentation(scoredCount == 0 ? null : presentationSum / d)
+                        .avgTotal(scoredCount == 0 ? null : totalSum / d)
+                        .highlights(highlights).weaknesses(weaknesses)
+                        .build());
             }
-            double divisor = scoredCount == 0 ? 1 : scoredCount;
-            results.add(new ReviewStageScoreSummary(
-                    stage, taskCount, scoredCount,
-                    scoredCount == 0 ? null : planSum / divisor,
-                    scoredCount == 0 ? null : problemSum / divisor,
-                    scoredCount == 0 ? null : actionSum / divisor,
-                    scoredCount == 0 ? null : successSum / divisor,
-                    scoredCount == 0 ? null : reviewSum / divisor,
-                    scoredCount == 0 ? null : operationSum / divisor,
-                    scoredCount == 0 ? null : presentationSum / divisor,
-                    scoredCount == 0 ? null : totalSum / divisor,
-                    highlights, weaknesses
-            ));
         }
         return results;
     }
