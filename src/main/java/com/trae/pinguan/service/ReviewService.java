@@ -668,9 +668,10 @@ public class ReviewService {
                     .forEach(s -> scoreMap.put(s.getReviewTaskId(), s));
         }
 
-        // 按 registrationId 聚合
+        // 按 registrationId 聚合；面谈阶段仅统计进阶组
         Map<Long, Map<String, Object>> byReg = new java.util.LinkedHashMap<>();
         for (ReviewTask task : tasks) {
+            if (task.getRegistration().getGroupType() != GroupType.ADVANCED) continue;
             Long regId = task.getRegistration().getId();
             Map<String, Object> item = byReg.computeIfAbsent(regId, id -> {
                 Map<String, Object> m = new java.util.LinkedHashMap<>();
@@ -1140,9 +1141,12 @@ public class ReviewService {
             }
         }
 
-        // 按 registrationId 聚合，只保留有 SCORED 任务的项目
+        // 按 registrationId 聚合，只保留有 SCORED 任务的项目；
+        // 面谈阶段仅进阶组参与，过滤掉测试/误分配的非进阶任务
         Map<Long, List<ReviewTask>> byReg = tasks.stream()
                 .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .filter(t -> stage != ReviewStage.INTERVIEW
+                        || t.getRegistration().getGroupType() == GroupType.ADVANCED)
                 .collect(Collectors.groupingBy(t -> t.getRegistration().getId()));
 
         // 用于查询总任务数（含 PENDING/RETURNED），供 totalReviewers 字段使用
