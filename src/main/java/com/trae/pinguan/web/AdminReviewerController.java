@@ -5,6 +5,8 @@ import com.trae.pinguan.service.JwtService;
 import com.trae.pinguan.service.ReviewerService;
 import com.trae.pinguan.web.dto.ApiResponse;
 import com.trae.pinguan.web.dto.ReviewerListItem;
+import com.trae.pinguan.web.dto.ReviewerProfileDto;
+import com.trae.pinguan.web.dto.ReviewerProfileUpsertRequest;
 import com.trae.pinguan.web.dto.ReviewerUpsertRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -78,6 +80,21 @@ public class AdminReviewerController {
         requireCommitteeOrOps();
         reviewerService.delete(id);
         return ApiResponse.ok(null);
+    }
+
+    @GetMapping("/{id}/profile")
+    @Operation(summary = "评审专家扩展档案详情")
+    public ApiResponse<ReviewerProfileDto> profile(@PathVariable Long id) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewerService.getProfile(id));
+    }
+
+    @PutMapping("/{id}/profile")
+    @Operation(summary = "更新评审专家扩展档案")
+    public ApiResponse<ReviewerProfileDto> upsertProfile(@PathVariable Long id,
+                                                         @Valid @RequestBody ReviewerProfileUpsertRequest request) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewerService.upsertProfile(id, request));
     }
 
     private void requireCommitteeOrOps() {

@@ -1,11 +1,15 @@
 package com.trae.pinguan.service;
 
 import com.trae.pinguan.domain.entity.Institution;
+import com.trae.pinguan.domain.entity.ReviewerProfile;
 import com.trae.pinguan.domain.entity.UserAccount;
 import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.repository.InstitutionRepository;
+import com.trae.pinguan.repository.ReviewerProfileRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.web.dto.ReviewerListItem;
+import com.trae.pinguan.web.dto.ReviewerProfileDto;
+import com.trae.pinguan.web.dto.ReviewerProfileUpsertRequest;
 import com.trae.pinguan.web.dto.ReviewerUpsertRequest;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReviewerService {
     private final UserAccountRepository userAccountRepository;
     private final InstitutionRepository institutionRepository;
+    private final ReviewerProfileRepository reviewerProfileRepository;
 
     @Transactional(readOnly = true)
     public List<ReviewerListItem> list(Long institutionId,
@@ -118,5 +123,72 @@ public class ReviewerService {
     public void delete(Long id) {
         UserAccount user = get(id);
         userAccountRepository.delete(user);
+    }
+
+    @Transactional(readOnly = true)
+    public ReviewerProfileDto getProfile(Long reviewerId) {
+        get(reviewerId); // 校验评委存在
+        ReviewerProfile profile = reviewerProfileRepository.findById(reviewerId)
+                .orElse(null);
+        if (profile == null) {
+            return ReviewerProfileDto.builder().userId(reviewerId).build();
+        }
+        return ReviewerProfileDto.builder()
+                .userId(profile.getUserId())
+                .gender(profile.getGender())
+                .position(profile.getPosition())
+                .idNumber(profile.getIdNumber())
+                .idNumberMasked(profile.getIdNumberMasked())
+                .idCardFrontUrl(profile.getIdCardFrontUrl())
+                .idCardBackUrl(profile.getIdCardBackUrl())
+                .bankName(profile.getBankName())
+                .bankCardNo(profile.getBankCardNo())
+                .bankCardNoMasked(profile.getBankCardNoMasked())
+                .backgroundsJson(profile.getBackgroundsJson())
+                .toolsJson(profile.getToolsJson())
+                .topicsJson(profile.getTopicsJson())
+                .build();
+    }
+
+    @Transactional
+    public ReviewerProfileDto upsertProfile(Long reviewerId, ReviewerProfileUpsertRequest request) {
+        get(reviewerId); // 校验评委存在
+        LocalDateTime now = LocalDateTime.now();
+        ReviewerProfile profile = reviewerProfileRepository.findById(reviewerId)
+                .orElse(ReviewerProfile.builder()
+                        .userId(reviewerId)
+                        .createdAt(now)
+                        .build());
+
+        profile.setGender(request.getGender());
+        profile.setPosition(request.getPosition());
+        profile.setIdNumber(request.getIdNumber());
+        profile.setIdNumberMasked(request.getIdNumberMasked());
+        profile.setIdCardFrontUrl(request.getIdCardFrontUrl());
+        profile.setIdCardBackUrl(request.getIdCardBackUrl());
+        profile.setBankName(request.getBankName());
+        profile.setBankCardNo(request.getBankCardNo());
+        profile.setBankCardNoMasked(request.getBankCardNoMasked());
+        profile.setBackgroundsJson(request.getBackgroundsJson());
+        profile.setToolsJson(request.getToolsJson());
+        profile.setTopicsJson(request.getTopicsJson());
+        profile.setUpdatedAt(now);
+
+        ReviewerProfile saved = reviewerProfileRepository.save(profile);
+        return ReviewerProfileDto.builder()
+                .userId(saved.getUserId())
+                .gender(saved.getGender())
+                .position(saved.getPosition())
+                .idNumber(saved.getIdNumber())
+                .idNumberMasked(saved.getIdNumberMasked())
+                .idCardFrontUrl(saved.getIdCardFrontUrl())
+                .idCardBackUrl(saved.getIdCardBackUrl())
+                .bankName(saved.getBankName())
+                .bankCardNo(saved.getBankCardNo())
+                .bankCardNoMasked(saved.getBankCardNoMasked())
+                .backgroundsJson(saved.getBackgroundsJson())
+                .toolsJson(saved.getToolsJson())
+                .topicsJson(saved.getTopicsJson())
+                .build();
     }
 }

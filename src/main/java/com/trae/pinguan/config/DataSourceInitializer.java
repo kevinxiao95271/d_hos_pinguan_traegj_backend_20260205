@@ -20,6 +20,7 @@ public class DataSourceInitializer implements ApplicationRunner {
         ensureColumn("user_accounts", "reviewer_group_code", "varchar(32)");
         ensureColumn("user_accounts", "interview_group_code", "varchar(32)");
         ensureColumn("user_accounts", "expert_background", "varchar(32)");
+        ensureReviewerProfilesTable();
     }
 
     private void ensureColumn(String tableName, String columnName, String definition) {
@@ -33,5 +34,27 @@ public class DataSourceInitializer implements ApplicationRunner {
         if (count != null && count == 0) {
             jdbcTemplate.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + definition);
         }
+    }
+
+    private void ensureReviewerProfilesTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS reviewer_profiles (" +
+                "user_id BIGINT NOT NULL," +
+                "gender VARCHAR(8) NULL," +
+                "job_position VARCHAR(64) NULL," +
+                "id_number VARCHAR(64) NULL," +
+                "id_number_masked VARCHAR(32) NULL," +
+                "id_card_front_url VARCHAR(500) NULL," +
+                "id_card_back_url VARCHAR(500) NULL," +
+                "bank_name VARCHAR(128) NULL," +
+                "bank_card_no VARCHAR(128) NULL," +
+                "bank_card_no_masked VARCHAR(32) NULL," +
+                "backgrounds_json TEXT NULL," +
+                "tools_json TEXT NULL," +
+                "topics_json TEXT NULL," +
+                "created_at DATETIME(6) NOT NULL," +
+                "updated_at DATETIME(6) NOT NULL," +
+                "PRIMARY KEY (user_id)," +
+                "CONSTRAINT fk_reviewer_profiles_user FOREIGN KEY (user_id) REFERENCES user_accounts(id)" +
+                ")");
     }
 }
