@@ -12,9 +12,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Optional;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -101,6 +104,25 @@ public class AuthController {
                 latestCompetition.map(Competition::getName).orElse(null),
                 user.getNoticeConfirmedAt() != null
         );
+    }
+
+    @PostMapping("/self-change-password")
+    @SecurityRequirement(name = "BearerAuth")
+    @Operation(summary = "本人修改密码", description = "登录用户修改自己的密码，需提供旧密码验证身份")
+    public ApiResponse<String> selfChangePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            HttpServletRequest httpRequest) {
+        Object userIdAttr = httpRequest.getAttribute("userId");
+        if (userIdAttr == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
+        }
+        Long userId = Long.parseLong(userIdAttr.toString());
+        try {
+            userService.changePassword(userId, request);
+            return ApiResponse.ok("密码修改成功");
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.fail(e.getMessage());
+        }
     }
 
     @PostMapping("/notice/confirm")

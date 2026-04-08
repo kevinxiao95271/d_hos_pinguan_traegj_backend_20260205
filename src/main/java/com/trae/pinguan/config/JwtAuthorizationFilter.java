@@ -26,7 +26,11 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
         
         // 白名单：无需JWT验证的接口
         // 1. 认证接口、Swagger和actuator
-        if (path.startsWith("/api/auth/")
+        //    self-change-password / notice/confirm 需要登录验证，单独排除在外
+        boolean isPublicAuthPath = path.startsWith("/api/auth/")
+                && !path.equals("/api/auth/self-change-password")
+                && !path.equals("/api/auth/notice/confirm");
+        if (isPublicAuthPath
                 || path.startsWith("/swagger")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/actuator")) {
