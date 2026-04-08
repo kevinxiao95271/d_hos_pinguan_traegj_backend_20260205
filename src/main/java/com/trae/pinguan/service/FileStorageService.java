@@ -96,6 +96,13 @@ public class FileStorageService {
     }
     
     /**
+     * 获取报名材料文件流（使用 registration-files bucket）
+     */
+    public InputStream getInputStream(String objectName) {
+        return getInputStream(objectName, minioProperties.getBucket().getRegistrationFiles());
+    }
+
+    /**
      * 获取文件流（用于后端代理下载，永久有效）
      */
     public InputStream getInputStream(String objectName, String bucketName) {

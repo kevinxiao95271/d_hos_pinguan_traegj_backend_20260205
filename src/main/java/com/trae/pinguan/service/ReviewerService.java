@@ -1,5 +1,6 @@
 package com.trae.pinguan.service;
 
+import com.trae.pinguan.config.MinioProperties;
 import com.trae.pinguan.domain.entity.Institution;
 import com.trae.pinguan.domain.entity.ReviewerProfile;
 import com.trae.pinguan.domain.entity.UserAccount;
@@ -11,12 +12,16 @@ import com.trae.pinguan.web.dto.ReviewerListItem;
 import com.trae.pinguan.web.dto.ReviewerProfileDto;
 import com.trae.pinguan.web.dto.ReviewerProfileUpsertRequest;
 import com.trae.pinguan.web.dto.ReviewerUpsertRequest;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +29,8 @@ public class ReviewerService {
     private final UserAccountRepository userAccountRepository;
     private final InstitutionRepository institutionRepository;
     private final ReviewerProfileRepository reviewerProfileRepository;
+    private final FileStorageService fileStorageService;
+    private final MinioProperties minioProperties;
 
     @Transactional(readOnly = true)
     public List<ReviewerListItem> list(Long institutionId,
@@ -133,21 +140,7 @@ public class ReviewerService {
         if (profile == null) {
             return ReviewerProfileDto.builder().userId(reviewerId).build();
         }
-        return ReviewerProfileDto.builder()
-                .userId(profile.getUserId())
-                .gender(profile.getGender())
-                .position(profile.getPosition())
-                .idNumber(profile.getIdNumber())
-                .idNumberMasked(profile.getIdNumberMasked())
-                .idCardFrontUrl(profile.getIdCardFrontUrl())
-                .idCardBackUrl(profile.getIdCardBackUrl())
-                .bankName(profile.getBankName())
-                .bankCardNo(profile.getBankCardNo())
-                .bankCardNoMasked(profile.getBankCardNoMasked())
-                .backgroundsJson(profile.getBackgroundsJson())
-                .toolsJson(profile.getToolsJson())
-                .topicsJson(profile.getTopicsJson())
-                .build();
+        return toDto(profile);
     }
 
     @Transactional
@@ -175,20 +168,67 @@ public class ReviewerService {
         profile.setUpdatedAt(now);
 
         ReviewerProfile saved = reviewerProfileRepository.save(profile);
+        return toDto(saved);
+    }
+
+    @Transactional
+    public ReviewerProfileDto uploadIdCard(Long reviewerId, String side, MultipartFile file) {
+        get(reviewerId);
+        LocalDateTime now = LocalDateTime.now();
+        ReviewerProfile profile = reviewerProfileRepository.findById(reviewerId)
+                .orElse(ReviewerProfile.builder()
+                        .userId(reviewerId)
+                        .createdAt(now)
+                        .build());
+
+        String newObjectName = fileStorageService.store("reviewer-id-cards/" + reviewerId, file);
+
+        if ("FRONT".equalsIgnoreCase(side)) {
+            if (profile.getIdCardFrontUrl() != null) {
+                fileStorageService.delete(profile.getIdCardFrontUrl());
+            }
+            profile.setIdCardFrontUrl(newObjectName);
+        } else if ("BACK".equalsIgnoreCase(side)) {
+            if (profile.getIdCardBackUrl() != null) {
+                fileStorageService.delete(profile.getIdCardBackUrl());
+            }
+            profile.setIdCardBackUrl(newObjectName);
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "side 参数必须为 FRONT 或 BACK");
+        }
+        profile.setUpdatedAt(now);
+        return toDto(reviewerProfileRepository.save(profile));
+    }
+
+    @Transactional(readOnly = true)
+    public InputStream getIdCardStream(Long reviewerId, String side) {
+        ReviewerProfile profile = reviewerProfileRepository.findById(reviewerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "档案不存在"));
+        String objectName = "FRONT".equalsIgnoreCase(side)
+                ? profile.getIdCardFrontUrl()
+                : profile.getIdCardBackUrl();
+        if (objectName == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "图片未上传");
+        }
+        return fileStorageService.getInputStream(objectName,
+                minioProperties.getBucket().getRegistrationFiles());
+    }
+
+    private ReviewerProfileDto toDto(ReviewerProfile p) {
         return ReviewerProfileDto.builder()
-                .userId(saved.getUserId())
-                .gender(saved.getGender())
-                .position(saved.getPosition())
-                .idNumber(saved.getIdNumber())
-                .idNumberMasked(saved.getIdNumberMasked())
-                .idCardFrontUrl(saved.getIdCardFrontUrl())
-                .idCardBackUrl(saved.getIdCardBackUrl())
-                .bankName(saved.getBankName())
-                .bankCardNo(saved.getBankCardNo())
-                .bankCardNoMasked(saved.getBankCardNoMasked())
-                .backgroundsJson(saved.getBackgroundsJson())
-                .toolsJson(saved.getToolsJson())
-                .topicsJson(saved.getTopicsJson())
+                .userId(p.getUserId())
+                .gender(p.getGender())
+                .position(p.getPosition())
+                .idNumber(p.getIdNumber())
+                .idNumberMasked(p.getIdNumberMasked())
+                .idCardFrontUrl(p.getIdCardFrontUrl())
+                .idCardBackUrl(p.getIdCardBackUrl())
+                .bankName(p.getBankName())
+                .bankCardNo(p.getBankCardNo())
+                .bankCardNoMasked(p.getBankCardNoMasked())
+                .backgroundsJson(p.getBackgroundsJson())
+                .toolsJson(p.getToolsJson())
+                .topicsJson(p.getTopicsJson())
                 .build();
     }
 }

@@ -7,14 +7,23 @@ import com.trae.pinguan.web.dto.ReviewerProfileUpsertRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.InputStream;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
@@ -39,6 +48,25 @@ public class ReviewerProfileController {
             @Valid @RequestBody ReviewerProfileUpsertRequest req) {
         Long reviewerId = getCurrentReviewerId();
         return ApiResponse.ok(reviewerService.upsertProfile(reviewerId, req));
+    }
+
+    @PostMapping("/profile/id-card")
+    @Operation(summary = "上传身份证图片（side=FRONT 或 BACK）")
+    public ApiResponse<ReviewerProfileDto> uploadIdCard(
+            @RequestParam String side,
+            @RequestPart MultipartFile file) {
+        Long reviewerId = getCurrentReviewerId();
+        return ApiResponse.ok(reviewerService.uploadIdCard(reviewerId, side, file));
+    }
+
+    @GetMapping("/profile/id-card/{side}")
+    @Operation(summary = "查看身份证图片（side=FRONT 或 BACK）")
+    public ResponseEntity<InputStreamResource> viewIdCard(@PathVariable String side) {
+        Long reviewerId = getCurrentReviewerId();
+        InputStream stream = reviewerService.getIdCardStream(reviewerId, side);
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .body(new InputStreamResource(stream));
     }
 
     private Long getCurrentReviewerId() {
