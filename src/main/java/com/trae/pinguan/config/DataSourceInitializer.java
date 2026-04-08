@@ -30,6 +30,7 @@ public class DataSourceInitializer implements ApplicationRunner {
         ensureColumn("review_tasks", "recuse_reason_other", "varchar(255)");
         ensureReviewerInstitutionChangesTable();
         ensureRecuseReasonDictionary();
+        ensureScoreColumnsNullable();
     }
 
     private void ensureColumn(String tableName, String columnName, String definition) {
@@ -42,6 +43,43 @@ public class DataSourceInitializer implements ApplicationRunner {
         );
         if (count != null && count == 0) {
             jdbcTemplate.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + definition);
+        }
+    }
+
+    /**
+     * 草稿保存功能要求评分字段可为 NULL（旧表建时是 NOT NULL）。
+     * 用 MODIFY COLUMN 幂等地将相关列改为 NULL。
+     */
+    private void ensureScoreColumnsNullable() {
+        // review_scores
+        modifyColumnNullable("review_scores", "plan",         "DOUBLE");
+        modifyColumnNullable("review_scores", "problem",      "DOUBLE");
+        modifyColumnNullable("review_scores", "action",       "DOUBLE");
+        modifyColumnNullable("review_scores", "success",      "DOUBLE");
+        modifyColumnNullable("review_scores", "review",       "DOUBLE");
+        modifyColumnNullable("review_scores", "operation",    "DOUBLE");
+        modifyColumnNullable("review_scores", "presentation", "DOUBLE");
+        modifyColumnNullable("review_scores", "total",        "DOUBLE");
+        modifyColumnNullable("review_scores", "highlight",    "VARCHAR(1000)");
+        modifyColumnNullable("review_scores", "weakness",     "VARCHAR(1000)");
+        modifyColumnNullable("review_scores", "submitted_at", "DATETIME(6)");
+        // interview_scores
+        modifyColumnNullable("interview_scores", "topic",        "DOUBLE");
+        modifyColumnNullable("interview_scores", "process",      "DOUBLE");
+        modifyColumnNullable("interview_scores", "operation",    "DOUBLE");
+        modifyColumnNullable("interview_scores", "result",       "DOUBLE");
+        modifyColumnNullable("interview_scores", "total",        "DOUBLE");
+        modifyColumnNullable("interview_scores", "highlight",    "VARCHAR(1000)");
+        modifyColumnNullable("interview_scores", "weakness",     "VARCHAR(1000)");
+        modifyColumnNullable("interview_scores", "submitted_at", "DATETIME(6)");
+    }
+
+    private void modifyColumnNullable(String table, String column, String typeDef) {
+        try {
+            jdbcTemplate.execute(
+                "ALTER TABLE " + table + " MODIFY COLUMN " + column + " " + typeDef + " NULL");
+        } catch (Exception e) {
+            // 忽略（列不存在等异常不影响启动）
         }
     }
 
