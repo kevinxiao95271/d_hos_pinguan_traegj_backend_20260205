@@ -16,6 +16,9 @@ import com.trae.pinguan.web.dto.ReviewScoreRequest;
 import com.trae.pinguan.web.dto.ReviewSummaryItem;
 import com.trae.pinguan.web.dto.ReviewTaskAssignRequest;
 import com.trae.pinguan.web.dto.ReviewTaskItem;
+import com.trae.pinguan.web.dto.RecuseRequest;
+import com.trae.pinguan.web.dto.ReviewScoreDraftRequest;
+import com.trae.pinguan.web.dto.InterviewScoreDraftRequest;
 import com.trae.pinguan.web.dto.ReviewTaskStatusRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -54,31 +57,9 @@ public class ReviewController {
 
     @GetMapping("/my-tasks")
     @Operation(summary = "我的评审任务（评委端）")
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ApiResponse<List<ReviewTaskItem>> myTasks() {
-        // 从token中获取当前登录用户ID
         Long reviewerId = getCurrentUserId();
-        List<ReviewTask> tasks = reviewService.listTasks(reviewerId);
-        // 转换为DTO，包含registrationId和projectName
-        List<ReviewTaskItem> items = tasks.stream()
-                .map(task -> {
-                    // 在事务中访问懒加载的registration和institution
-                    Registration reg = task.getRegistration();
-                    return ReviewTaskItem.builder()
-                            .id(task.getId())
-                            .registrationId(reg != null ? reg.getId() : null)
-                            .projectName(reg != null ? reg.getProjectName() : null)
-                            .institutionName(reg != null && reg.getInstitution() != null 
-                                    ? reg.getInstitution().getName() : null)
-                            .institutionLevel(reg != null && reg.getInstitution() != null 
-                                    ? reg.getInstitution().getLevel() : null)
-                            .stage(task.getStage())
-                            .status(task.getStatus())
-                            .createdAt(task.getCreatedAt())
-                            .build();
-                })
-                .collect(java.util.stream.Collectors.toList());
-        return ApiResponse.ok(items);
+        return ApiResponse.ok(reviewService.myTaskItems(reviewerId));
     }
 
     @GetMapping("/tasks")
@@ -153,5 +134,38 @@ public class ReviewController {
         return reviewService.getInterviewScore(reviewTaskId)
                 .map(ApiResponse::ok)
                 .orElseGet(() -> ApiResponse.fail("面谈评分不存在"));
+    }
+
+    // ─── 规避 ───────────────────────────────────────────────────────────────
+
+    @PostMapping("/tasks/{taskId}/recuse")
+    @Operation(summary = "申请规避评审任务", description = "规避原因code来自 GET /api/dictionaries/recuse_reason")
+    public ApiResponse<ReviewTask> recuse(@PathVariable Long taskId,
+                                          @Valid @RequestBody RecuseRequest req) {
+        Long reviewerId = getCurrentUserId();
+        return ApiResponse.ok(reviewService.recuseTask(taskId, req, reviewerId));
+    }
+
+    // ─── 草稿保存 ────────────────────────────────────────────────────────────
+
+    @PutMapping("/scores/draft")
+    @Operation(summary = "书审评分草稿保存（不改变提交状态，可反复调用）")
+    public ApiResponse<ReviewScore> saveBookDraft(@Valid @RequestBody ReviewScoreDraftRequest req) {
+        return ApiResponse.ok(reviewService.saveScoreDraft(req));
+    }
+
+    @PutMapping("/interview-scores/draft")
+    @Operation(summary = "面谈评分草稿保存（不改变提交状态，可反复调用）")
+    public ApiResponse<InterviewScore> saveInterviewDraft(@Valid @RequestBody InterviewScoreDraftRequest req) {
+        return ApiResponse.ok(reviewService.saveInterviewScoreDraft(req));
+    }
+
+    // ─── 统计 ────────────────────────────────────────────────────────────────
+
+    @GetMapping("/my-tasks/stats")
+    @Operation(summary = "我的评审任务统计（总数、待提交数、已提交数）")
+    public ApiResponse<java.util.Map<String, Long>> myTaskStats() {
+        Long reviewerId = getCurrentUserId();
+        return ApiResponse.ok(reviewService.myTaskStats(reviewerId));
     }
 }

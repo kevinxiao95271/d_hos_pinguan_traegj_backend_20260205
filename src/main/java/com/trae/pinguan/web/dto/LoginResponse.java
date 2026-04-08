@@ -20,4 +20,6 @@ public class LoginResponse {
     private String token;
     private Long currentCompetitionId;
     private String currentCompetitionName;
+    /** 是否已确认过诚信须知（true=已确认，false/null=未确认，需弹出强制阅读） */
+    private Boolean noticeConfirmed;
 }

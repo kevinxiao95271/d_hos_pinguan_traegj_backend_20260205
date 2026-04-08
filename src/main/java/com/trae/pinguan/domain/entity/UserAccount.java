@@ -62,4 +62,7 @@ public class UserAccount {
     
     @Column
     private LocalDateTime lastLoginAt;
+
+    @Column
+    private LocalDateTime noticeConfirmedAt;
 }

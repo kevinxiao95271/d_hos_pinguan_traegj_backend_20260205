@@ -105,6 +105,58 @@ public class ReviewService {
         return reviewTaskRepository.findByReviewerId(reviewerId);
     }
 
+    @Transactional(readOnly = true)
+    public List<com.trae.pinguan.web.dto.ReviewTaskItem> myTaskItems(Long reviewerId) {
+        List<ReviewTask> tasks = reviewTaskRepository.findByReviewerId(reviewerId);
+        Set<Long> taskIds = tasks.stream().map(ReviewTask::getId).collect(Collectors.toSet());
+
+        Map<Long, Double> totalMap = new HashMap<>();
+        if (!taskIds.isEmpty()) {
+            reviewScoreRepository.findByReviewTaskIdIn(taskIds)
+                    .forEach(s -> { if (s.getTotal() != null) totalMap.put(s.getReviewTaskId(), s.getTotal()); });
+            interviewScoreRepository.findByReviewTaskIdIn(taskIds)
+                    .forEach(s -> { if (s.getTotal() != null) totalMap.put(s.getReviewTaskId(), s.getTotal()); });
+        }
+
+        return tasks.stream().map(task -> {
+            Registration reg = task.getRegistration();
+            return com.trae.pinguan.web.dto.ReviewTaskItem.builder()
+                    .id(task.getId())
+                    .registrationId(reg != null ? reg.getId() : null)
+                    .projectName(reg != null ? reg.getProjectName() : null)
+                    .institutionName(reg != null && reg.getInstitution() != null
+                            ? reg.getInstitution().getName() : null)
+                    .institutionLevel(reg != null && reg.getInstitution() != null
+                            ? reg.getInstitution().getLevel() : null)
+                    .stage(task.getStage())
+                    .status(task.getStatus())
+                    .createdAt(task.getCreatedAt())
+                    .total(totalMap.get(task.getId()))
+                    .recuseReasonCode(task.getRecuseReasonCode())
+                    .recuseReasonOther(task.getRecuseReasonOther())
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> myTaskStats(Long reviewerId) {
+        List<ReviewTask> tasks = reviewTaskRepository.findByReviewerId(reviewerId);
+        long total = tasks.size();
+        long scored = tasks.stream().filter(t -> t.getStatus() == ReviewStatus.SCORED).count();
+        long recused = tasks.stream().filter(t -> t.getStatus() == ReviewStatus.RECUSED).count();
+        long pendingSubmit = tasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.PENDING
+                        || t.getStatus() == ReviewStatus.CONFIRMED
+                        || t.getStatus() == ReviewStatus.DRAFT)
+                .count();
+        Map<String, Long> stats = new java.util.LinkedHashMap<>();
+        stats.put("total", total);
+        stats.put("pendingSubmit", pendingSubmit);
+        stats.put("scored", scored);
+        stats.put("recused", recused);
+        return stats;
+    }
+
     public List<ReviewTask> listTasks(Long reviewerId, ReviewStage stage, ReviewStatus status) {
         List<ReviewTask> tasks;
         if (stage != null) {
@@ -521,6 +573,92 @@ public class ReviewService {
         task.setStatus(ReviewStatus.SCORED);
         reviewTaskRepository.save(task);
         return saved;
+    }
+
+    @Transactional
+    public ReviewScore saveScoreDraft(com.trae.pinguan.web.dto.ReviewScoreDraftRequest request) {
+        ReviewTask task = reviewTaskRepository.findById(request.getReviewTaskId())
+                .orElseThrow(() -> new IllegalArgumentException("评审任务不存在"));
+        if (task.getStatus() == ReviewStatus.SCORED) {
+            throw new IllegalArgumentException("评分已正式提交，不可再修改草稿");
+        }
+        ReviewScore score = reviewScoreRepository.findByReviewTaskId(task.getId())
+                .orElse(ReviewScore.builder().reviewTask(task).build());
+        if (request.getPlan() != null)         score.setPlan(request.getPlan());
+        if (request.getProblem() != null)      score.setProblem(request.getProblem());
+        if (request.getAction() != null)       score.setAction(request.getAction());
+        if (request.getSuccess() != null)      score.setSuccess(request.getSuccess());
+        if (request.getReview() != null)       score.setReview(request.getReview());
+        if (request.getOperation() != null)    score.setOperation(request.getOperation());
+        if (request.getPresentation() != null) score.setPresentation(request.getPresentation());
+        if (request.getHighlight() != null)    score.setHighlight(request.getHighlight());
+        if (request.getWeakness() != null)     score.setWeakness(request.getWeakness());
+        // 重新计算total（只有所有分项都有值时才计算）
+        if (score.getPlan() != null && score.getProblem() != null && score.getAction() != null
+                && score.getSuccess() != null && score.getReview() != null
+                && score.getOperation() != null && score.getPresentation() != null) {
+            score.setTotal(score.getPlan() + score.getProblem() + score.getAction()
+                    + score.getSuccess() + score.getReview() + score.getOperation() + score.getPresentation());
+        }
+        ReviewScore saved = reviewScoreRepository.save(score);
+        if (task.getStatus() == ReviewStatus.PENDING || task.getStatus() == ReviewStatus.CONFIRMED) {
+            task.setStatus(ReviewStatus.DRAFT);
+            task.setUpdatedAt(LocalDateTime.now());
+            reviewTaskRepository.save(task);
+        }
+        return saved;
+    }
+
+    @Transactional
+    public InterviewScore saveInterviewScoreDraft(com.trae.pinguan.web.dto.InterviewScoreDraftRequest request) {
+        ReviewTask task = reviewTaskRepository.findById(request.getReviewTaskId())
+                .orElseThrow(() -> new IllegalArgumentException("评审任务不存在"));
+        if (task.getStatus() == ReviewStatus.SCORED) {
+            throw new IllegalArgumentException("评分已正式提交，不可再修改草稿");
+        }
+        InterviewScore score = interviewScoreRepository.findByReviewTaskId(task.getId())
+                .orElse(InterviewScore.builder().reviewTask(task).build());
+        if (request.getTopic() != null)     score.setTopic(request.getTopic());
+        if (request.getProcess() != null)   score.setProcess(request.getProcess());
+        if (request.getOperation() != null) score.setOperation(request.getOperation());
+        if (request.getResult() != null)    score.setResult(request.getResult());
+        if (request.getHighlight() != null) score.setHighlight(request.getHighlight());
+        if (request.getWeakness() != null)  score.setWeakness(request.getWeakness());
+        if (score.getTopic() != null && score.getProcess() != null
+                && score.getOperation() != null && score.getResult() != null) {
+            score.setTotal(score.getTopic() + score.getProcess() + score.getOperation() + score.getResult());
+        }
+        InterviewScore saved = interviewScoreRepository.save(score);
+        if (task.getStatus() == ReviewStatus.PENDING || task.getStatus() == ReviewStatus.CONFIRMED) {
+            task.setStatus(ReviewStatus.DRAFT);
+            task.setUpdatedAt(LocalDateTime.now());
+            reviewTaskRepository.save(task);
+        }
+        return saved;
+    }
+
+    @Transactional
+    public ReviewTask recuseTask(Long taskId, com.trae.pinguan.web.dto.RecuseRequest request, Long reviewerId) {
+        ReviewTask task = reviewTaskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("评审任务不存在"));
+        if (!task.getReviewer().getId().equals(reviewerId)) {
+            throw new IllegalArgumentException("无权操作该任务");
+        }
+        if (task.getStatus() == ReviewStatus.SCORED) {
+            throw new IllegalArgumentException("已提交评分，无法规避");
+        }
+        if (task.getStatus() == ReviewStatus.RECUSED) {
+            throw new IllegalArgumentException("该任务已规避");
+        }
+        if ("OTHER".equals(request.getReasonCode()) &&
+                (request.getReasonOther() == null || request.getReasonOther().trim().isEmpty())) {
+            throw new IllegalArgumentException("选择\"其他\"时，请填写具体规避原因");
+        }
+        task.setStatus(ReviewStatus.RECUSED);
+        task.setRecuseReasonCode(request.getReasonCode());
+        task.setRecuseReasonOther(request.getReasonOther());
+        task.setUpdatedAt(LocalDateTime.now());
+        return reviewTaskRepository.save(task);
     }
 
     @Transactional

@@ -439,4 +439,14 @@ public class UserService {
         Random random = new Random();
         return String.format("%06d", random.nextInt(1000000));
     }
+
+    @Transactional
+    public void confirmNotice(Long userId) {
+        UserAccount user = userAccountRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        if (user.getNoticeConfirmedAt() == null) {
+            user.setNoticeConfirmedAt(LocalDateTime.now());
+            userAccountRepository.save(user);
+        }
+    }
 }

@@ -20,7 +20,16 @@ public class DataSourceInitializer implements ApplicationRunner {
         ensureColumn("user_accounts", "reviewer_group_code", "varchar(32)");
         ensureColumn("user_accounts", "interview_group_code", "varchar(32)");
         ensureColumn("user_accounts", "expert_background", "varchar(32)");
+        ensureColumn("user_accounts", "notice_confirmed_at", "DATETIME(6)");
         ensureReviewerProfilesTable();
+        ensureColumn("reviewer_profiles", "department", "varchar(64)");
+        ensureColumn("reviewer_profiles", "backgrounds_other", "varchar(255)");
+        ensureColumn("reviewer_profiles", "tools_other", "varchar(255)");
+        ensureColumn("reviewer_profiles", "topics_other", "varchar(255)");
+        ensureColumn("review_tasks", "recuse_reason_code", "varchar(64)");
+        ensureColumn("review_tasks", "recuse_reason_other", "varchar(255)");
+        ensureReviewerInstitutionChangesTable();
+        ensureRecuseReasonDictionary();
     }
 
     private void ensureColumn(String tableName, String columnName, String definition) {
@@ -33,6 +42,33 @@ public class DataSourceInitializer implements ApplicationRunner {
         );
         if (count != null && count == 0) {
             jdbcTemplate.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + definition);
+        }
+    }
+
+    private void ensureReviewerInstitutionChangesTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS reviewer_institution_changes (" +
+                "id BIGINT NOT NULL AUTO_INCREMENT," +
+                "reviewer_id BIGINT NOT NULL," +
+                "old_institution_id BIGINT NULL," +
+                "old_institution_name VARCHAR(256) NULL," +
+                "new_institution_id BIGINT NULL," +
+                "new_institution_name VARCHAR(256) NULL," +
+                "reason VARCHAR(500) NULL," +
+                "changed_by_id BIGINT NULL," +
+                "changed_by_name VARCHAR(64) NULL," +
+                "changed_at DATETIME(6) NOT NULL," +
+                "PRIMARY KEY (id)," +
+                "INDEX idx_ric_reviewer (reviewer_id)" +
+                ")");
+    }
+
+    private void ensureRecuseReasonDictionary() {
+        String[] codes  = {"GUIDED_PROJECT", "KNOW_LEADER", "OTHER_EXCHANGE", "OTHER"};
+        String[] labels = {"参与该项目辅导工作", "与项目负责人相熟", "与该项目存在其他形式交流", "其他"};
+        for (int i = 0; i < codes.length; i++) {
+            jdbcTemplate.update(
+                "INSERT IGNORE INTO dictionary_items (type, code, label, active, created_at) VALUES (?,?,?,1,NOW())",
+                "recuse_reason", codes[i], labels[i]);
         }
     }
 

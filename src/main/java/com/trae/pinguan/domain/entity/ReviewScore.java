@@ -29,36 +29,37 @@ public class ReviewScore {
     @Column(name = "review_task_id", insertable = false, updatable = false)
     private Long reviewTaskId;
 
-    @Column(nullable = false)
+    @Column
     private Double plan;
 
-    @Column(nullable = false)
+    @Column
     private Double problem;
 
-    @Column(nullable = false)
+    @Column
     private Double action;
 
-    @Column(nullable = false)
+    @Column
     private Double success;
 
-    @Column(nullable = false)
+    @Column
     private Double review;
 
-    @Column(nullable = false)
+    @Column
     private Double operation;
 
-    @Column(nullable = false)
+    @Column
     private Double presentation;
 
-    @Column(nullable = false)
+    @Column
     private Double total;
 
-    @Column(nullable = false, length = 500)
+    @Column(length = 1000)
     private String highlight;
 
-    @Column(nullable = false, length = 500)
+    @Column(length = 1000)
     private String weakness;
 
-    @Column(nullable = false)
+    /** 正式提交时间；草稿状态下为 null */
+    @Column
     private LocalDateTime submittedAt;
 }

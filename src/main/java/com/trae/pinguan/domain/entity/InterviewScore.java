@@ -27,31 +27,32 @@ public class InterviewScore {
     private Long reviewTaskId;
 
     /** 选题：迫切性、实用性、可行性（满分10） */
-    @Column(nullable = false)
+    @Column
     private Double topic;
 
     /** 改善过程的确实性（满分40） */
-    @Column(nullable = false)
+    @Column
     private Double process;
 
     /** 整体运作（满分20） */
-    @Column(nullable = false)
+    @Column
     private Double operation;
 
     /** 改善成果（满分30） */
-    @Column(nullable = false)
+    @Column
     private Double result;
 
     /** 合计（满分100，= topic+process+operation+result） */
-    @Column(nullable = false)
+    @Column
     private Double total;
 
-    @Column(length = 500)
+    @Column(length = 1000)
     private String highlight;
 
-    @Column(length = 500)
+    @Column(length = 1000)
     private String weakness;
 
-    @Column(nullable = false)
+    /** 正式提交时间；草稿状态下为 null */
+    @Column
     private LocalDateTime submittedAt;
 }

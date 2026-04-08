@@ -1,13 +1,17 @@
 package com.trae.pinguan.web;
 
+import com.trae.pinguan.domain.entity.ReviewerInstitutionChange;
 import com.trae.pinguan.service.ReviewerService;
 import com.trae.pinguan.web.dto.ApiResponse;
+import com.trae.pinguan.web.dto.ChangeInstitutionRequest;
 import com.trae.pinguan.web.dto.ReviewerProfileDto;
 import com.trae.pinguan.web.dto.ReviewerProfileUpsertRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.InputStream;
+import java.util.List;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
@@ -67,6 +71,24 @@ public class ReviewerProfileController {
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)
                 .body(new InputStreamResource(stream));
+    }
+
+    @PutMapping("/institution")
+    @Operation(summary = "修改本人所属机构（自助申请，操作记录留存）")
+    public ApiResponse<Void> changeMyInstitution(
+            @Valid @RequestBody ChangeInstitutionRequest req,
+            HttpServletRequest request) {
+        Long reviewerId = getCurrentReviewerId();
+        String operatorName = (String) request.getAttribute("userName");
+        reviewerService.changeInstitution(reviewerId, req, reviewerId, operatorName);
+        return ApiResponse.ok(null);
+    }
+
+    @GetMapping("/institution/history")
+    @Operation(summary = "查看本人所属机构变更记录")
+    public ApiResponse<List<ReviewerInstitutionChange>> myInstitutionHistory() {
+        Long reviewerId = getCurrentReviewerId();
+        return ApiResponse.ok(reviewerService.getInstitutionHistory(reviewerId));
     }
 
     private Long getCurrentReviewerId() {

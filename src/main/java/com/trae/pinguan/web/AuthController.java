@@ -98,7 +98,20 @@ public class AuthController {
                 user.getExpertBackground(),
                 jwtService.generateToken(user),
                 latestCompetition.map(Competition::getId).orElse(null),
-                latestCompetition.map(Competition::getName).orElse(null)
+                latestCompetition.map(Competition::getName).orElse(null),
+                user.getNoticeConfirmedAt() != null
         );
+    }
+
+    @PostMapping("/notice/confirm")
+    @SecurityRequirement(name = "BearerAuth")
+    @Operation(summary = "确认已阅读诚信须知", description = "登录后首次弹窗强制阅读须知，阅读完毕后调用此接口记录确认时间")
+    public ApiResponse<Void> confirmNotice(javax.servlet.http.HttpServletRequest request) {
+        Object userId = request.getAttribute("userId");
+        if (userId == null) {
+            return ApiResponse.fail("未登录");
+        }
+        userService.confirmNotice(Long.parseLong(userId.toString()));
+        return ApiResponse.ok(null);
     }
 }

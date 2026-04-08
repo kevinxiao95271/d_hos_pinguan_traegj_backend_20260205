@@ -2,12 +2,15 @@ package com.trae.pinguan.service;
 
 import com.trae.pinguan.config.MinioProperties;
 import com.trae.pinguan.domain.entity.Institution;
+import com.trae.pinguan.domain.entity.ReviewerInstitutionChange;
 import com.trae.pinguan.domain.entity.ReviewerProfile;
 import com.trae.pinguan.domain.entity.UserAccount;
 import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.repository.InstitutionRepository;
+import com.trae.pinguan.repository.ReviewerInstitutionChangeRepository;
 import com.trae.pinguan.repository.ReviewerProfileRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
+import com.trae.pinguan.web.dto.ChangeInstitutionRequest;
 import com.trae.pinguan.web.dto.ReviewerListItem;
 import com.trae.pinguan.web.dto.ReviewerProfileDto;
 import com.trae.pinguan.web.dto.ReviewerProfileUpsertRequest;
@@ -29,6 +32,7 @@ public class ReviewerService {
     private final UserAccountRepository userAccountRepository;
     private final InstitutionRepository institutionRepository;
     private final ReviewerProfileRepository reviewerProfileRepository;
+    private final ReviewerInstitutionChangeRepository reviewerInstitutionChangeRepository;
     private final FileStorageService fileStorageService;
     private final MinioProperties minioProperties;
 
@@ -159,12 +163,16 @@ public class ReviewerService {
         profile.setIdNumberMasked(request.getIdNumberMasked());
         profile.setIdCardFrontUrl(request.getIdCardFrontUrl());
         profile.setIdCardBackUrl(request.getIdCardBackUrl());
+        profile.setDepartment(request.getDepartment());
         profile.setBankName(request.getBankName());
         profile.setBankCardNo(request.getBankCardNo());
         profile.setBankCardNoMasked(request.getBankCardNoMasked());
         profile.setBackgroundsJson(request.getBackgroundsJson());
+        profile.setBackgroundsOther(request.getBackgroundsOther());
         profile.setToolsJson(request.getToolsJson());
+        profile.setToolsOther(request.getToolsOther());
         profile.setTopicsJson(request.getTopicsJson());
+        profile.setTopicsOther(request.getTopicsOther());
         profile.setUpdatedAt(now);
 
         ReviewerProfile saved = reviewerProfileRepository.save(profile);
@@ -214,11 +222,46 @@ public class ReviewerService {
                 minioProperties.getBucket().getRegistrationFiles());
     }
 
+    @Transactional
+    public void changeInstitution(Long reviewerId, ChangeInstitutionRequest req, Long operatorId, String operatorName) {
+        UserAccount reviewer = get(reviewerId);
+        Institution newInst = institutionRepository.findById(req.getNewInstitutionId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "机构不存在"));
+
+        Institution oldInst = reviewer.getInstitution();
+        if (oldInst != null && oldInst.getId().equals(newInst.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "新机构与当前机构相同，无需变更");
+        }
+
+        ReviewerInstitutionChange change = ReviewerInstitutionChange.builder()
+                .reviewerId(reviewerId)
+                .oldInstitutionId(oldInst == null ? null : oldInst.getId())
+                .oldInstitutionName(oldInst == null ? null : oldInst.getName())
+                .newInstitutionId(newInst.getId())
+                .newInstitutionName(newInst.getName())
+                .reason(req.getReason())
+                .changedById(operatorId)
+                .changedByName(operatorName)
+                .changedAt(LocalDateTime.now())
+                .build();
+        reviewerInstitutionChangeRepository.save(change);
+
+        reviewer.setInstitution(newInst);
+        userAccountRepository.save(reviewer);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReviewerInstitutionChange> getInstitutionHistory(Long reviewerId) {
+        get(reviewerId); // 校验评委存在
+        return reviewerInstitutionChangeRepository.findByReviewerIdOrderByChangedAtDesc(reviewerId);
+    }
+
     private ReviewerProfileDto toDto(ReviewerProfile p) {
         return ReviewerProfileDto.builder()
                 .userId(p.getUserId())
                 .gender(p.getGender())
                 .position(p.getPosition())
+                .department(p.getDepartment())
                 .idNumber(p.getIdNumber())
                 .idNumberMasked(p.getIdNumberMasked())
                 .idCardFrontUrl(p.getIdCardFrontUrl())
@@ -227,8 +270,11 @@ public class ReviewerService {
                 .bankCardNo(p.getBankCardNo())
                 .bankCardNoMasked(p.getBankCardNoMasked())
                 .backgroundsJson(p.getBackgroundsJson())
+                .backgroundsOther(p.getBackgroundsOther())
                 .toolsJson(p.getToolsJson())
+                .toolsOther(p.getToolsOther())
                 .topicsJson(p.getTopicsJson())
+                .topicsOther(p.getTopicsOther())
                 .build();
     }
 }

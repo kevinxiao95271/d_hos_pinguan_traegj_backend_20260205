@@ -30,6 +30,9 @@ public class ReviewerProfile {
     @Column(name = "job_position", length = 64)
     private String position;
 
+    @Column(name = "department", length = 64)
+    private String department;
+
     @Column(name = "id_number", length = 64)
     private String idNumber;
 
@@ -55,13 +58,22 @@ public class ReviewerProfile {
     @Column(name = "backgrounds_json")
     private String backgroundsJson;
 
+    @Column(name = "backgrounds_other", length = 255)
+    private String backgroundsOther;
+
     @Lob
     @Column(name = "tools_json")
     private String toolsJson;
 
+    @Column(name = "tools_other", length = 255)
+    private String toolsOther;
+
     @Lob
     @Column(name = "topics_json")
     private String topicsJson;
+
+    @Column(name = "topics_other", length = 255)
+    private String topicsOther;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

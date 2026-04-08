@@ -13,6 +13,7 @@ public class ReviewerProfileDto {
     private Long userId;
     private String gender;
     private String position;
+    private String department;
     private String idNumber;
     private String idNumberMasked;
     private String idCardFrontUrl;
@@ -21,6 +22,9 @@ public class ReviewerProfileDto {
     private String bankCardNo;
     private String bankCardNoMasked;
     private String backgroundsJson;
+    private String backgroundsOther;
     private String toolsJson;
+    private String toolsOther;
     private String topicsJson;
+    private String topicsOther;
 }

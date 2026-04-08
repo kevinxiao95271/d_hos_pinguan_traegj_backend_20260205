@@ -46,4 +46,12 @@ public class ReviewTask {
 
     @Column
     private LocalDateTime updatedAt;
+
+    /** 规避原因字典code（来自 recuse_reason 字典类型） */
+    @Column(name = "recuse_reason_code", length = 64)
+    private String recuseReasonCode;
+
+    /** 规避原因自定义说明（reasonCode=OTHER 时必填） */
+    @Column(name = "recuse_reason_other", length = 255)
+    private String recuseReasonOther;
 }

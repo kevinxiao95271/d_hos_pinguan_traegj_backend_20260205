@@ -15,6 +15,10 @@ public class ReviewerProfileUpsertRequest {
     @Size(max = 64, message = "职务长度不能超过64")
     private String position;
 
+    @Schema(description = "科室")
+    @Size(max = 64, message = "科室长度不能超过64")
+    private String department;
+
     @Schema(description = "身份证号")
     @Size(max = 64, message = "身份证号长度不能超过64")
     private String idNumber;
@@ -46,9 +50,21 @@ public class ReviewerProfileUpsertRequest {
     @Schema(description = "专业背景多选JSON数组，如 [\"MEDICAL\",\"NURSING\"]")
     private String backgroundsJson;
 
+    @Schema(description = "专业背景-其他，文字说明")
+    @Size(max = 255, message = "专业背景其他说明不能超过255字")
+    private String backgroundsOther;
+
     @Schema(description = "熟悉工具多选JSON数组，如 [\"PDCA\",\"QFD\"]")
     private String toolsJson;
 
+    @Schema(description = "熟悉工具-其他，文字说明")
+    @Size(max = 255, message = "熟悉工具其他说明不能超过255字")
+    private String toolsOther;
+
     @Schema(description = "擅长主题多选JSON数组，如 [\"PATIENT_CARE\",\"MEDICAL_QUALITY_SAFETY\"]")
     private String topicsJson;
+
+    @Schema(description = "擅长主题-其他，文字说明")
+    @Size(max = 255, message = "擅长主题其他说明不能超过255字")
+    private String topicsOther;
 }

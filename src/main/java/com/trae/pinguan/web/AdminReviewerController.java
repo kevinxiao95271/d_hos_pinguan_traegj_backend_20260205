@@ -1,9 +1,11 @@
 package com.trae.pinguan.web;
 
+import com.trae.pinguan.domain.entity.ReviewerInstitutionChange;
 import com.trae.pinguan.domain.entity.UserAccount;
 import com.trae.pinguan.service.JwtService;
 import com.trae.pinguan.service.ReviewerService;
 import com.trae.pinguan.web.dto.ApiResponse;
+import com.trae.pinguan.web.dto.ChangeInstitutionRequest;
 import com.trae.pinguan.web.dto.ReviewerListItem;
 import com.trae.pinguan.web.dto.ReviewerProfileDto;
 import com.trae.pinguan.web.dto.ReviewerProfileUpsertRequest;
@@ -95,6 +97,24 @@ public class AdminReviewerController {
                                                          @Valid @RequestBody ReviewerProfileUpsertRequest request) {
         requireCommitteeOrOps();
         return ApiResponse.ok(reviewerService.upsertProfile(id, request));
+    }
+
+    @PutMapping("/{id}/institution")
+    @Operation(summary = "管理员修改评委所属机构（记录变更日志）")
+    public ApiResponse<Void> changeInstitution(@PathVariable Long id,
+                                               @Valid @RequestBody ChangeInstitutionRequest req) {
+        requireCommitteeOrOps();
+        Long operatorId = Long.parseLong(request.getAttribute("userId").toString());
+        String operatorName = (String) request.getAttribute("userName");
+        reviewerService.changeInstitution(id, req, operatorId, operatorName);
+        return ApiResponse.ok(null);
+    }
+
+    @GetMapping("/{id}/institution/history")
+    @Operation(summary = "查看评委机构变更记录")
+    public ApiResponse<List<ReviewerInstitutionChange>> institutionHistory(@PathVariable Long id) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewerService.getInstitutionHistory(id));
     }
 
     private void requireCommitteeOrOps() {

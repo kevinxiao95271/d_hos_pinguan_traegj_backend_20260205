@@ -21,4 +21,10 @@ public class ReviewTaskItem {
     private ReviewStage stage;
     private ReviewStatus status;
     private LocalDateTime createdAt;
+    /** 当前保存的总分（草稿或已提交均返回；未填写时为 null） */
+    private Double total;
+    /** 规避原因code（RECUSED状态时有值） */
+    private String recuseReasonCode;
+    /** 规避原因说明（RECUSED状态且原因为OTHER时有值） */
+    private String recuseReasonOther;
 }
