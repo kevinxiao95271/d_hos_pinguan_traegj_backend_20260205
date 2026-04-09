@@ -118,6 +118,19 @@ public class ReviewService {
                     .forEach(s -> { if (s.getTotal() != null) totalMap.put(s.getReviewTaskId(), s.getTotal()); });
         }
 
+        // 排序优先级：草稿(有分值) > 已提交 > 其他(待评/退回) > 规避
+        // 同优先级内按 total 倒序，无分值排末位
+        java.util.Comparator<com.trae.pinguan.web.dto.ReviewTaskItem> comparator =
+            java.util.Comparator
+                .<com.trae.pinguan.web.dto.ReviewTaskItem, Integer>comparing(item -> {
+                    ReviewStatus s = item.getStatus();
+                    if (s == ReviewStatus.DRAFT)   return 0;
+                    if (s == ReviewStatus.SCORED)  return 1;
+                    if (s == ReviewStatus.RECUSED) return 3;
+                    return 2; // PENDING / CONFIRMED / RETURNED
+                })
+                .thenComparing(item -> item.getTotal() != null ? -item.getTotal() : Double.MAX_VALUE);
+
         return tasks.stream().map(task -> {
             Registration reg = task.getRegistration();
             return com.trae.pinguan.web.dto.ReviewTaskItem.builder()
@@ -135,7 +148,7 @@ public class ReviewService {
                     .recuseReasonCode(task.getRecuseReasonCode())
                     .recuseReasonOther(task.getRecuseReasonOther())
                     .build();
-        }).collect(Collectors.toList());
+        }).sorted(comparator).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
