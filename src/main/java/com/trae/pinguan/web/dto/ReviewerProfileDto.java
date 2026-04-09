@@ -10,7 +10,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReviewerProfileDto {
+    // ---- 来自 user_accounts（只读展示）----
     private Long userId;
+    private String name;
+    private String phone;
+    /** 职称：初级 / 中级 / 副高 / 正高，前端单选渲染 */
+    private String title;
+    private String institutionName;
+
+    // ---- 来自 reviewer_profiles（可编辑）----
     private String gender;
     private String position;
     private String department;
@@ -27,4 +35,6 @@ public class ReviewerProfileDto {
     private String toolsOther;
     private String topicsJson;
     private String topicsOther;
+    /** 品管相关经验，多选 JSON 数组 */
+    private String experienceJson;
 }

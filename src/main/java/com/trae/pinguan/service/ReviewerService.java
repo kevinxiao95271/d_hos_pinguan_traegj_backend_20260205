@@ -138,18 +138,24 @@ public class ReviewerService {
 
     @Transactional(readOnly = true)
     public ReviewerProfileDto getProfile(Long reviewerId) {
-        get(reviewerId); // 校验评委存在
+        UserAccount user = get(reviewerId);
         ReviewerProfile profile = reviewerProfileRepository.findById(reviewerId)
                 .orElse(null);
         if (profile == null) {
-            return ReviewerProfileDto.builder().userId(reviewerId).build();
+            return ReviewerProfileDto.builder()
+                    .userId(reviewerId)
+                    .name(user.getName())
+                    .phone(user.getPhone())
+                    .title(user.getTitle())
+                    .institutionName(user.getInstitution() == null ? null : user.getInstitution().getName())
+                    .build();
         }
-        return toDto(profile);
+        return toDto(user, profile);
     }
 
     @Transactional
     public ReviewerProfileDto upsertProfile(Long reviewerId, ReviewerProfileUpsertRequest request) {
-        get(reviewerId); // 校验评委存在
+        UserAccount user = get(reviewerId);
         LocalDateTime now = LocalDateTime.now();
         ReviewerProfile profile = reviewerProfileRepository.findById(reviewerId)
                 .orElse(ReviewerProfile.builder()
@@ -173,15 +179,22 @@ public class ReviewerService {
         profile.setToolsOther(request.getToolsOther());
         profile.setTopicsJson(request.getTopicsJson());
         profile.setTopicsOther(request.getTopicsOther());
+        profile.setExperienceJson(request.getExperienceJson());
         profile.setUpdatedAt(now);
 
+        // 职称单独同步回 user_accounts
+        if (request.getTitle() != null) {
+            user.setTitle(request.getTitle());
+            userAccountRepository.save(user);
+        }
+
         ReviewerProfile saved = reviewerProfileRepository.save(profile);
-        return toDto(saved);
+        return toDto(user, saved);
     }
 
     @Transactional
     public ReviewerProfileDto uploadIdCard(Long reviewerId, String side, MultipartFile file) {
-        get(reviewerId);
+        UserAccount user = get(reviewerId);
         LocalDateTime now = LocalDateTime.now();
         ReviewerProfile profile = reviewerProfileRepository.findById(reviewerId)
                 .orElse(ReviewerProfile.builder()
@@ -205,7 +218,7 @@ public class ReviewerService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "side 参数必须为 FRONT 或 BACK");
         }
         profile.setUpdatedAt(now);
-        return toDto(reviewerProfileRepository.save(profile));
+        return toDto(user, reviewerProfileRepository.save(profile));
     }
 
     @Transactional(readOnly = true)
@@ -256,9 +269,13 @@ public class ReviewerService {
         return reviewerInstitutionChangeRepository.findByReviewerIdOrderByChangedAtDesc(reviewerId);
     }
 
-    private ReviewerProfileDto toDto(ReviewerProfile p) {
+    private ReviewerProfileDto toDto(UserAccount u, ReviewerProfile p) {
         return ReviewerProfileDto.builder()
                 .userId(p.getUserId())
+                .name(u.getName())
+                .phone(u.getPhone())
+                .title(u.getTitle())
+                .institutionName(u.getInstitution() == null ? null : u.getInstitution().getName())
                 .gender(p.getGender())
                 .position(p.getPosition())
                 .department(p.getDepartment())
@@ -275,6 +292,7 @@ public class ReviewerService {
                 .toolsOther(p.getToolsOther())
                 .topicsJson(p.getTopicsJson())
                 .topicsOther(p.getTopicsOther())
+                .experienceJson(p.getExperienceJson())
                 .build();
     }
 }

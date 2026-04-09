@@ -67,4 +67,14 @@ public class ReviewerProfileUpsertRequest {
     @Schema(description = "擅长主题-其他，文字说明")
     @Size(max = 255, message = "擅长主题其他说明不能超过255字")
     private String topicsOther;
+
+    @Schema(description = "品管相关经验，多选 JSON 数组，如 [\"PROJECT_LEADER\",\"CITY_JUDGE\"]。" +
+            "可选值：PROJECT_LEADER（担任过品管项目负责人）、COACHED_PROJECT（辅导过品管参赛项目）、" +
+            "UNIT_JUDGE（单位内品管大赛评委）、CITY_JUDGE（市/区/县级品管大赛评委）、" +
+            "PROVINCE_JUDGE（省级及以上品管大赛评委）")
+    private String experienceJson;
+
+    @Schema(description = "职称，单选：初级 / 中级 / 副高 / 正高（更新 user_accounts.title）")
+    @Size(max = 64, message = "职称长度不能超过64")
+    private String title;
 }

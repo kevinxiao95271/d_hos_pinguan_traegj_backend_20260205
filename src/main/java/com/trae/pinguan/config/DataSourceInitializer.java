@@ -26,6 +26,7 @@ public class DataSourceInitializer implements ApplicationRunner {
         ensureColumn("reviewer_profiles", "backgrounds_other", "varchar(255)");
         ensureColumn("reviewer_profiles", "tools_other", "varchar(255)");
         ensureColumn("reviewer_profiles", "topics_other", "varchar(255)");
+        ensureColumn("reviewer_profiles", "experience_json", "LONGTEXT");
         ensureColumn("review_tasks", "recuse_reason_code", "varchar(64)");
         ensureColumn("review_tasks", "recuse_reason_other", "varchar(255)");
         ensureReviewerInstitutionChangesTable();

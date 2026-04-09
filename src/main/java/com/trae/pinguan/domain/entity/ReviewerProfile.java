@@ -75,6 +75,11 @@ public class ReviewerProfile {
     @Column(name = "topics_other", length = 255)
     private String topicsOther;
 
+    /** 品管相关经验，多选 JSON 数组，如 ["PROJECT_LEADER","CITY_JUDGE"] */
+    @Lob
+    @Column(name = "experience_json")
+    private String experienceJson;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
