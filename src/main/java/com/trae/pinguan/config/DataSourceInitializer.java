@@ -32,6 +32,7 @@ public class DataSourceInitializer implements ApplicationRunner {
         ensureReviewerInstitutionChangesTable();
         ensureRecuseReasonDictionary();
         ensureScoreColumnsNullable();
+        ensureUtf8mb4Columns();
     }
 
     private void ensureColumn(String tableName, String columnName, String definition) {
@@ -73,6 +74,34 @@ public class DataSourceInitializer implements ApplicationRunner {
         modifyColumnNullable("interview_scores", "highlight",    "VARCHAR(1000)");
         modifyColumnNullable("interview_scores", "weakness",     "VARCHAR(1000)");
         modifyColumnNullable("interview_scores", "submitted_at", "DATETIME(6)");
+    }
+
+    /**
+     * 将可能因历史建表使用 latin1 的 VARCHAR 列统一改为 utf8mb4，以正确存储中文。
+     */
+    private void ensureUtf8mb4Columns() {
+        String[][] cols = {
+            {"user_accounts", "title",           "VARCHAR(64)"},
+            {"user_accounts", "name",            "VARCHAR(64) NOT NULL"},
+            {"user_accounts", "reviewer_group_code",   "VARCHAR(32)"},
+            {"user_accounts", "interview_group_code",  "VARCHAR(32)"},
+            {"user_accounts", "expert_background",     "VARCHAR(32)"},
+            {"reviewer_profiles", "gender",        "VARCHAR(8)"},
+            {"reviewer_profiles", "job_position",  "VARCHAR(64)"},
+            {"reviewer_profiles", "department",    "VARCHAR(64)"},
+            {"reviewer_profiles", "backgrounds_other", "VARCHAR(255)"},
+            {"reviewer_profiles", "tools_other",       "VARCHAR(255)"},
+            {"reviewer_profiles", "topics_other",      "VARCHAR(255)"},
+        };
+        for (String[] col : cols) {
+            try {
+                jdbcTemplate.execute(
+                    "ALTER TABLE " + col[0] + " MODIFY COLUMN " + col[1]
+                    + " " + col[2] + " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            } catch (Exception e) {
+                // 忽略（列不存在或已正确，不影响启动）
+            }
+        }
     }
 
     private void modifyColumnNullable(String table, String column, String typeDef) {
