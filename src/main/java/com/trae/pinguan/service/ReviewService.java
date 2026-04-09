@@ -147,7 +147,8 @@ public class ReviewService {
         long pendingSubmit = tasks.stream()
                 .filter(t -> t.getStatus() == ReviewStatus.PENDING
                         || t.getStatus() == ReviewStatus.CONFIRMED
-                        || t.getStatus() == ReviewStatus.DRAFT)
+                        || t.getStatus() == ReviewStatus.DRAFT
+                        || t.getStatus() == ReviewStatus.RETURNED)
                 .count();
         Map<String, Long> stats = new java.util.LinkedHashMap<>();
         stats.put("total", total);
@@ -601,7 +602,9 @@ public class ReviewService {
                     + score.getSuccess() + score.getReview() + score.getOperation() + score.getPresentation());
         }
         ReviewScore saved = reviewScoreRepository.save(score);
-        if (task.getStatus() == ReviewStatus.PENDING || task.getStatus() == ReviewStatus.CONFIRMED) {
+        if (task.getStatus() == ReviewStatus.PENDING
+                || task.getStatus() == ReviewStatus.CONFIRMED
+                || task.getStatus() == ReviewStatus.RETURNED) {
             task.setStatus(ReviewStatus.DRAFT);
             task.setUpdatedAt(LocalDateTime.now());
             reviewTaskRepository.save(task);
@@ -629,7 +632,9 @@ public class ReviewService {
             score.setTotal(score.getTopic() + score.getProcess() + score.getOperation() + score.getResult());
         }
         InterviewScore saved = interviewScoreRepository.save(score);
-        if (task.getStatus() == ReviewStatus.PENDING || task.getStatus() == ReviewStatus.CONFIRMED) {
+        if (task.getStatus() == ReviewStatus.PENDING
+                || task.getStatus() == ReviewStatus.CONFIRMED
+                || task.getStatus() == ReviewStatus.RETURNED) {
             task.setStatus(ReviewStatus.DRAFT);
             task.setUpdatedAt(LocalDateTime.now());
             reviewTaskRepository.save(task);
