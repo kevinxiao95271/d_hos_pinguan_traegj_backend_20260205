@@ -680,6 +680,36 @@ public class ReviewService {
     }
 
     @Transactional
+    public ReviewTask undoRecuseTask(Long taskId, Long reviewerId) {
+        ReviewTask task = reviewTaskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("评审任务不存在"));
+        if (!task.getReviewer().getId().equals(reviewerId)) {
+            throw new IllegalArgumentException("无权操作该任务");
+        }
+        if (task.getStatus() != ReviewStatus.RECUSED) {
+            throw new IllegalArgumentException("该任务当前状态不是规避，无法撤销");
+        }
+        // 判断是否存在草稿分数：有草稿（submittedAt==null）→ DRAFT，否则 → PENDING
+        ReviewStatus targetStatus = ReviewStatus.PENDING;
+        if (task.getStage() == ReviewStage.BOOK) {
+            Optional<ReviewScore> score = reviewScoreRepository.findByReviewTaskId(taskId);
+            if (score.isPresent() && score.get().getSubmittedAt() == null) {
+                targetStatus = ReviewStatus.DRAFT;
+            }
+        } else if (task.getStage() == ReviewStage.INTERVIEW) {
+            Optional<InterviewScore> score = interviewScoreRepository.findByReviewTaskId(taskId);
+            if (score.isPresent() && score.get().getSubmittedAt() == null) {
+                targetStatus = ReviewStatus.DRAFT;
+            }
+        }
+        task.setStatus(targetStatus);
+        task.setRecuseReasonCode(null);
+        task.setRecuseReasonOther(null);
+        task.setUpdatedAt(LocalDateTime.now());
+        return reviewTaskRepository.save(task);
+    }
+
+    @Transactional
     public ReviewTask returnScore(ReviewScoreReturnRequest request) {
         ReviewTask task = reviewTaskRepository.findById(request.getReviewTaskId())
                 .orElseThrow(() -> new IllegalArgumentException("评审任务不存在"));

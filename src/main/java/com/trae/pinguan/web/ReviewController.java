@@ -146,6 +146,14 @@ public class ReviewController {
         return ApiResponse.ok(reviewService.recuseTask(taskId, req, reviewerId));
     }
 
+    @DeleteMapping("/tasks/{taskId}/recuse")
+    @Operation(summary = "撤销规避（仅评委本人）",
+               description = "将 RECUSED 任务回退：存在草稿分数则回到 DRAFT，否则回到 PENDING。同时清除规避原因。")
+    public ApiResponse<ReviewTask> undoRecuse(@PathVariable Long taskId) {
+        Long reviewerId = getCurrentUserId();
+        return ApiResponse.ok(reviewService.undoRecuseTask(taskId, reviewerId));
+    }
+
     // ─── 草稿保存 ────────────────────────────────────────────────────────────
 
     @PutMapping("/scores/draft")
