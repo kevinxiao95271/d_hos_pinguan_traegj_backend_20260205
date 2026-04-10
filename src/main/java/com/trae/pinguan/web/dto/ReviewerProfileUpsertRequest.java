@@ -23,7 +23,7 @@ public class ReviewerProfileUpsertRequest {
     @Size(max = 64, message = "身份证号长度不能超过64")
     private String idNumber;
 
-    @Schema(description = "身份证号脱敏")
+    @Schema(description = "身份证号脱敏（由后端自动生成，前端无需传此字段）", deprecated = true)
     @Size(max = 32, message = "身份证号脱敏长度不能超过32")
     private String idNumberMasked;
 
@@ -43,7 +43,7 @@ public class ReviewerProfileUpsertRequest {
     @Size(max = 128, message = "银行卡号长度不能超过128")
     private String bankCardNo;
 
-    @Schema(description = "银行卡号脱敏")
+    @Schema(description = "银行卡号脱敏（由后端自动生成，前端无需传此字段）", deprecated = true)
     @Size(max = 32, message = "银行卡号脱敏长度不能超过32")
     private String bankCardNoMasked;
 

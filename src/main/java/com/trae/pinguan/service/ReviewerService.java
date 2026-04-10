@@ -165,14 +165,18 @@ public class ReviewerService {
 
         profile.setGender(request.getGender());
         profile.setPosition(request.getPosition());
-        profile.setIdNumber(request.getIdNumber());
-        profile.setIdNumberMasked(request.getIdNumberMasked());
+        if (request.getIdNumber() != null) {
+            profile.setIdNumber(request.getIdNumber());
+            profile.setIdNumberMasked(maskIdNumber(request.getIdNumber()));
+        }
         profile.setIdCardFrontUrl(request.getIdCardFrontUrl());
         profile.setIdCardBackUrl(request.getIdCardBackUrl());
         profile.setDepartment(request.getDepartment());
         profile.setBankName(request.getBankName());
-        profile.setBankCardNo(request.getBankCardNo());
-        profile.setBankCardNoMasked(request.getBankCardNoMasked());
+        if (request.getBankCardNo() != null) {
+            profile.setBankCardNo(request.getBankCardNo());
+            profile.setBankCardNoMasked(maskBankCardNo(request.getBankCardNo()));
+        }
         profile.setBackgroundsJson(request.getBackgroundsJson());
         profile.setBackgroundsOther(request.getBackgroundsOther());
         profile.setToolsJson(request.getToolsJson());
@@ -294,5 +298,17 @@ public class ReviewerService {
                 .topicsOther(p.getTopicsOther())
                 .experienceJson(p.getExperienceJson())
                 .build();
+    }
+
+    /** 身份证脱敏：保留前6位和后4位，中间用 **** 替换 */
+    private String maskIdNumber(String idNumber) {
+        if (idNumber == null || idNumber.length() < 10) return idNumber;
+        return idNumber.substring(0, 6) + "********" + idNumber.substring(idNumber.length() - 4);
+    }
+
+    /** 银行卡脱敏：保留前4位和后4位，中间用 **** 替换 */
+    private String maskBankCardNo(String cardNo) {
+        if (cardNo == null || cardNo.length() < 8) return cardNo;
+        return cardNo.substring(0, 4) + " **** **** " + cardNo.substring(cardNo.length() - 4);
     }
 }
