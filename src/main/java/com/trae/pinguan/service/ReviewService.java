@@ -129,7 +129,8 @@ public class ReviewService {
                     if (s == ReviewStatus.RECUSED) return 3;
                     return 2; // PENDING / CONFIRMED / RETURNED
                 })
-                .thenComparing(item -> item.getTotal() != null ? -item.getTotal() : Double.MAX_VALUE);
+                .thenComparing(item -> item.getTotal() != null ? -item.getTotal() : Double.MAX_VALUE)
+                .thenComparingLong(com.trae.pinguan.web.dto.ReviewTaskItem::getId);
 
         return tasks.stream().map(task -> {
             Registration reg = task.getRegistration();
