@@ -33,6 +33,8 @@ public class DataSourceInitializer implements ApplicationRunner {
         ensureRecuseReasonDictionary();
         ensureScoreColumnsNullable();
         ensureUtf8mb4Columns();
+        ensureReviewerIntegrityNoticesTable();
+        migrateHistoryNoticesToMultiKey();
     }
 
     private void ensureColumn(String tableName, String columnName, String definition) {
@@ -137,6 +139,40 @@ public class DataSourceInitializer implements ApplicationRunner {
             jdbcTemplate.update(
                 "INSERT IGNORE INTO dictionary_items (type, code, label, active, created_at) VALUES (?,?,?,1,NOW())",
                 "recuse_reason", codes[i], labels[i]);
+        }
+    }
+
+    /**
+     * 多须知确认表：每位专家 × 每条须知 一行，唯一约束 (user_id, notice_key)。
+     */
+    private void ensureReviewerIntegrityNoticesTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS reviewer_integrity_notices (" +
+                "id          BIGINT      NOT NULL AUTO_INCREMENT," +
+                "user_id     BIGINT      NOT NULL COMMENT '评审专家 user_accounts.id'," +
+                "notice_key  VARCHAR(32) NOT NULL COMMENT '须知标识，如 BOOK / INTERVIEW'," +
+                "confirmed_at DATETIME(6) NOT NULL COMMENT '确认时间'," +
+                "PRIMARY KEY (id)," +
+                "UNIQUE KEY uk_rin_user_key (user_id, notice_key)," +
+                "INDEX idx_rin_user (user_id)," +
+                "CONSTRAINT fk_rin_user FOREIGN KEY (user_id) REFERENCES user_accounts(id)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" +
+                " COMMENT='评审专家多须知确认记录'");
+    }
+
+    /**
+     * 历史迁移：将 notice_confirmed_at 非空的专家补写一条 BOOK 确认记录。
+     * INSERT IGNORE 保证幂等，可重复执行。
+     */
+    private void migrateHistoryNoticesToMultiKey() {
+        try {
+            jdbcTemplate.execute(
+                "INSERT IGNORE INTO reviewer_integrity_notices (user_id, notice_key, confirmed_at) " +
+                "SELECT id, 'BOOK', notice_confirmed_at " +
+                "FROM user_accounts " +
+                "WHERE notice_confirmed_at IS NOT NULL AND role = 'REVIEWER'"
+            );
+        } catch (Exception e) {
+            // 表尚不存在等异常不阻断启动
         }
     }
 

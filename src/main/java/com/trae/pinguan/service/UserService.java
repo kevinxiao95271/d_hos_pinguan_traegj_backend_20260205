@@ -1,8 +1,10 @@
 package com.trae.pinguan.service;
 
 import com.trae.pinguan.domain.entity.Institution;
+import com.trae.pinguan.domain.entity.ReviewerIntegrityNotice;
 import com.trae.pinguan.domain.entity.UserAccount;
 import com.trae.pinguan.repository.InstitutionRepository;
+import com.trae.pinguan.repository.ReviewerIntegrityNoticeRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.web.dto.*;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
     private final UserAccountRepository userAccountRepository;
     private final InstitutionRepository institutionRepository;
+    private final ReviewerIntegrityNoticeRepository reviewerIntegrityNoticeRepository;
     private final com.trae.pinguan.service.ConstInitInstitutionService constInitInstitutionService;
     private final PasswordService passwordService;
     private final SmsService smsService;
@@ -440,13 +443,56 @@ public class UserService {
         return String.format("%06d", random.nextInt(1000000));
     }
 
+    /**
+     * 确认须知（多须知版本）。
+     * 写入 reviewer_integrity_notices；若 noticeKey=BOOK 则同步旧列 notice_confirmed_at 保持兼容。
+     */
     @Transactional
-    public void confirmNotice(Long userId) {
+    public void confirmNotice(Long userId, String noticeKey) {
         UserAccount user = userAccountRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
-        if (user.getNoticeConfirmedAt() == null) {
-            user.setNoticeConfirmedAt(LocalDateTime.now());
-            userAccountRepository.save(user);
+
+        if (!reviewerIntegrityNoticeRepository.existsByUserIdAndNoticeKey(userId, noticeKey)) {
+            LocalDateTime now = LocalDateTime.now();
+            reviewerIntegrityNoticeRepository.save(
+                ReviewerIntegrityNotice.builder()
+                    .userId(userId)
+                    .noticeKey(noticeKey)
+                    .confirmedAt(now)
+                    .build()
+            );
+            // 同步旧列：BOOK 须知对应原有 notice_confirmed_at
+            if ("BOOK".equals(noticeKey) && user.getNoticeConfirmedAt() == null) {
+                user.setNoticeConfirmedAt(now);
+                userAccountRepository.save(user);
+            }
         }
+    }
+
+    /**
+     * 旧版兼容：无 body 调用时默认确认 BOOK。
+     */
+    @Transactional
+    public void confirmNotice(Long userId) {
+        confirmNotice(userId, "BOOK");
+    }
+
+    /**
+     * 计算指定用户尚未确认的须知 key 列表。
+     * activeKeys 为当前系统启用的须知 key 有序列表（与前端 integrityNotices.js 对齐）。
+     */
+    public List<String> getPendingNoticeKeys(Long userId, List<String> activeKeys) {
+        List<ReviewerIntegrityNotice> confirmed = reviewerIntegrityNoticeRepository.findByUserId(userId);
+        java.util.Set<String> confirmedKeySet = new java.util.HashSet<>();
+        for (ReviewerIntegrityNotice n : confirmed) {
+            confirmedKeySet.add(n.getNoticeKey());
+        }
+        List<String> pending = new java.util.ArrayList<>();
+        for (String key : activeKeys) {
+            if (!confirmedKeySet.contains(key)) {
+                pending.add(key);
+            }
+        }
+        return pending;
     }
 }

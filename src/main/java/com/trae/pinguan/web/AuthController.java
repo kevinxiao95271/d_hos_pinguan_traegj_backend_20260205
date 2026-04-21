@@ -2,6 +2,7 @@ package com.trae.pinguan.web;
 
 import com.trae.pinguan.domain.entity.Competition;
 import com.trae.pinguan.domain.entity.UserAccount;
+import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.service.CompetitionService;
 import com.trae.pinguan.service.JwtService;
 import com.trae.pinguan.service.SmsService;
@@ -11,6 +12,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
@@ -24,6 +27,13 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 @Tag(name = "认证")
 public class AuthController {
+
+    /**
+     * 当前系统启用的须知 key，与前端 src/config/integrityNotices.js 顺序对齐。
+     * 新增须知时在此处追加，无需改数据库结构。
+     */
+    private static final List<String> ACTIVE_NOTICE_KEYS = Arrays.asList("BOOK", "INTERVIEW");
+
     private final UserService userService;
     private final JwtService jwtService;
     private final SmsService smsService;
@@ -85,9 +95,14 @@ public class AuthController {
     }
     
     private LoginResponse buildLoginResponse(UserAccount user) {
-        // 获取最新赛事作为默认选中
         Optional<Competition> latestCompetition = competitionService.getLatest();
-        
+
+        // pendingIntegrityNoticeKeys 仅对评审专家计算；其他角色无须弹窗，返回 null
+        List<String> pendingKeys = null;
+        if (RoleType.REVIEWER.equals(user.getRole())) {
+            pendingKeys = userService.getPendingNoticeKeys(user.getId(), ACTIVE_NOTICE_KEYS);
+        }
+
         return new LoginResponse(
                 user.getId(),
                 user.getPhone(),
@@ -102,7 +117,8 @@ public class AuthController {
                 jwtService.generateToken(user),
                 latestCompetition.map(Competition::getId).orElse(null),
                 latestCompetition.map(Competition::getName).orElse(null),
-                user.getNoticeConfirmedAt() != null
+                user.getNoticeConfirmedAt() != null,  // 兼容旧前端
+                pendingKeys
         );
     }
 
@@ -127,13 +143,30 @@ public class AuthController {
 
     @PostMapping("/notice/confirm")
     @SecurityRequirement(name = "BearerAuth")
-    @Operation(summary = "确认已阅读诚信须知", description = "登录后首次弹窗强制阅读须知，阅读完毕后调用此接口记录确认时间")
-    public ApiResponse<Void> confirmNotice(javax.servlet.http.HttpServletRequest request) {
-        Object userId = request.getAttribute("userId");
-        if (userId == null) {
+    @Operation(
+        summary = "确认已阅读诚信须知",
+        description = "登录后首次弹窗强制阅读须知，阅读完毕后调用此接口。" +
+                      "请求体带 noticeKey（BOOK / INTERVIEW）；仅评审专家（REVIEWER）可调用。" +
+                      "旧版无 body 调用兼容策略：视为确认 BOOK。"
+    )
+    public ApiResponse<Void> confirmNotice(
+            @org.springframework.web.bind.annotation.RequestBody(required = false)
+            @javax.validation.Valid NoticeConfirmRequest body,
+            HttpServletRequest request) {
+
+        Object userIdAttr = request.getAttribute("userId");
+        if (userIdAttr == null) {
             return ApiResponse.fail("未登录");
         }
-        userService.confirmNotice(Long.parseLong(userId.toString()));
+        String role = (String) request.getAttribute("role");
+        if (!"REVIEWER".equals(role)) {
+            return ApiResponse.fail("仅评审专家可调用此接口");
+        }
+
+        Long userId = Long.parseLong(userIdAttr.toString());
+        // 旧版无 body 兼容：默认确认 BOOK
+        String noticeKey = (body != null && body.getNoticeKey() != null) ? body.getNoticeKey() : "BOOK";
+        userService.confirmNotice(userId, noticeKey);
         return ApiResponse.ok(null);
     }
 }
