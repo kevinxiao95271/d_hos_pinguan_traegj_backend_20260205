@@ -29,11 +29,4 @@ public class InterviewScoreRequest {
     @Schema(description = "改善成果（成效确实性、标准化落实、对医院/患者贡献），满分30")
     private Double result;
 
-    @Size(max = 1000, message = "亮点不能超过1000字")
-    @Schema(description = "亮点（选填，最多1000字）")
-    private String highlight;
-
-    @Size(max = 1000, message = "建议不能超过1000字")
-    @Schema(description = "建议（选填，最多1000字）")
-    private String weakness;
 }

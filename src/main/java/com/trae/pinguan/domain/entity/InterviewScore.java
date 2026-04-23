@@ -46,12 +46,6 @@ public class InterviewScore {
     @Column
     private Double total;
 
-    @Column(length = 1000)
-    private String highlight;
-
-    @Column(length = 1000)
-    private String weakness;
-
     /** 正式提交时间；草稿状态下为 null */
     @Column
     private LocalDateTime submittedAt;

@@ -466,7 +466,7 @@ public class ReviewService {
                     if (task.getStatus() == ReviewStatus.SCORED && s != null) {
                         rb.topic(s.getTopic()).process(s.getProcess())
                           .interviewOperation(s.getOperation()).result(s.getResult())
-                          .total(s.getTotal()).highlight(s.getHighlight()).weakness(s.getWeakness())
+                          .total(s.getTotal())
                           .submittedAt(s.getSubmittedAt());
                         scoredCount++;
                         topicSum   += s.getTopic();
@@ -474,8 +474,6 @@ public class ReviewService {
                         opSum      += s.getOperation();
                         resultSum  += s.getResult();
                         totalSum   += s.getTotal();
-                        if (s.getHighlight() != null && !s.getHighlight().trim().isEmpty()) highlights.add(s.getHighlight());
-                        if (s.getWeakness()  != null && !s.getWeakness().trim().isEmpty())  weaknesses.add(s.getWeakness());
                     }
                     reviewerScores.add(rb.build());
                 }
@@ -639,8 +637,6 @@ public class ReviewService {
         if (request.getProcess() != null)   score.setProcess(request.getProcess());
         if (request.getOperation() != null) score.setOperation(request.getOperation());
         if (request.getResult() != null)    score.setResult(request.getResult());
-        if (request.getHighlight() != null) score.setHighlight(request.getHighlight());
-        if (request.getWeakness() != null)  score.setWeakness(request.getWeakness());
         if (score.getTopic() != null && score.getProcess() != null
                 && score.getOperation() != null && score.getResult() != null) {
             score.setTotal(score.getTopic() + score.getProcess() + score.getOperation() + score.getResult());
@@ -816,8 +812,6 @@ public class ReviewService {
         score.setOperation(request.getOperation());
         score.setResult(request.getResult());
         score.setTotal(total);
-        score.setHighlight(request.getHighlight());
-        score.setWeakness(request.getWeakness());
         score.setSubmittedAt(LocalDateTime.now());
         InterviewScore saved = interviewScoreRepository.save(score);
         task.setStatus(ReviewStatus.SCORED);
@@ -1379,8 +1373,6 @@ public class ReviewService {
                          .interviewOperation(s.getOperation())
                          .result(s.getResult())
                          .total(s.getTotal())
-                         .highlight(s.getHighlight())
-                         .weakness(s.getWeakness())
                          .submittedAt(s.getSubmittedAt());
                         totalSum += s.getTotal();
                         scoredCount++;

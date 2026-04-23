@@ -26,9 +26,4 @@ public class InterviewScoreDraftRequest {
     @Min(0) @Max(100)
     private Double result;
 
-    @Size(max = 1000)
-    private String highlight;
-
-    @Size(max = 1000)
-    private String weakness;
 }
