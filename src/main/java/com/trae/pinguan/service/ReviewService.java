@@ -720,7 +720,6 @@ public class ReviewService {
         if (published) {
             throw new IllegalArgumentException("已公布无法退回");
         }
-        reviewScoreRepository.findByReviewTaskId(task.getId()).ifPresent(reviewScoreRepository::delete);
         task.setStatus(ReviewStatus.RETURNED);
         return reviewTaskRepository.save(task);
     }
@@ -840,8 +839,6 @@ public class ReviewService {
         if (published) {
             throw new IllegalArgumentException("已公布，无法退回");
         }
-        interviewScoreRepository.findByReviewTaskId(task.getId())
-                .ifPresent(interviewScoreRepository::delete);
         task.setStatus(ReviewStatus.RETURNED);
         task.setUpdatedAt(LocalDateTime.now());
         reviewTaskRepository.save(task);
