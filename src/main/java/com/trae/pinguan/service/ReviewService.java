@@ -1082,18 +1082,22 @@ public class ReviewService {
             }
         }
 
-        // 读书审快照（BOOK + ADVANCED）
-        List<ScoringSnapshot> bookSnaps = scoringSnapshotRepository
-                .findByCompetitionIdAndStageAndGroupTypeOrderByIrankAsc(
-                        competitionId, ReviewStage.BOOK, GroupType.ADVANCED);
-        Map<Long, Double> bookAdjusted = bookSnaps.stream()
-                .filter(s -> s.getAdjustedScore() != null)
-                .collect(Collectors.toMap(ScoringSnapshot::getRegistrationId,
-                        ScoringSnapshot::getAdjustedScore, (a, b) -> a));
-        Map<Long, Double> bookRawAvgMap = bookSnaps.stream()
-                .filter(s -> s.getRawAvg() != null)
-                .collect(Collectors.toMap(ScoringSnapshot::getRegistrationId,
-                        ScoringSnapshot::getRawAvg, (a, b) -> a));
+        // 读书审快照（BOOK + ADVANCED）；bookWeight=0 时直接跳过，避免无谓查询
+        Map<Long, Double> bookAdjusted = Collections.emptyMap();
+        Map<Long, Double> bookRawAvgMap = Collections.emptyMap();
+        if (bookWeight > 0) {
+            List<ScoringSnapshot> bookSnaps = scoringSnapshotRepository
+                    .findByCompetitionIdAndStageAndGroupTypeOrderByIrankAsc(
+                            competitionId, ReviewStage.BOOK, GroupType.ADVANCED);
+            bookAdjusted = bookSnaps.stream()
+                    .filter(s -> s.getAdjustedScore() != null)
+                    .collect(Collectors.toMap(ScoringSnapshot::getRegistrationId,
+                            ScoringSnapshot::getAdjustedScore, (a, b) -> a));
+            bookRawAvgMap = bookSnaps.stream()
+                    .filter(s -> s.getRawAvg() != null)
+                    .collect(Collectors.toMap(ScoringSnapshot::getRegistrationId,
+                            ScoringSnapshot::getRawAvg, (a, b) -> a));
+        }
 
         List<ScoringSnapshot> result = new ArrayList<>();
 
