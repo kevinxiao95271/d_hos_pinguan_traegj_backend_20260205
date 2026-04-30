@@ -49,4 +49,10 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
      */
     @Query("SELECT COUNT(rt) > 0 FROM ReviewTask rt WHERE rt.reviewer.id = :reviewerId AND rt.registration.id = :registrationId")
     boolean existsByReviewerIdAndRegistrationId(@Param("reviewerId") Long reviewerId, @Param("registrationId") Long registrationId);
+
+    /**
+     * 按评委汇总任务状态计数：[reviewer_id, status, count]
+     */
+    @Query("SELECT rt.reviewer.id, rt.status, COUNT(rt) FROM ReviewTask rt GROUP BY rt.reviewer.id, rt.status")
+    List<Object[]> countByReviewerIdGroupByStatus();
 }

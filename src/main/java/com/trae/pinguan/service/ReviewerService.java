@@ -5,19 +5,25 @@ import com.trae.pinguan.domain.entity.Institution;
 import com.trae.pinguan.domain.entity.ReviewerInstitutionChange;
 import com.trae.pinguan.domain.entity.ReviewerProfile;
 import com.trae.pinguan.domain.entity.UserAccount;
+import com.trae.pinguan.domain.enums.ReviewStatus;
 import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.repository.InstitutionRepository;
+import com.trae.pinguan.repository.ReviewTaskRepository;
 import com.trae.pinguan.repository.ReviewerInstitutionChangeRepository;
 import com.trae.pinguan.repository.ReviewerProfileRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.web.dto.ChangeInstitutionRequest;
+import com.trae.pinguan.web.dto.ReviewerExportRow;
 import com.trae.pinguan.web.dto.ReviewerListItem;
 import com.trae.pinguan.web.dto.ReviewerProfileDto;
 import com.trae.pinguan.web.dto.ReviewerProfileUpsertRequest;
 import com.trae.pinguan.web.dto.ReviewerUpsertRequest;
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -33,6 +39,7 @@ public class ReviewerService {
     private final InstitutionRepository institutionRepository;
     private final ReviewerProfileRepository reviewerProfileRepository;
     private final ReviewerInstitutionChangeRepository reviewerInstitutionChangeRepository;
+    private final ReviewTaskRepository reviewTaskRepository;
     private final FileStorageService fileStorageService;
     private final MinioProperties minioProperties;
 
@@ -298,6 +305,95 @@ public class ReviewerService {
                 .topicsOther(p.getTopicsOther())
                 .experienceJson(p.getExperienceJson())
                 .build();
+    }
+
+    /**
+     * 返回所有已上传身份证照片的评委（含 objectName）供批量打包下载
+     * 每条记录：[userId, name, institutionName, frontObjectName, backObjectName]
+     * frontObjectName / backObjectName 可能为 null（未上传）
+     */
+    @Transactional(readOnly = true)
+    public List<Object[]> listIdCardEntries() {
+        List<UserAccount> reviewers = userAccountRepository.findByRoleWithInstitution(RoleType.REVIEWER);
+        Map<Long, ReviewerProfile> profileMap = reviewerProfileRepository.findAll().stream()
+                .collect(Collectors.toMap(ReviewerProfile::getUserId, p -> p, (a, b) -> a));
+        List<Object[]> result = new ArrayList<>();
+        for (UserAccount u : reviewers) {
+            ReviewerProfile p = profileMap.get(u.getId());
+            if (p == null) continue;
+            if (p.getIdCardFrontUrl() == null && p.getIdCardBackUrl() == null) continue;
+            String instName = u.getInstitution() == null ? "未知机构" : u.getInstitution().getName();
+            result.add(new Object[]{
+                u.getId(), u.getName(), instName,
+                p.getIdCardFrontUrl(), p.getIdCardBackUrl()
+            });
+        }
+        return result;
+    }
+
+    public InputStream getIdCardStreamByObjectName(String objectName) {
+        return fileStorageService.getInputStream(objectName,
+                minioProperties.getBucket().getRegistrationFiles());
+    }
+
+    /**
+     * 批量导出：所有评委基本信息 + 扩展档案 + 任务统计
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewerExportRow> buildExportRows() {
+        List<UserAccount> reviewers = userAccountRepository.findByRoleWithInstitution(RoleType.REVIEWER);
+        Map<Long, ReviewerProfile> profileMap = reviewerProfileRepository.findAll().stream()
+                .collect(Collectors.toMap(ReviewerProfile::getUserId, p -> p, (a, b) -> a));
+
+        // 任务状态统计：reviewer_id → (status → count)
+        Map<Long, Map<ReviewStatus, Long>> statsMap = new HashMap<>();
+        for (Object[] row : reviewTaskRepository.countByReviewerIdGroupByStatus()) {
+            Long reviewerId = ((Number) row[0]).longValue();
+            ReviewStatus status = (ReviewStatus) row[1];
+            long count = ((Number) row[2]).longValue();
+            statsMap.computeIfAbsent(reviewerId, k -> new HashMap<>()).put(status, count);
+        }
+
+        List<ReviewerExportRow> result = new ArrayList<>();
+        for (UserAccount u : reviewers) {
+            ReviewerProfile p = profileMap.get(u.getId());
+            Map<ReviewStatus, Long> stats = statsMap.getOrDefault(u.getId(), new HashMap<>());
+            result.add(ReviewerExportRow.builder()
+                    .userId(u.getId())
+                    .name(u.getName())
+                    .phone(u.getPhone())
+                    .title(u.getTitle())
+                    .institutionName(u.getInstitution() == null ? null : u.getInstitution().getName())
+                    .expertBackground(u.getExpertBackground())
+                    .gender(p == null ? null : p.getGender())
+                    .department(p == null ? null : p.getDepartment())
+                    .position(p == null ? null : p.getPosition())
+                    .idNumber(p == null ? null : p.getIdNumber())
+                    .idCardFront(p == null ? null : (p.getIdCardFrontUrl() != null ? "已上传" : "未上传"))
+                    .idCardBack(p == null ? null : (p.getIdCardBackUrl() != null ? "已上传" : "未上传"))
+                    .bankName(p == null ? null : p.getBankName())
+                    .bankCardNo(p == null ? null : p.getBankCardNo())
+                    .backgroundsJson(p == null ? null : p.getBackgroundsJson())
+                    .backgroundsOther(p == null ? null : p.getBackgroundsOther())
+                    .toolsJson(p == null ? null : p.getToolsJson())
+                    .toolsOther(p == null ? null : p.getToolsOther())
+                    .topicsJson(p == null ? null : p.getTopicsJson())
+                    .topicsOther(p == null ? null : p.getTopicsOther())
+                    .experienceJson(p == null ? null : p.getExperienceJson())
+                    .taskScored(stats.getOrDefault(ReviewStatus.SCORED, 0L))
+                    .taskDraft(stats.getOrDefault(ReviewStatus.DRAFT, 0L))
+                    .taskPending(stats.getOrDefault(ReviewStatus.PENDING, 0L))
+                    .taskRecused(stats.getOrDefault(ReviewStatus.RECUSED, 0L))
+                    .build());
+        }
+        result.sort((a, b) -> {
+            String ia = a.getInstitutionName() == null ? "" : a.getInstitutionName();
+            String ib = b.getInstitutionName() == null ? "" : b.getInstitutionName();
+            int c = ia.compareTo(ib);
+            return c != 0 ? c : (a.getName() == null ? "" : a.getName())
+                    .compareTo(b.getName() == null ? "" : b.getName());
+        });
+        return result;
     }
 
     /** 身份证脱敏：保留前6位和后4位，中间用 **** 替换 */
