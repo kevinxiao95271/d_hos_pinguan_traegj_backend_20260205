@@ -1432,12 +1432,30 @@ public class ReviewService {
             result.removeIf(item -> item.getGroupType() != groupType);
         }
 
-        // 2. 按评委打分状态过滤：只保留「至少有一个评委处于该状态」的项目
+        // 2. 按评委打分状态过滤：只保留匹配状态的评委行，并重新计算 scoredCount/avgTotal
         if (reviewerStatus != null) {
             final String statusName = reviewerStatus.name();
+            // 移除没有任何匹配评委行的项目
             result.removeIf(item -> item.getReviewerScores() == null
-                    || item.getReviewerScores().stream()
-                           .noneMatch(r -> statusName.equals(r.getStatus())));
+                    || item.getReviewerScores().stream().noneMatch(r -> statusName.equals(r.getStatus())));
+            // 对保留的项目：只保留匹配的评委行，重算 scoredCount/avgTotal
+            for (ScoreListItem item : result) {
+                List<ReviewerScoreDetail> filtered = item.getReviewerScores().stream()
+                        .filter(r -> statusName.equals(r.getStatus()))
+                        .collect(Collectors.toList());
+                item.setReviewerScores(filtered);
+                // scoredCount / avgTotal 只统计 SCORED 状态
+                int sc = 0;
+                double sum = 0;
+                for (ReviewerScoreDetail r : filtered) {
+                    if (ReviewStatus.SCORED.name().equals(r.getStatus()) && r.getTotal() != null) {
+                        sc++;
+                        sum += r.getTotal();
+                    }
+                }
+                item.setScoredCount(sc);
+                item.setAvgTotal(sc > 0 ? sum / sc : null);
+            }
         }
 
         // 3. 按项目名称或机构名称模糊搜索（不区分大小写）
