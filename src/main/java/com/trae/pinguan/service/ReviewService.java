@@ -1313,7 +1313,10 @@ public class ReviewService {
      * 每条记录对应一个参赛项目，嵌套每位评委的维度分和打分状态。
      */
     @Transactional(readOnly = true)
-    public List<ScoreListItem> scoreListByStage(Long competitionId, ReviewStage stage) {
+    public List<ScoreListItem> scoreListByStage(Long competitionId, ReviewStage stage,
+            com.trae.pinguan.domain.enums.GroupType groupType,
+            ReviewStatus reviewerStatus,
+            String keyword) {
         List<ReviewTask> tasks = reviewTaskRepository
                 .findWithDetailsByStageAndCompetitionId(stage, competitionId);
 
@@ -1420,6 +1423,30 @@ public class ReviewService {
                     .avgTotal(scoredCount > 0 ? totalSum / scoredCount : null)
                     .build());
         }
+
+        // ── 可选筛选（在内存中过滤，不影响其他逻辑）──────────────────────────
+
+        // 1. 按组别过滤
+        if (groupType != null) {
+            result.removeIf(item -> item.getGroupType() != groupType);
+        }
+
+        // 2. 按评委打分状态过滤：只保留「至少有一个评委处于该状态」的项目
+        if (reviewerStatus != null) {
+            final String statusName = reviewerStatus.name();
+            result.removeIf(item -> item.getReviewerScores() == null
+                    || item.getReviewerScores().stream()
+                           .noneMatch(r -> statusName.equals(r.getStatus())));
+        }
+
+        // 3. 按项目名称或机构名称模糊搜索（不区分大小写）
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = keyword.trim().toLowerCase();
+            result.removeIf(item ->
+                    (item.getProjectName() == null || !item.getProjectName().toLowerCase().contains(kw))
+                 && (item.getInstitutionName() == null || !item.getInstitutionName().toLowerCase().contains(kw)));
+        }
+
         return result;
     }
 

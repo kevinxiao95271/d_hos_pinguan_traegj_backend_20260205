@@ -149,11 +149,18 @@ public class AdminReviewController {
                description = "用 stage=BOOK 查书审得分列表，stage=INTERVIEW 查面谈得分列表。" +
                              "每条记录含项目信息（机构等级、分组）及每位评委的维度得分和打分状态。" +
                              "书审维度：plan/problem/action/success/review/operation/presentation。" +
-                             "面谈维度：topic/process/interviewOperation/result。")
+                             "面谈维度：topic/process/interviewOperation/result。\n" +
+                             "可选筛选参数：\n" +
+                             "- groupType：按组别过滤（BASIC / COMPREHENSIVE / ADVANCED）\n" +
+                             "- reviewerStatus：只返回含指定状态评委的项目（PENDING/DRAFT/SCORED/RETURNED/RECUSED）\n" +
+                             "- keyword：按项目名称或机构名称模糊搜索（不区分大小写）")
     public ApiResponse<List<ScoreListItem>> scoreList(
             @RequestParam Long competitionId,
-            @RequestParam ReviewStage stage) {
-        return ApiResponse.ok(reviewService.scoreListByStage(competitionId, stage));
+            @RequestParam ReviewStage stage,
+            @RequestParam(required = false) GroupType groupType,
+            @RequestParam(required = false) ReviewStatus reviewerStatus,
+            @RequestParam(required = false) String keyword) {
+        return ApiResponse.ok(reviewService.scoreListByStage(competitionId, stage, groupType, reviewerStatus, keyword));
     }
 
     @GetMapping("/score-export")
