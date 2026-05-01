@@ -47,3 +47,62 @@ src/main/resources/application.yml
 scripts/insert_experts.sql
 scripts/expert_passwords.json
 scripts/shen_guo_pwd.json
+
+# Data & report files (Excel / CSV / output texts)
+*.xls
+*.xlsx
+*.csv
+*.zip
+*.docx
+
+# Script output / temp files
+scripts/_*.py
+scripts/_*.txt
+scripts/_*.json
+scripts/tmp*.json
+scripts/tmp*.txt
+scripts/tmp_probe/
+scripts/7error/
+scripts/export_receipts/
+scripts/export_receipts_test/
+scripts/*.class
+scripts/commit_msg*.txt
+scripts/probe_*.txt
+scripts/check_*.txt
+scripts/setup_reviewer_*.txt
+scripts/provision_*.txt
+scripts/fix_pwd_*.txt
+scripts/test_reviewer_*.txt
+scripts/报名表/
+scripts/jbcrypt_cp.txt
+scripts/match_*.txt
+scripts/gen_expert_result.*
+scripts/his_data_check.txt
+scripts/reviewer_names.txt
+scripts/shushen_*.txt
+scripts/trial_grouping_*.txt
+scripts/grouping_*.txt
+scripts/wrong_institution_result.txt
+scripts/yiwu_result.txt
+scripts/zero_uscc_result.txt
+scripts/enze_result.txt
+scripts/eval_reviewer_*.txt
+scripts/*.json
+
+# Grouping / operational files in root
+grouping_*.xlsx
+grouping_*.txt
+conflict_report.xlsx
+institution_miss.txt
+shengchanku*.csv
+dict*.csv
+
+# Binlog files
+binlog.*
+
+# Compiled output directories
+BOOT-INF/
+
+# Misc data dirs
+fix0309/
+问题反馈0324/
