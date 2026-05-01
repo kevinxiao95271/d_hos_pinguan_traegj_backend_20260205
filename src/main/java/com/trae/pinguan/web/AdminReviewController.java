@@ -153,14 +153,16 @@ public class AdminReviewController {
                              "可选筛选参数：\n" +
                              "- groupType：按组别过滤（BASIC / COMPREHENSIVE / ADVANCED）\n" +
                              "- reviewerStatus：只返回含指定状态评委的项目（PENDING/DRAFT/SCORED/RETURNED/RECUSED）\n" +
-                             "- keyword：按项目名称或机构名称模糊搜索（不区分大小写）")
+                             "- keyword：按项目名称或机构名称模糊搜索（不区分大小写）\n" +
+                             "- reviewerName：按评委姓名精准匹配（完整姓名，只返回含该评委的项目）")
     public ApiResponse<List<ScoreListItem>> scoreList(
             @RequestParam Long competitionId,
             @RequestParam ReviewStage stage,
             @RequestParam(required = false) GroupType groupType,
             @RequestParam(required = false) ReviewStatus reviewerStatus,
-            @RequestParam(required = false) String keyword) {
-        return ApiResponse.ok(reviewService.scoreListByStage(competitionId, stage, groupType, reviewerStatus, keyword));
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String reviewerName) {
+        return ApiResponse.ok(reviewService.scoreListByStage(competitionId, stage, groupType, reviewerStatus, keyword, reviewerName));
     }
 
     @GetMapping("/score-export")

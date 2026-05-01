@@ -1316,7 +1316,8 @@ public class ReviewService {
     public List<ScoreListItem> scoreListByStage(Long competitionId, ReviewStage stage,
             com.trae.pinguan.domain.enums.GroupType groupType,
             ReviewStatus reviewerStatus,
-            String keyword) {
+            String keyword,
+            String reviewerName) {
         List<ReviewTask> tasks = reviewTaskRepository
                 .findWithDetailsByStageAndCompetitionId(stage, competitionId);
 
@@ -1445,6 +1446,14 @@ public class ReviewService {
             result.removeIf(item ->
                     (item.getProjectName() == null || !item.getProjectName().toLowerCase().contains(kw))
                  && (item.getInstitutionName() == null || !item.getInstitutionName().toLowerCase().contains(kw)));
+        }
+
+        // 4. 按评委姓名精准匹配：只保留含该评委的项目
+        if (reviewerName != null && !reviewerName.trim().isEmpty()) {
+            String name = reviewerName.trim();
+            result.removeIf(item -> item.getReviewerScores() == null
+                    || item.getReviewerScores().stream()
+                           .noneMatch(r -> name.equals(r.getReviewerName())));
         }
 
         return result;
