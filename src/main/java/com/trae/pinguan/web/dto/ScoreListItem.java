@@ -62,7 +62,7 @@ public class ScoreListItem {
         @Schema(description = "评委姓名")
         private String reviewerName;
 
-        @Schema(description = "打分状态：PENDING / SCORED / RETURNED")
+        @Schema(description = "打分状态：PENDING（待评审）/ DRAFT（草稿中）/ SCORED（已提交）/ RETURNED（已退回）/ RECUSED（已规避）")
         private String status;
 
         @Schema(description = "打分提交时间")

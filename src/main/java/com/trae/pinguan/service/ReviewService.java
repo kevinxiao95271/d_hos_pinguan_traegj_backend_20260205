@@ -1317,33 +1317,35 @@ public class ReviewService {
         List<ReviewTask> tasks = reviewTaskRepository
                 .findWithDetailsByStageAndCompetitionId(stage, competitionId);
 
-        // 批量加载该阶段的所有评分
-        Set<Long> scoredTaskIds = tasks.stream()
-                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+        // 有评分记录的状态：DRAFT（草稿中）、SCORED（已提交）、RETURNED（已退回）
+        Set<Long> withScoreTaskIds = tasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.DRAFT
+                          || t.getStatus() == ReviewStatus.SCORED
+                          || t.getStatus() == ReviewStatus.RETURNED)
                 .map(ReviewTask::getId)
                 .collect(Collectors.toSet());
 
-        Map<Long, ReviewScore>     bookScoreMap = new HashMap<>();
-        Map<Long, InterviewScore>  intScoreMap  = new HashMap<>();
-        if (!scoredTaskIds.isEmpty()) {
+        Map<Long, ReviewScore>    bookScoreMap = new HashMap<>();
+        Map<Long, InterviewScore> intScoreMap  = new HashMap<>();
+        if (!withScoreTaskIds.isEmpty()) {
             if (stage == ReviewStage.INTERVIEW) {
-                interviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                interviewScoreRepository.findByReviewTaskIdIn(withScoreTaskIds)
                         .forEach(s -> intScoreMap.put(s.getReviewTaskId(), s));
             } else {
-                reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                reviewScoreRepository.findByReviewTaskIdIn(withScoreTaskIds)
                         .forEach(s -> bookScoreMap.put(s.getReviewTaskId(), s));
             }
         }
 
-        // 按 registrationId 聚合，只保留有 SCORED 任务的项目；
-        // 面谈阶段仅进阶组参与，过滤掉测试/误分配的非进阶任务
+        // 展示所有非 CONFIRMED 任务（RECUSED 也展示，运营可见规避情况）；
+        // 面谈阶段仅进阶组参与，保留原有过滤
         Map<Long, List<ReviewTask>> byReg = tasks.stream()
-                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .filter(t -> t.getStatus() != ReviewStatus.CONFIRMED)
                 .filter(t -> stage != ReviewStage.INTERVIEW
                         || t.getRegistration().getGroupType() == GroupType.ADVANCED)
                 .collect(Collectors.groupingBy(t -> t.getRegistration().getId()));
 
-        // 用于查询总任务数（含 PENDING/RETURNED），供 totalReviewers 字段使用
+        // totalReviewers：该项目分配的总任务数
         Map<Long, Long> totalTaskCountByReg = tasks.stream()
                 .collect(Collectors.groupingBy(
                         t -> t.getRegistration().getId(), Collectors.counting()));
@@ -1351,7 +1353,6 @@ public class ReviewService {
         List<ScoreListItem> result = new ArrayList<>();
         for (Map.Entry<Long, List<ReviewTask>> entry : byReg.entrySet()) {
             Long regId = entry.getKey();
-            // 只取 SCORED 的任务
             List<ReviewTask> regTasks = entry.getValue();
             Registration reg = regTasks.get(0).getRegistration();
 
@@ -1375,8 +1376,11 @@ public class ReviewService {
                          .result(s.getResult())
                          .total(s.getTotal())
                          .submittedAt(s.getSubmittedAt());
-                        totalSum += s.getTotal();
-                        scoredCount++;
+                        // scoredCount / avgTotal 只统计正式提交（SCORED）
+                        if (task.getStatus() == ReviewStatus.SCORED) {
+                            totalSum += s.getTotal();
+                            scoredCount++;
+                        }
                     }
                 } else {
                     ReviewScore s = bookScoreMap.get(task.getId());
@@ -1392,8 +1396,11 @@ public class ReviewService {
                          .highlight(s.getHighlight())
                          .weakness(s.getWeakness())
                          .submittedAt(s.getSubmittedAt());
-                        totalSum += s.getTotal();
-                        scoredCount++;
+                        // scoredCount / avgTotal 只统计正式提交（SCORED）
+                        if (task.getStatus() == ReviewStatus.SCORED) {
+                            totalSum += s.getTotal();
+                            scoredCount++;
+                        }
                     }
                 }
                 reviewerScores.add(b.build());
@@ -1430,10 +1437,29 @@ public class ReviewService {
             return Collections.emptyList();
         }
 
-        // 个人得分明细（只含 SCORED）
-        List<ScoreListItem> scoreList = scoreListByStage(competitionId, stage);
-        Map<Long, ScoreListItem> scoreMap = scoreList.stream()
-                .collect(Collectors.toMap(ScoreListItem::getRegistrationId, s -> s, (a, b) -> a));
+        // 导出只需正式提交（SCORED）的评委个人分，独立查询不依赖 scoreListByStage
+        List<ReviewTask> allTasks = reviewTaskRepository
+                .findWithDetailsByStageAndCompetitionId(stage, competitionId);
+        Set<Long> scoredTaskIds = allTasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .map(ReviewTask::getId)
+                .collect(Collectors.toSet());
+        // regId -> 按任务ID升序排列的 SCORED 任务列表（保持评委列顺序稳定）
+        Map<Long, List<ReviewTask>> scoredByReg = allTasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .sorted(Comparator.comparingLong(ReviewTask::getId))
+                .collect(Collectors.groupingBy(t -> t.getRegistration().getId()));
+        // taskId -> total 分
+        Map<Long, Double> taskTotalMap = new HashMap<>();
+        if (!scoredTaskIds.isEmpty()) {
+            if (stage == ReviewStage.INTERVIEW) {
+                interviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                        .forEach(s -> taskTotalMap.put(s.getReviewTaskId(), s.getTotal()));
+            } else {
+                reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                        .forEach(s -> taskTotalMap.put(s.getReviewTaskId(), s.getTotal()));
+            }
+        }
 
         // 报名基本信息
         Set<Long> regIds = snapshots.stream()
@@ -1445,12 +1471,12 @@ public class ReviewService {
         for (ScoringSnapshot snap : snapshots) {
             Long regId = snap.getRegistrationId();
             Registration reg = regMap.get(regId);
-            ScoreListItem scoreItem = scoreMap.get(regId);
 
             List<Double> reviewerScores = new ArrayList<>();
-            if (scoreItem != null) {
-                for (ScoreListItem.ReviewerScoreDetail rd : scoreItem.getReviewerScores()) {
-                    reviewerScores.add(rd.getTotal());
+            List<ReviewTask> regScoredTasks = scoredByReg.get(regId);
+            if (regScoredTasks != null) {
+                for (ReviewTask t : regScoredTasks) {
+                    reviewerScores.add(taskTotalMap.get(t.getId()));
                 }
             }
 
