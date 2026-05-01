@@ -1466,12 +1466,27 @@ public class ReviewService {
                  && (item.getInstitutionName() == null || !item.getInstitutionName().toLowerCase().contains(kw)));
         }
 
-        // 4. 按评委姓名精准匹配：只保留含该评委的项目
+        // 4. 按评委姓名精准匹配：只保留该评委的行，并重新计算 scoredCount/avgTotal
         if (reviewerName != null && !reviewerName.trim().isEmpty()) {
             String name = reviewerName.trim();
             result.removeIf(item -> item.getReviewerScores() == null
-                    || item.getReviewerScores().stream()
-                           .noneMatch(r -> name.equals(r.getReviewerName())));
+                    || item.getReviewerScores().stream().noneMatch(r -> name.equals(r.getReviewerName())));
+            for (ScoreListItem item : result) {
+                List<ReviewerScoreDetail> filtered = item.getReviewerScores().stream()
+                        .filter(r -> name.equals(r.getReviewerName()))
+                        .collect(Collectors.toList());
+                item.setReviewerScores(filtered);
+                int sc = 0;
+                double sum = 0;
+                for (ReviewerScoreDetail r : filtered) {
+                    if (ReviewStatus.SCORED.name().equals(r.getStatus()) && r.getTotal() != null) {
+                        sc++;
+                        sum += r.getTotal();
+                    }
+                }
+                item.setScoredCount(sc);
+                item.setAvgTotal(sc > 0 ? sum / sc : null);
+            }
         }
 
         return result;
