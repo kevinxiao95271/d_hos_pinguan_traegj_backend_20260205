@@ -20,4 +20,7 @@ public class ComputeRankingRequest {
 
     @Schema(description = "组别（不传则计算全部组别）")
     private GroupType groupType;
+
+    @Schema(description = "纯面谈模式：true 时进阶组跳过书审合分，直接走通用系数路径，快照存入 INTERVIEW_ONLY stage，与 INTERVIEW 快照完全隔离")
+    private boolean interviewOnly = false;
 }

@@ -76,10 +76,11 @@ public class AdminReviewController {
     }
 
     @PostMapping("/compute-ranking")
-    @Operation(summary = "触发系数调整排名计算（结果写入快照表）")
+    @Operation(summary = "触发系数调整排名计算（结果写入快照表）",
+            description = "interviewOnly=true 时：进阶组跳过书审合分，纯面谈系数路径，快照存入 INTERVIEW_ONLY stage，与 INTERVIEW 快照隔离互不影响")
     public ApiResponse<Integer> computeRanking(@Valid @RequestBody ComputeRankingRequest request) {
         List<ScoringSnapshot> snapshots = reviewService.computeAndSaveRanking(
-                request.getCompetitionId(), request.getStage(), request.getGroupType());
+                request.getCompetitionId(), request.getStage(), request.getGroupType(), request.isInterviewOnly());
         return ApiResponse.ok(snapshots.size());
     }
 

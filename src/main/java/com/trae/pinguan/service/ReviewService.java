@@ -915,7 +915,16 @@ public class ReviewService {
      */
     @Transactional
     public List<ScoringSnapshot> computeAndSaveRanking(Long competitionId, ReviewStage stage, GroupType filterGroupType) {
-        // 1. 取该赛事该阶段的所有任务（带关联数据）
+        return computeAndSaveRanking(competitionId, stage, filterGroupType, false);
+    }
+
+    @Transactional
+    public List<ScoringSnapshot> computeAndSaveRanking(Long competitionId, ReviewStage stage, GroupType filterGroupType, boolean interviewOnly) {
+        // interviewOnly=true 时，任务仍从 INTERVIEW 表读取，但快照写入 INTERVIEW_ONLY stage
+        ReviewStage snapshotStage = (interviewOnly && stage == ReviewStage.INTERVIEW)
+                ? ReviewStage.INTERVIEW_ONLY : stage;
+
+        // 1. 取该赛事该阶段的所有任务（带关联数据，数据源始终是 INTERVIEW）
         List<ReviewTask> allTasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
 
         // 2. 获取各任务的原始分数（按阶段路由到对应表）
@@ -926,19 +935,19 @@ public class ReviewService {
                 ? Collections.singletonList(filterGroupType)
                 : Arrays.asList(GroupType.values());
 
-        // 4. 删除旧快照（本次重新计算的范围）
+        // 4. 删除旧快照（按 snapshotStage 隔离，不影响另一路快照）
         if (filterGroupType != null) {
-            scoringSnapshotRepository.deleteByCompetitionIdAndStageAndGroupType(competitionId, stage, filterGroupType);
+            scoringSnapshotRepository.deleteByCompetitionIdAndStageAndGroupType(competitionId, snapshotStage, filterGroupType);
         } else {
-            scoringSnapshotRepository.deleteByCompetitionIdAndStage(competitionId, stage);
+            scoringSnapshotRepository.deleteByCompetitionIdAndStage(competitionId, snapshotStage);
         }
 
         List<ScoringSnapshot> saved = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
         for (GroupType groupType : groupTypes) {
-            // 5a. 进阶组 + 面谈阶段：走合分逻辑
-            if (groupType == GroupType.ADVANCED && stage == ReviewStage.INTERVIEW) {
+            // 5a. 进阶组 + 面谈阶段：interviewOnly=false 时走书审合分逻辑；interviewOnly=true 时跳过，直接走通用路径
+            if (groupType == GroupType.ADVANCED && stage == ReviewStage.INTERVIEW && !interviewOnly) {
                 List<ScoringSnapshot> advSnaps = computeAdvancedCombinedRanking(
                         competitionId, allTasks, taskScores, now);
                 saved.addAll(advSnaps);
@@ -1011,7 +1020,7 @@ public class ReviewService {
                 groupSnapshots.add(ScoringSnapshot.builder()
                         .competitionId(competitionId)
                         .registrationId(registrationId)
-                        .stage(stage)
+                        .stage(snapshotStage)
                         .groupCode(reg.getGroupCode())
                         .groupType(groupType)
                         .rawAvg(rawAvg)
