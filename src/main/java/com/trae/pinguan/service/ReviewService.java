@@ -1261,16 +1261,16 @@ public class ReviewService {
                         competitionId, stage, groupType)
                 : scoringSnapshotRepository.findByCompetitionIdAndStageOrderByIrankAsc(competitionId, stage);
 
-        // 若快照为空则降级到实时均分排名
+        // 快照为空时直接返回空列表，引导前端先触发 compute-ranking
         if (snapshots.isEmpty()) {
-            return rankingByStage(competitionId, stage, groupType);
+            return Collections.emptyList();
         }
 
-        // 批量加载项目名称、机构名称
+        // 批量加载项目名称、机构名称（LEFT JOIN FETCH institution，避免 N+1）
         Set<Long> regIds = snapshots.stream()
                 .map(ScoringSnapshot::getRegistrationId)
                 .collect(Collectors.toSet());
-        Map<Long, Registration> regMap = registrationRepository.findAllById(regIds).stream()
+        Map<Long, Registration> regMap = registrationRepository.findByIdInWithInstitution(regIds).stream()
                 .collect(Collectors.toMap(Registration::getId, r -> r));
 
         return snapshots.stream().map(s -> {
