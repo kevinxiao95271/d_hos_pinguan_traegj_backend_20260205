@@ -5,8 +5,11 @@ import com.trae.pinguan.domain.entity.ScoringSnapshot;
 import com.trae.pinguan.domain.enums.GroupType;
 import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.domain.enums.ReviewStatus;
+import com.trae.pinguan.service.ComputeJobTracker;
+import com.trae.pinguan.service.ComputeRankingAsyncService;
 import com.trae.pinguan.service.ReviewService;
 import com.trae.pinguan.web.dto.ApiResponse;
+import com.trae.pinguan.web.dto.ComputeJobResponse;
 import com.trae.pinguan.web.dto.ComputeRankingRequest;
 import com.trae.pinguan.web.dto.ReviewAutoAssignRequest;
 import com.trae.pinguan.web.dto.ReviewFeedbackItem;
@@ -24,6 +27,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +50,8 @@ import org.springframework.web.bind.annotation.*;
 public class AdminReviewController {
     private final ReviewService reviewService;
     private final com.trae.pinguan.service.ReviewerService reviewerService;
+    private final ComputeRankingAsyncService computeRankingAsyncService;
+    private final ComputeJobTracker computeJobTracker;
 
     @PostMapping("/tasks")
     @Operation(summary = "后台分配评审任务")
@@ -76,12 +82,37 @@ public class AdminReviewController {
     }
 
     @PostMapping("/compute-ranking")
-    @Operation(summary = "触发系数调整排名计算（结果写入快照表）",
-            description = "interviewOnly=true 时：进阶组跳过书审合分，纯面谈系数路径，快照存入 INTERVIEW_ONLY stage，与 INTERVIEW 快照隔离互不影响")
-    public ApiResponse<Integer> computeRanking(@Valid @RequestBody ComputeRankingRequest request) {
-        List<ScoringSnapshot> snapshots = reviewService.computeAndSaveRanking(
-                request.getCompetitionId(), request.getStage(), request.getGroupType(), request.isInterviewOnly());
-        return ApiResponse.ok(snapshots.size());
+    @Operation(summary = "触发系数调整排名计算（异步，立即返回 jobId）",
+            description = "任务在后台异步执行，立即返回 jobId。" +
+                    "前端每隔 2 秒轮询 GET /compute-ranking/status?jobId=xxx，" +
+                    "status=SUCCESS 时排名已写入快照可供查询。\n" +
+                    "interviewOnly=true 时：进阶组跳过书审合分，纯面谈系数路径，快照存入 INTERVIEW_ONLY stage。")
+    public ApiResponse<ComputeJobResponse> computeRanking(@Valid @RequestBody ComputeRankingRequest request) {
+        String jobId = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        computeJobTracker.start(jobId);
+        computeRankingAsyncService.compute(
+                jobId, request.getCompetitionId(), request.getStage(),
+                request.getGroupType(), request.isInterviewOnly());
+        return ApiResponse.ok(ComputeJobResponse.builder()
+                .jobId(jobId)
+                .status("RUNNING")
+                .build());
+    }
+
+    @GetMapping("/compute-ranking/status")
+    @Operation(summary = "查询算分任务状态",
+            description = "轮询此接口，status=RUNNING 时继续等待；SUCCESS 时可查询排名；FAILED 时查看 error 字段。")
+    public ApiResponse<ComputeJobResponse> computeRankingStatus(@RequestParam String jobId) {
+        return computeJobTracker.get(jobId)
+                .map(info -> ApiResponse.ok(ComputeJobResponse.builder()
+                        .jobId(jobId)
+                        .status(info.getStatus().name())
+                        .snapshotCount(info.getSnapshotCount())
+                        .error(info.getError())
+                        .startedAt(info.getStartedAt())
+                        .finishedAt(info.getFinishedAt())
+                        .build()))
+                .orElse(ApiResponse.fail("job not found: " + jobId));
     }
 
     @GetMapping("/rankings")

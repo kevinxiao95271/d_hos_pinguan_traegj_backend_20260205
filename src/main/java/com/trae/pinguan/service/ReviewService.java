@@ -42,7 +42,9 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.sql.Timestamp;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +58,7 @@ public class ReviewService {
     private final RegistrationRepository registrationRepository;
     private final UserAccountRepository userAccountRepository;
     private final SystemSettingRepository systemSettingRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Transactional
     public ReviewTask assignTask(ReviewTaskAssignRequest request) {
@@ -1037,7 +1040,8 @@ public class ReviewService {
             for (int i = 0; i < groupSnapshots.size(); i++) {
                 groupSnapshots.get(i).setIrank(i + 1);
             }
-            saved.addAll(saveAllInBatches(groupSnapshots));
+            batchInsertSnapshots(groupSnapshots);
+            saved.addAll(groupSnapshots);
         }
         return saved;
     }
@@ -1219,7 +1223,8 @@ public class ReviewService {
         for (int i = 0; i < result.size(); i++) {
             result.get(i).setIrank(i + 1);
         }
-        return saveAllInBatches(result);
+        batchInsertSnapshots(result);
+        return result;
     }
 
     /**
@@ -1579,17 +1584,29 @@ public class ReviewService {
     }
 
     /**
-     * 分批保存快照，避免大量项目时单次 saveAll 产生过多 INSERT 语句积压。
-     * 每批 500 条，配合 JDBC URL rewriteBatchedStatements=true 效果最佳。
+     * 原生 JDBC 批量 INSERT 快照，绕开 IDENTITY 主键限制，真正实现批量写库。
+     * 不返回生成的 ID（调用方不需要），显著提升大数据量下的写入性能。
      */
-    private List<ScoringSnapshot> saveAllInBatches(List<ScoringSnapshot> snapshots) {
-        final int BATCH = 500;
-        List<ScoringSnapshot> result = new ArrayList<>(snapshots.size());
-        for (int i = 0; i < snapshots.size(); i += BATCH) {
-            List<ScoringSnapshot> chunk = snapshots.subList(i, Math.min(i + BATCH, snapshots.size()));
-            result.addAll(scoringSnapshotRepository.saveAll(chunk));
-            scoringSnapshotRepository.flush();
-        }
-        return result;
+    private void batchInsertSnapshots(List<ScoringSnapshot> snapshots) {
+        if (snapshots.isEmpty()) return;
+        String sql = "INSERT INTO scoring_snapshots " +
+                "(competition_id, registration_id, stage, group_code, group_type, " +
+                "raw_avg, group_avg, overall_avg, coefficient, adjusted_score, irank, calculated_at) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+        jdbcTemplate.batchUpdate(sql, snapshots, 500, (ps, s) -> {
+            ps.setLong(1, s.getCompetitionId());
+            ps.setLong(2, s.getRegistrationId());
+            ps.setString(3, s.getStage().name());
+            ps.setString(4, s.getGroupCode());
+            ps.setString(5, s.getGroupType().name());
+            ps.setObject(6, s.getRawAvg());
+            ps.setObject(7, s.getGroupAvg());
+            ps.setObject(8, s.getOverallAvg());
+            ps.setObject(9, s.getCoefficient());
+            ps.setObject(10, s.getAdjustedScore());
+            ps.setObject(11, s.getIrank());
+            ps.setObject(12, s.getCalculatedAt() != null
+                    ? Timestamp.valueOf(s.getCalculatedAt()) : null);
+        });
     }
 }
