@@ -59,6 +59,7 @@ public class ReviewService {
     private final UserAccountRepository userAccountRepository;
     private final SystemSettingRepository systemSettingRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final ComputeJobTracker computeJobTracker;
 
     @Transactional
     public ReviewTask assignTask(ReviewTaskAssignRequest request) {
@@ -918,19 +919,26 @@ public class ReviewService {
      */
     @Transactional
     public List<ScoringSnapshot> computeAndSaveRanking(Long competitionId, ReviewStage stage, GroupType filterGroupType) {
-        return computeAndSaveRanking(competitionId, stage, filterGroupType, false);
+        return computeAndSaveRanking(competitionId, stage, filterGroupType, false, null);
     }
 
     @Transactional
     public List<ScoringSnapshot> computeAndSaveRanking(Long competitionId, ReviewStage stage, GroupType filterGroupType, boolean interviewOnly) {
+        return computeAndSaveRanking(competitionId, stage, filterGroupType, interviewOnly, null);
+    }
+
+    @Transactional
+    public List<ScoringSnapshot> computeAndSaveRanking(Long competitionId, ReviewStage stage, GroupType filterGroupType, boolean interviewOnly, String jobId) {
         // interviewOnly=true 时，任务仍从 INTERVIEW 表读取，但快照写入 INTERVIEW_ONLY stage
         ReviewStage snapshotStage = (interviewOnly && stage == ReviewStage.INTERVIEW)
                 ? ReviewStage.INTERVIEW_ONLY : stage;
 
         // 1. 取该赛事该阶段的所有任务（带关联数据，数据源始终是 INTERVIEW）
+        reportProgress(jobId, 10, "正在加载评审任务…");
         List<ReviewTask> allTasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
 
         // 2. 获取各任务的原始分数（按阶段路由到对应表）
+        reportProgress(jobId, 25, "正在读取原始评分…");
         Map<Long, Double> taskScores = getRawScoresByStage(stage, allTasks);
 
         // 3. 确定需要处理的 groupType 列表
@@ -939,6 +947,7 @@ public class ReviewService {
                 : Arrays.asList(GroupType.values());
 
         // 4. 删除旧快照（按 snapshotStage 隔离，不影响另一路快照）
+        reportProgress(jobId, 35, "正在清除旧快照…");
         if (filterGroupType != null) {
             scoringSnapshotRepository.deleteByCompetitionIdAndStageAndGroupType(competitionId, snapshotStage, filterGroupType);
         } else {
@@ -948,7 +957,14 @@ public class ReviewService {
         List<ScoringSnapshot> saved = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
+        int totalGroups = groupTypes.size();
+        int groupIdx = 0;
         for (GroupType groupType : groupTypes) {
+            groupIdx++;
+            // 进度区间 40%~90%，按组数平均分配
+            int pct = 40 + (groupIdx - 1) * 50 / totalGroups;
+            reportProgress(jobId, pct, "正在计算 " + groupTypeLabel(groupType) + "（" + groupIdx + "/" + totalGroups + "）…");
+
             // 5a. 进阶组 + 面谈阶段：interviewOnly=false 时走书审合分逻辑；interviewOnly=true 时跳过，直接走通用路径
             if (groupType == GroupType.ADVANCED && stage == ReviewStage.INTERVIEW && !interviewOnly) {
                 List<ScoringSnapshot> advSnaps = computeAdvancedCombinedRanking(
@@ -1040,10 +1056,28 @@ public class ReviewService {
             for (int i = 0; i < groupSnapshots.size(); i++) {
                 groupSnapshots.get(i).setIrank(i + 1);
             }
+            reportProgress(jobId, 40 + groupIdx * 50 / totalGroups, "正在写入 " + groupTypeLabel(groupType) + " 快照…");
             batchInsertSnapshots(groupSnapshots);
             saved.addAll(groupSnapshots);
         }
+        reportProgress(jobId, 95, "快照写入完成，即将收尾…");
         return saved;
+    }
+
+    private void reportProgress(String jobId, int percent, String msg) {
+        if (jobId != null) {
+            computeJobTracker.progress(jobId, percent, msg);
+        }
+    }
+
+    private static String groupTypeLabel(GroupType gt) {
+        if (gt == null) return "";
+        switch (gt) {
+            case BASIC:         return "基层组";
+            case COMPREHENSIVE: return "综合组";
+            case ADVANCED:      return "进阶组";
+            default:            return gt.name();
+        }
     }
 
     /**

@@ -23,8 +23,9 @@ public class ComputeRankingAsyncService {
         log.info("[compute-ranking] job={} start competitionId={} stage={} interviewOnly={}",
                 jobId, competitionId, stage, interviewOnly);
         try {
+            jobTracker.progress(jobId, 5, "正在初始化…");
             List<ScoringSnapshot> snapshots = reviewService.computeAndSaveRanking(
-                    competitionId, stage, groupType, interviewOnly);
+                    competitionId, stage, groupType, interviewOnly, jobId);
             jobTracker.success(jobId, snapshots.size());
             log.info("[compute-ranking] job={} SUCCESS count={}", jobId, snapshots.size());
         } catch (Exception e) {

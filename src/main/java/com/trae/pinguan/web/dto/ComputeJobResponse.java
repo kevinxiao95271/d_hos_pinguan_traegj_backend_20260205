@@ -31,4 +31,10 @@ public class ComputeJobResponse {
 
     @Schema(description = "任务完成时间（RUNNING 时为 null）")
     private LocalDateTime finishedAt;
+
+    @Schema(description = "进度百分比 0-100")
+    private int progress;
+
+    @Schema(description = "当前进度描述")
+    private String progressMsg;
 }

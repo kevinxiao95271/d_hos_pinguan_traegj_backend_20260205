@@ -111,6 +111,8 @@ public class AdminReviewController {
                         .error(info.getError())
                         .startedAt(info.getStartedAt())
                         .finishedAt(info.getFinishedAt())
+                        .progress(info.getProgress())
+                        .progressMsg(info.getProgressMsg())
                         .build()))
                 .orElse(ApiResponse.fail("job not found: " + jobId));
     }
