@@ -11,6 +11,9 @@ import com.trae.pinguan.service.ReviewService;
 import com.trae.pinguan.web.dto.ApiResponse;
 import com.trae.pinguan.web.dto.ComputeJobResponse;
 import com.trae.pinguan.web.dto.ComputeRankingRequest;
+import com.trae.pinguan.web.dto.ProjectFeedbackFilterOptionsResponse;
+import com.trae.pinguan.web.dto.ProjectFeedbackItem;
+import com.trae.pinguan.web.dto.ProjectFeedbackUpdateRequest;
 import com.trae.pinguan.web.dto.ReviewAutoAssignRequest;
 import com.trae.pinguan.web.dto.ReviewFeedbackItem;
 import com.trae.pinguan.web.dto.ReviewRankingItem;
@@ -40,7 +43,9 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/admin/reviews")
@@ -52,6 +57,7 @@ public class AdminReviewController {
     private final com.trae.pinguan.service.ReviewerService reviewerService;
     private final ComputeRankingAsyncService computeRankingAsyncService;
     private final ComputeJobTracker computeJobTracker;
+    private final javax.servlet.http.HttpServletRequest request;
 
     @PostMapping("/tasks")
     @Operation(summary = "后台分配评审任务")
@@ -156,6 +162,68 @@ public class AdminReviewController {
     public ApiResponse<List<ReviewFeedbackItem>> feedback(@RequestParam Long competitionId,
                                                           @RequestParam ReviewStage stage) {
         return ApiResponse.ok(reviewService.feedbackByStage(competitionId, stage));
+    }
+
+    @GetMapping("/project-feedback")
+    @Operation(summary = "后台项目意见汇总",
+            description = "按项目汇总已提交评委的亮点与不足；返回时会刷新原始汇总，但不覆盖组委会编辑稿。" +
+                    "支持按组别、分组、项目名、机构名、发布状态筛选。")
+    public ApiResponse<List<ProjectFeedbackItem>> projectFeedback(
+            @RequestParam Long competitionId,
+            @RequestParam(defaultValue = "BOOK") ReviewStage stage,
+            @RequestParam(required = false) GroupType groupType,
+            @RequestParam(required = false) String groupCode,
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) String institutionName,
+            @RequestParam(required = false) Boolean published,
+            @RequestParam(defaultValue = "false") boolean refresh) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewService.projectFeedbacksByStage(
+                competitionId, stage, groupType, groupCode, projectName, institutionName, published, refresh));
+    }
+
+    @GetMapping("/project-feedback/filter-options")
+    @Operation(summary = "项目意见筛选项（组别-分组联动）",
+            description = "返回组别列表及组别对应分组列表。传 groupType 时，groupCodes 返回该组别下分组；不传则返回全部分组。")
+    public ApiResponse<ProjectFeedbackFilterOptionsResponse> projectFeedbackFilterOptions(
+            @RequestParam Long competitionId,
+            @RequestParam(defaultValue = "BOOK") ReviewStage stage,
+            @RequestParam(required = false) GroupType groupType) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewService.projectFeedbackFilterOptions(competitionId, stage, groupType));
+    }
+
+    @PutMapping("/project-feedback/{registrationId}")
+    @Operation(summary = "后台编辑项目意见汇总")
+    public ApiResponse<ProjectFeedbackItem> updateProjectFeedback(
+            @PathVariable Long registrationId,
+            @RequestParam(defaultValue = "BOOK") ReviewStage stage,
+            @Valid @RequestBody ProjectFeedbackUpdateRequest body) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewService.updateProjectFeedback(
+                registrationId, stage, body, getCurrentUserId()));
+    }
+
+    @PostMapping("/project-feedback/{registrationId}/publish")
+    @Operation(summary = "发布或撤回单个项目意见")
+    public ApiResponse<ProjectFeedbackItem> publishProjectFeedback(
+            @PathVariable Long registrationId,
+            @RequestParam(defaultValue = "BOOK") ReviewStage stage,
+            @RequestParam(defaultValue = "true") boolean published) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewService.publishProjectFeedback(
+                registrationId, stage, published, getCurrentUserId()));
+    }
+
+    @PostMapping("/project-feedback/publish")
+    @Operation(summary = "批量发布或撤回项目意见")
+    public ApiResponse<List<ProjectFeedbackItem>> publishProjectFeedbacks(
+            @RequestParam Long competitionId,
+            @RequestParam(defaultValue = "BOOK") ReviewStage stage,
+            @RequestParam(defaultValue = "true") boolean published) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewService.publishProjectFeedbacks(
+                competitionId, stage, published, getCurrentUserId()));
     }
 
     @PostMapping("/scores/return")
@@ -306,5 +374,20 @@ public class AdminReviewController {
             c.setCellValue(val);
             c.setCellStyle(style);
         }
+    }
+
+    private void requireCommitteeOrOps() {
+        String role = String.valueOf(request.getAttribute("role"));
+        if (!"COMMITTEE".equals(role) && !"COMMITTEE_ADMIN".equals(role) && !"OPS".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权限");
+        }
+    }
+
+    private Long getCurrentUserId() {
+        Object userId = request.getAttribute("userId");
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
+        }
+        return Long.parseLong(userId.toString());
     }
 }

@@ -29,6 +29,7 @@ public class DataSourceInitializer implements ApplicationRunner {
         ensureColumn("reviewer_profiles", "experience_json", "LONGTEXT");
         ensureColumn("review_tasks", "recuse_reason_code", "varchar(64)");
         ensureColumn("review_tasks", "recuse_reason_other", "varchar(255)");
+        ensureProjectFeedbacksTable();
         ensureReviewerInstitutionChangesTable();
         ensureRecuseReasonDictionary();
         ensureScoreColumnsNullable();
@@ -130,6 +131,28 @@ public class DataSourceInitializer implements ApplicationRunner {
                 "PRIMARY KEY (id)," +
                 "INDEX idx_ric_reviewer (reviewer_id)" +
                 ")");
+    }
+
+    private void ensureProjectFeedbacksTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS project_feedbacks (" +
+                "id BIGINT NOT NULL AUTO_INCREMENT," +
+                "registration_id BIGINT NOT NULL," +
+                "stage VARCHAR(32) NOT NULL," +
+                "source_highlight LONGTEXT NULL," +
+                "source_weakness LONGTEXT NULL," +
+                "edited_highlight LONGTEXT NULL," +
+                "edited_weakness LONGTEXT NULL," +
+                "published BIT(1) NOT NULL DEFAULT b'0'," +
+                "updated_by_id BIGINT NULL," +
+                "published_by_id BIGINT NULL," +
+                "created_at DATETIME(6) NOT NULL," +
+                "updated_at DATETIME(6) NOT NULL," +
+                "published_at DATETIME(6) NULL," +
+                "PRIMARY KEY (id)," +
+                "UNIQUE KEY uk_project_feedback_registration_stage (registration_id, stage)," +
+                "INDEX idx_project_feedback_stage_published (stage, published)," +
+                "CONSTRAINT fk_project_feedback_registration FOREIGN KEY (registration_id) REFERENCES registrations(id)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
     private void ensureRecuseReasonDictionary() {

@@ -1,6 +1,7 @@
 package com.trae.pinguan.service;
 
 import com.trae.pinguan.domain.entity.InterviewScore;
+import com.trae.pinguan.domain.entity.ProjectFeedback;
 import com.trae.pinguan.domain.entity.Registration;
 import com.trae.pinguan.domain.entity.ReviewScore;
 import com.trae.pinguan.domain.entity.ReviewTask;
@@ -10,6 +11,7 @@ import com.trae.pinguan.domain.enums.GroupType;
 import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.domain.enums.ReviewStatus;
 import com.trae.pinguan.repository.InterviewScoreRepository;
+import com.trae.pinguan.repository.ProjectFeedbackRepository;
 import com.trae.pinguan.repository.RegistrationRepository;
 import com.trae.pinguan.repository.ReviewScoreRepository;
 import com.trae.pinguan.repository.ReviewTaskRepository;
@@ -17,6 +19,9 @@ import com.trae.pinguan.repository.ScoringSnapshotRepository;
 import com.trae.pinguan.repository.SystemSettingRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.web.dto.InterviewScoreRequest;
+import com.trae.pinguan.web.dto.ProjectFeedbackFilterOptionsResponse;
+import com.trae.pinguan.web.dto.ProjectFeedbackItem;
+import com.trae.pinguan.web.dto.ProjectFeedbackUpdateRequest;
 import com.trae.pinguan.web.dto.ReviewFeedbackItem;
 import com.trae.pinguan.web.dto.ReviewRankingItem;
 import com.trae.pinguan.web.dto.ReviewAutoAssignRequest;
@@ -54,6 +59,7 @@ public class ReviewService {
     private final ReviewTaskRepository reviewTaskRepository;
     private final ReviewScoreRepository reviewScoreRepository;
     private final InterviewScoreRepository interviewScoreRepository;
+    private final ProjectFeedbackRepository projectFeedbackRepository;
     private final ScoringSnapshotRepository scoringSnapshotRepository;
     private final RegistrationRepository registrationRepository;
     private final UserAccountRepository userAccountRepository;
@@ -564,6 +570,323 @@ public class ReviewService {
             ));
         }
         return items;
+    }
+
+    @Transactional
+    public List<ProjectFeedbackItem> projectFeedbacksByStage(Long competitionId, ReviewStage stage) {
+        return projectFeedbacksByStage(competitionId, stage, null, null, null, null, null, false);
+    }
+
+    @Transactional
+    public List<ProjectFeedbackItem> projectFeedbacksByStage(Long competitionId,
+                                                             ReviewStage stage,
+                                                             GroupType groupType,
+                                                             String groupCode,
+                                                             String projectName,
+                                                             String institutionName,
+                                                             Boolean published) {
+        return projectFeedbacksByStage(competitionId, stage, groupType, groupCode, projectName, institutionName, published, false);
+    }
+
+    @Transactional
+    public List<ProjectFeedbackItem> projectFeedbacksByStage(Long competitionId,
+                                                             ReviewStage stage,
+                                                             GroupType groupType,
+                                                             String groupCode,
+                                                             String projectName,
+                                                             String institutionName,
+                                                             Boolean published,
+                                                             boolean refresh) {
+        ensureFeedbackSupportedStage(stage);
+        long existingCount = projectFeedbackRepository.countByCompetitionIdAndStage(competitionId, stage);
+        if (refresh || existingCount == 0L) {
+            List<ReviewTask> tasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
+            Map<Long, FeedbackSource> sourceMap = buildFeedbackSourceMap(tasks);
+            upsertProjectFeedbackSources(sourceMap, stage, null);
+        }
+        List<ProjectFeedback> feedbacks = projectFeedbackRepository.findFilteredByCompetitionAndStageWithRegistration(
+                competitionId,
+                stage,
+                groupType,
+                normalize(groupCode),
+                normalize(projectName),
+                normalize(institutionName),
+                published);
+        return feedbacks.stream()
+                .sorted(Comparator.comparing((ProjectFeedback pf) -> pf.getRegistration().getId()))
+                .map(this::toProjectFeedbackItem)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ProjectFeedbackFilterOptionsResponse projectFeedbackFilterOptions(Long competitionId,
+                                                                            ReviewStage stage,
+                                                                            GroupType groupType) {
+        ensureFeedbackSupportedStage(stage);
+        List<ProjectFeedbackItem> items = projectFeedbacksByStage(competitionId, stage);
+        Map<GroupType, Set<String>> codeSetMap = new java.util.LinkedHashMap<>();
+        for (ProjectFeedbackItem item : items) {
+            if (item.getGroupType() == null) {
+                continue;
+            }
+            codeSetMap.computeIfAbsent(item.getGroupType(), k -> new java.util.LinkedHashSet<>());
+            if (item.getGroupCode() != null && !item.getGroupCode().trim().isEmpty()) {
+                codeSetMap.get(item.getGroupType()).add(item.getGroupCode().trim());
+            }
+        }
+
+        Map<GroupType, List<String>> groupCodesByGroupType = new java.util.LinkedHashMap<>();
+        for (Map.Entry<GroupType, Set<String>> entry : codeSetMap.entrySet()) {
+            groupCodesByGroupType.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+
+        List<GroupType> groupTypes = new ArrayList<>(groupCodesByGroupType.keySet());
+        List<String> groupCodes = groupType == null
+                ? groupCodesByGroupType.values().stream().flatMap(List::stream).distinct().collect(Collectors.toList())
+                : groupCodesByGroupType.getOrDefault(groupType, Collections.emptyList());
+
+        return ProjectFeedbackFilterOptionsResponse.builder()
+                .groupTypes(groupTypes)
+                .groupCodesByGroupType(groupCodesByGroupType)
+                .groupCodes(groupCodes)
+                .build();
+    }
+
+    @Transactional
+    public ProjectFeedbackItem updateProjectFeedback(Long registrationId,
+                                                     ReviewStage stage,
+                                                     ProjectFeedbackUpdateRequest request,
+                                                     Long operatorId) {
+        ensureFeedbackSupportedStage(stage);
+        ProjectFeedback feedback = getOrCreateProjectFeedback(registrationId, stage, operatorId);
+        feedback.setEditedHighlight(request.getHighlight());
+        feedback.setEditedWeakness(request.getWeakness());
+        feedback.setUpdatedById(operatorId);
+        feedback.setUpdatedAt(LocalDateTime.now());
+        return toProjectFeedbackItem(projectFeedbackRepository.save(feedback));
+    }
+
+    @Transactional
+    public ProjectFeedbackItem publishProjectFeedback(Long registrationId,
+                                                      ReviewStage stage,
+                                                      boolean published,
+                                                      Long operatorId) {
+        ensureFeedbackSupportedStage(stage);
+        ProjectFeedback feedback = getOrCreateProjectFeedback(registrationId, stage, operatorId);
+        applyPublishState(feedback, published, operatorId);
+        return toProjectFeedbackItem(projectFeedbackRepository.save(feedback));
+    }
+
+    @Transactional
+    public List<ProjectFeedbackItem> publishProjectFeedbacks(Long competitionId,
+                                                             ReviewStage stage,
+                                                             boolean published,
+                                                             Long operatorId) {
+        ensureFeedbackSupportedStage(stage);
+        List<ProjectFeedbackItem> refreshed = projectFeedbacksByStage(competitionId, stage);
+        List<ProjectFeedback> feedbacks = projectFeedbackRepository
+                .findByCompetitionIdAndStageWithRegistration(competitionId, stage);
+        for (ProjectFeedback feedback : feedbacks) {
+            applyPublishState(feedback, published, operatorId);
+        }
+        projectFeedbackRepository.saveAll(feedbacks);
+        Map<Long, ProjectFeedback> savedByRegistrationId = feedbacks.stream()
+                .collect(Collectors.toMap(f -> f.getRegistration().getId(), f -> f));
+        return refreshed.stream()
+                .map(item -> savedByRegistrationId.get(item.getRegistrationId()))
+                .filter(java.util.Objects::nonNull)
+                .sorted(Comparator.comparing((ProjectFeedback pf) -> pf.getRegistration().getId()))
+                .map(this::toProjectFeedbackItem)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProjectFeedbackItem> publishedProjectFeedbacksByRegistration(Long registrationId, Long applicantId) {
+        Registration registration = registrationRepository.findById(registrationId)
+                .orElseThrow(() -> new IllegalArgumentException("报名不存在"));
+        if (registration.getApplicant() == null || !registration.getApplicant().getId().equals(applicantId)) {
+            throw new IllegalArgumentException("无权查看该项目反馈");
+        }
+        return projectFeedbackRepository.findByRegistrationIdAndPublishedTrueOrderByUpdatedAtDesc(registrationId)
+                .stream()
+                .map(this::toProjectFeedbackItem)
+                .collect(Collectors.toList());
+    }
+
+    private ProjectFeedback getOrCreateProjectFeedback(Long registrationId, ReviewStage stage, Long operatorId) {
+        Registration registration = registrationRepository.findById(registrationId)
+                .orElseThrow(() -> new IllegalArgumentException("报名不存在"));
+        List<ReviewTask> tasks = reviewTaskRepository.findByRegistrationIdAndStage(registrationId, stage);
+        Map<Long, FeedbackSource> sourceMap = buildFeedbackSourceMap(tasks);
+        FeedbackSource source = sourceMap.get(registrationId);
+        LocalDateTime now = LocalDateTime.now();
+        ProjectFeedback feedback = projectFeedbackRepository.findByRegistrationIdAndStage(registrationId, stage)
+                .orElse(ProjectFeedback.builder()
+                        .registration(registration)
+                        .stage(stage)
+                        .published(false)
+                        .createdAt(now)
+                        .build());
+        feedback.setSourceHighlight(source != null ? source.joinHighlights() : null);
+        feedback.setSourceWeakness(source != null ? source.joinWeaknesses() : null);
+        feedback.setUpdatedById(operatorId);
+        feedback.setUpdatedAt(now);
+        return projectFeedbackRepository.save(feedback);
+    }
+
+    private List<ProjectFeedback> upsertProjectFeedbackSources(Map<Long, FeedbackSource> sourceMap,
+                                                               ReviewStage stage,
+                                                               Long operatorId) {
+        if (sourceMap.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<Long> registrationIds = sourceMap.keySet();
+        Map<Long, ProjectFeedback> existingMap = projectFeedbackRepository
+                .findByRegistrationIdInAndStage(registrationIds, stage)
+                .stream()
+                .collect(Collectors.toMap(f -> f.getRegistration().getId(), f -> f));
+        LocalDateTime now = LocalDateTime.now();
+        List<ProjectFeedback> feedbacks = new ArrayList<>();
+        for (FeedbackSource source : sourceMap.values()) {
+            ProjectFeedback feedback = existingMap.get(source.registration.getId());
+            if (feedback == null) {
+                feedback = ProjectFeedback.builder()
+                        .registration(source.registration)
+                        .stage(stage)
+                        .published(false)
+                        .createdAt(now)
+                        .build();
+                feedback.setSourceHighlight(source.joinHighlights());
+                feedback.setSourceWeakness(source.joinWeaknesses());
+                feedback.setUpdatedById(operatorId);
+                feedback.setUpdatedAt(now);
+                feedbacks.add(feedback);
+                continue;
+            }
+            String nextHighlight = source.joinHighlights();
+            String nextWeakness = source.joinWeaknesses();
+            boolean changed = !equalsNullable(feedback.getSourceHighlight(), nextHighlight)
+                    || !equalsNullable(feedback.getSourceWeakness(), nextWeakness);
+            if (changed) {
+                feedback.setSourceHighlight(nextHighlight);
+                feedback.setSourceWeakness(nextWeakness);
+                feedback.setUpdatedById(operatorId);
+                feedback.setUpdatedAt(now);
+                feedbacks.add(feedback);
+            }
+        }
+        if (feedbacks.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return projectFeedbackRepository.saveAll(feedbacks);
+    }
+
+    private Map<Long, FeedbackSource> buildFeedbackSourceMap(List<ReviewTask> tasks) {
+        Set<Long> scoredTaskIds = tasks.stream()
+                .filter(t -> t.getStatus() == ReviewStatus.SCORED)
+                .map(ReviewTask::getId)
+                .collect(Collectors.toSet());
+        Map<Long, ReviewScore> scoreMap = new HashMap<>();
+        if (!scoredTaskIds.isEmpty()) {
+            reviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
+                    .forEach(s -> scoreMap.put(s.getReviewTaskId(), s));
+        }
+        Map<Long, FeedbackSource> sourceMap = new java.util.LinkedHashMap<>();
+        for (ReviewTask task : tasks) {
+            Registration registration = task.getRegistration();
+            if (registration == null) {
+                continue;
+            }
+            FeedbackSource source = sourceMap.computeIfAbsent(
+                    registration.getId(), id -> new FeedbackSource(registration));
+            ReviewScore score = scoreMap.get(task.getId());
+            if (task.getStatus() != ReviewStatus.SCORED || score == null) {
+                continue;
+            }
+            addFeedbackLine(source.highlights, score.getHighlight());
+            addFeedbackLine(source.weaknesses, score.getWeakness());
+        }
+        return sourceMap;
+    }
+
+    private void addFeedbackLine(List<String> target, String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return;
+        }
+        target.add(content.trim());
+    }
+
+    private void applyPublishState(ProjectFeedback feedback, boolean published, Long operatorId) {
+        feedback.setPublished(published);
+        feedback.setPublishedById(published ? operatorId : null);
+        feedback.setPublishedAt(published ? LocalDateTime.now() : null);
+        feedback.setUpdatedById(operatorId);
+        feedback.setUpdatedAt(LocalDateTime.now());
+    }
+
+    private ProjectFeedbackItem toProjectFeedbackItem(ProjectFeedback feedback) {
+        Registration registration = feedback.getRegistration();
+        String finalHighlight = feedback.getEditedHighlight() != null
+                ? feedback.getEditedHighlight() : feedback.getSourceHighlight();
+        String finalWeakness = feedback.getEditedWeakness() != null
+                ? feedback.getEditedWeakness() : feedback.getSourceWeakness();
+        return ProjectFeedbackItem.builder()
+                .registrationId(registration != null ? registration.getId() : null)
+                .projectName(registration != null ? registration.getProjectName() : null)
+                .institutionName(registration != null && registration.getInstitution() != null
+                        ? registration.getInstitution().getName() : null)
+                .groupType(registration != null ? registration.getGroupType() : null)
+                .groupCode(registration != null ? registration.getGroupCode() : null)
+                .stage(feedback.getStage())
+                .sourceHighlight(feedback.getSourceHighlight())
+                .sourceWeakness(feedback.getSourceWeakness())
+                .editedHighlight(feedback.getEditedHighlight())
+                .editedWeakness(feedback.getEditedWeakness())
+                .finalHighlight(finalHighlight)
+                .finalWeakness(finalWeakness)
+                .published(feedback.isPublished())
+                .updatedAt(feedback.getUpdatedAt())
+                .publishedAt(feedback.getPublishedAt())
+                .build();
+    }
+
+    private void ensureFeedbackSupportedStage(ReviewStage stage) {
+        if (stage != ReviewStage.BOOK) {
+            throw new IllegalArgumentException("当前仅书审评分包含亮点与不足");
+        }
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean equalsNullable(String left, String right) {
+        if (left == null) {
+            return right == null;
+        }
+        return left.equals(right);
+    }
+
+    private static class FeedbackSource {
+        private final Registration registration;
+        private final List<String> highlights = new ArrayList<>();
+        private final List<String> weaknesses = new ArrayList<>();
+
+        private FeedbackSource(Registration registration) {
+            this.registration = registration;
+        }
+
+        private String joinHighlights() {
+            return String.join("\n", highlights);
+        }
+
+        private String joinWeaknesses() {
+            return String.join("\n", weaknesses);
+        }
     }
 
     @Transactional

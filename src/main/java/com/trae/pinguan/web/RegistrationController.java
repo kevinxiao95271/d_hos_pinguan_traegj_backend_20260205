@@ -105,6 +105,14 @@ public class RegistrationController {
         return ApiResponse.ok(reviewService.scoreSummaryByRegistration(id));
     }
 
+    @GetMapping("/{id}/published-feedback")
+    @Operation(summary = "已发布项目反馈（参赛者端）",
+            description = "仅报名申请人可查看；返回组委会最终发布给参赛者的亮点与不足。")
+    public ApiResponse<List<ProjectFeedbackItem>> publishedFeedback(@PathVariable Long id) {
+        Long applicantId = getCurrentUserId();
+        return ApiResponse.ok(reviewService.publishedProjectFeedbacksByRegistration(id, applicantId));
+    }
+
     @GetMapping
     @Operation(summary = "按赛事查询报名列表")
     public ApiResponse<List<Registration>> list(@RequestParam Long competitionId) {
