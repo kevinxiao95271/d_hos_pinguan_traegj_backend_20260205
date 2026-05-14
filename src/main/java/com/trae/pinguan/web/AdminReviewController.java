@@ -193,15 +193,109 @@ public class AdminReviewController {
         return ApiResponse.ok(reviewService.projectFeedbackFilterOptions(competitionId, stage, groupType));
     }
 
+    @PutMapping("/project-feedback/batch")
+    @Operation(summary = "批量保存项目意见草稿",
+            description = "一次性保存多个项目的组委会编辑稿（亮点/不足），语义与单条 PUT 完全一致。" +
+                    "单次请求最多 200 条；超出限制返回 400。不触发发布，仅保存草稿。")
+    public ApiResponse<List<ProjectFeedbackItem>> batchUpdateProjectFeedback(
+            @RequestParam(defaultValue = "BOOK") ReviewStage stage,
+            @Valid @RequestBody com.trae.pinguan.web.dto.ProjectFeedbackBatchUpdateRequest body) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewService.batchUpdateProjectFeedback(stage, body.getItems(), getCurrentUserId()));
+    }
+
     @PutMapping("/project-feedback/{registrationId}")
-    @Operation(summary = "后台编辑项目意见汇总")
-    public ApiResponse<ProjectFeedbackItem> updateProjectFeedback(
+    @Operation(summary = "后台编辑项目意见汇总")    public ApiResponse<ProjectFeedbackItem> updateProjectFeedback(
             @PathVariable Long registrationId,
             @RequestParam(defaultValue = "BOOK") ReviewStage stage,
             @Valid @RequestBody ProjectFeedbackUpdateRequest body) {
         requireCommitteeOrOps();
         return ApiResponse.ok(reviewService.updateProjectFeedback(
                 registrationId, stage, body, getCurrentUserId()));
+    }
+
+    @GetMapping("/project-feedback/export")
+    @Operation(summary = "导出项目意见反馈为 Excel",
+            description = "将当前筛选条件下的所有项目意见（亮点/不足原始汇总、组委会编辑稿、最终稿）导出为 .xlsx 文件。" +
+                    "支持与列表页相同的筛选参数：groupType / groupCode / projectName / institutionName / published。")
+    public void exportProjectFeedback(
+            @RequestParam Long competitionId,
+            @RequestParam(defaultValue = "BOOK") ReviewStage stage,
+            @RequestParam(required = false) GroupType groupType,
+            @RequestParam(required = false) String groupCode,
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) String institutionName,
+            @RequestParam(required = false) Boolean published,
+            HttpServletResponse response) throws IOException {
+        requireCommitteeOrOps();
+        List<ProjectFeedbackItem> items = reviewService.projectFeedbacksByStage(
+                competitionId, stage, groupType, groupCode, projectName, institutionName, published, false);
+
+        String stageName = ReviewStage.BOOK == stage ? "书审" : "面谈";
+        String filename = URLEncoder.encode("项目意见反馈-" + stageName + ".xlsx", StandardCharsets.UTF_8.name());
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + filename);
+
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet(stageName + "项目意见反馈");
+
+            CellStyle headerStyle = wb.createCellStyle();
+            headerStyle.setFillForegroundColor(IndexedColors.CORNFLOWER_BLUE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            Font headerFont = wb.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(headerFont);
+
+            CellStyle wrapStyle = wb.createCellStyle();
+            wrapStyle.setWrapText(true);
+
+            String[] headers = {
+                "项目编号", "项目名称", "医院名称", "组别", "小组",
+                "评委原始亮点汇总", "评委原始不足汇总",
+                "最终亮点（组委会已编辑则用编辑稿，否则用原始汇总）",
+                "最终不足（组委会已编辑则用编辑稿，否则用原始汇总）",
+                "是否已发布", "最后修改时间", "发布时间"
+            };
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                Cell c = headerRow.createCell(i);
+                c.setCellValue(headers[i]);
+                c.setCellStyle(headerStyle);
+            }
+
+            int rowIdx = 1;
+            for (ProjectFeedbackItem item : items) {
+                Row row = sheet.createRow(rowIdx++);
+                int col = 0;
+                row.createCell(col++).setCellValue(item.getRegistrationId() != null ? item.getRegistrationId() : 0L);
+                row.createCell(col++).setCellValue(item.getProjectName() != null ? item.getProjectName() : "");
+                row.createCell(col++).setCellValue(item.getInstitutionName() != null ? item.getInstitutionName() : "");
+                row.createCell(col++).setCellValue(groupTypeLabel(item.getGroupType()));
+                row.createCell(col++).setCellValue(item.getGroupCode() != null ? item.getGroupCode() : "");
+
+                setWrappedText(row, col++, item.getSourceHighlight(), wrapStyle);
+                setWrappedText(row, col++, item.getSourceWeakness(), wrapStyle);
+                setWrappedText(row, col++, item.getFinalHighlight(), wrapStyle);
+                setWrappedText(row, col++, item.getFinalWeakness(), wrapStyle);
+
+                row.createCell(col++).setCellValue(item.isPublished() ? "是" : "否");
+                row.createCell(col++).setCellValue(item.getUpdatedAt() != null ? item.getUpdatedAt().toString() : "");
+                row.createCell(col++).setCellValue(item.getPublishedAt() != null ? item.getPublishedAt().toString() : "");
+            }
+
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            wb.write(response.getOutputStream());
+        }
+    }
+
+    private void setWrappedText(Row row, int col, String value, CellStyle wrapStyle) {
+        Cell c = row.createCell(col);
+        c.setCellValue(value != null ? value : "");
+        c.setCellStyle(wrapStyle);
     }
 
     @PostMapping("/project-feedback/{registrationId}/publish")

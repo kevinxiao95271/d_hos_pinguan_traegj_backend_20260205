@@ -667,6 +667,52 @@ public class ReviewService {
     }
 
     @Transactional
+    public List<ProjectFeedbackItem> batchUpdateProjectFeedback(
+            ReviewStage stage,
+            List<com.trae.pinguan.web.dto.ProjectFeedbackBatchUpdateRequest.Item> items,
+            Long operatorId) {
+        ensureFeedbackSupportedStage(stage);
+
+        List<Long> registrationIds = items.stream()
+                .map(com.trae.pinguan.web.dto.ProjectFeedbackBatchUpdateRequest.Item::getRegistrationId)
+                .collect(Collectors.toList());
+
+        Map<Long, Registration> registrationMap = registrationRepository.findByIdInWithInstitution(registrationIds)
+                .stream().collect(Collectors.toMap(Registration::getId, r -> r));
+
+        Map<Long, ProjectFeedback> existingMap = projectFeedbackRepository
+                .findByRegistrationIdInAndStage(registrationIds, stage)
+                .stream().collect(Collectors.toMap(f -> f.getRegistration().getId(), f -> f));
+
+        LocalDateTime now = LocalDateTime.now();
+        List<ProjectFeedback> toSave = new ArrayList<>();
+
+        for (com.trae.pinguan.web.dto.ProjectFeedbackBatchUpdateRequest.Item item : items) {
+            Long regId = item.getRegistrationId();
+            Registration registration = registrationMap.get(regId);
+            if (registration == null) {
+                throw new IllegalArgumentException("报名不存在: " + regId);
+            }
+            ProjectFeedback feedback = existingMap.getOrDefault(regId,
+                    ProjectFeedback.builder()
+                            .registration(registration)
+                            .stage(stage)
+                            .published(false)
+                            .createdAt(now)
+                            .build());
+            feedback.setEditedHighlight(item.getHighlight());
+            feedback.setEditedWeakness(item.getWeakness());
+            feedback.setUpdatedById(operatorId);
+            feedback.setUpdatedAt(now);
+            toSave.add(feedback);
+        }
+
+        return projectFeedbackRepository.saveAll(toSave).stream()
+                .map(this::toProjectFeedbackItem)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
     public ProjectFeedbackItem publishProjectFeedback(Long registrationId,
                                                       ReviewStage stage,
                                                       boolean published,
