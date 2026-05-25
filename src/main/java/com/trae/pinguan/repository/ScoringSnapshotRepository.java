@@ -29,4 +29,9 @@ public interface ScoringSnapshotRepository extends JpaRepository<ScoringSnapshot
     void deleteByCompetitionIdAndStageAndGroupType(@Param("competitionId") Long competitionId,
                                                    @Param("stage") ReviewStage stage,
                                                    @Param("groupType") GroupType groupType);
+
+    // ── FINAL 阶段专用（groupCode 存 sessionCode）────────────────────────────
+
+    List<ScoringSnapshot> findByCompetitionIdAndStageAndGroupCodeOrderByIrankAsc(
+            Long competitionId, ReviewStage stage, String groupCode);
 }

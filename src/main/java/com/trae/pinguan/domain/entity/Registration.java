@@ -64,4 +64,20 @@ public class Registration {
 
     @Column(length = 200)
     private String shortlistNote;
+
+    /** 现场竞赛日期，如"6.3"、"6.4"、"6.5" */
+    @Column(name = "final_session_date", length = 8)
+    private String finalSessionDate;
+
+    /** 现场竞赛专场代码，如"综合组-问题解决型专场1" */
+    @Column(name = "final_session_code", length = 64)
+    private String finalSessionCode;
+
+    /** 专场内上台顺序（1 起始） */
+    @Column(name = "final_session_order")
+    private Integer finalSessionOrder;
+
+    /** 现场竞赛评分表类型：QCC / NON_QCC / QFD */
+    @Column(name = "final_score_form", length = 10)
+    private String finalScoreForm;
 }

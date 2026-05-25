@@ -62,4 +62,12 @@ public class ReviewScore {
     /** 正式提交时间；草稿状态下为 null */
     @Column
     private LocalDateTime submittedAt;
+
+    /** 第8项得分，非QCC专用（现场表现 10分）；QCC/QFD 置 null */
+    @Column(name = "item8")
+    private Double item8;
+
+    /** 评分表类型：QCC / NON_QCC / QFD（stage=FINAL 时必填） */
+    @Column(name = "score_form", length = 10)
+    private String scoreForm;
 }

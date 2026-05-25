@@ -30,6 +30,29 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     long countActiveByCompetitionAndInstitution(@Param("competitionId") Long competitionId,
                                                 @Param("institutionId") Long institutionId);
 
+    // ── 现场竞赛 ──────────────────────────────────────────────────────────────
+
+    @Query("select distinct r.finalSessionDate, r.finalSessionCode from Registration r " +
+           "where r.competition.id = :competitionId and r.finalSessionCode is not null " +
+           "order by r.finalSessionDate asc, r.finalSessionCode asc")
+    List<Object[]> findDistinctFinalSessionsByCompetitionId(@Param("competitionId") Long competitionId);
+
+    @Query("select distinct r.finalSessionCode from Registration r " +
+           "where r.competition.id = :competitionId and r.finalSessionCode is not null " +
+           "order by r.finalSessionCode")
+    List<String> findDistinctFinalSessionCodesByCompetitionId(@Param("competitionId") Long competitionId);
+
+    @Query("select r from Registration r join fetch r.institution " +
+           "where r.competition.id = :competitionId and r.finalSessionCode = :sessionCode " +
+           "order by r.finalSessionOrder asc nulls last")
+    List<Registration> findByCompetitionIdAndFinalSessionCode(
+            @Param("competitionId") Long competitionId,
+            @Param("sessionCode") String sessionCode);
+
+    @Query("select r from Registration r where r.competition.id = :competitionId " +
+           "and r.finalSessionCode is not null")
+    List<Registration> findAllWithFinalSessionByCompetitionId(@Param("competitionId") Long competitionId);
+
     @Query(value = "select new com.trae.pinguan.web.dto.RegistrationFilterItem(" +
             "r.id, r.projectName, i.name, i.level, r.groupType, r.groupCode, r.status, r.submittedAt, " +
             "a.subjectTypeCode, a.methodCode, '', '', r.applicant.name) " +
