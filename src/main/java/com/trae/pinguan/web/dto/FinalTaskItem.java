@@ -34,7 +34,16 @@ public class FinalTaskItem {
     @Schema(description = "评分表类型：QCC / NON_QCC / QFD")
     private String scoreForm;
 
-    @Schema(description = "任务状态：PENDING / IN_PROGRESS / SUBMITTED")
+    @Schema(description = "评审专家 ID")
+    private Long reviewerId;
+
+    @Schema(description = "评审专家姓名")
+    private String reviewerName;
+
+    @Schema(description = "评审专家手机号")
+    private String reviewerPhone;
+
+    @Schema(description = "任务状态：PENDING / DRAFT / SCORED / RECUSED")
     private String status;
 
     @Schema(description = "合计得分（已提交）")

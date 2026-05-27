@@ -207,6 +207,7 @@ public class FinalService {
 
     // ── 评委：我的任务 ────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public List<FinalTaskItem> myFinalTasks(Long reviewerId) {
         List<ReviewTask> tasks = reviewTaskRepository.findByReviewerIdAndStage(reviewerId, ReviewStage.FINAL);
         if (tasks.isEmpty()) return new ArrayList<>();
@@ -218,6 +219,7 @@ public class FinalService {
         return tasks.stream().map(t -> {
             Registration reg = t.getRegistration();
             ReviewScore score = scoreByTaskId.get(t.getId());
+            UserAccount reviewer = t.getReviewer();
             return FinalTaskItem.builder()
                     .taskId(t.getId())
                     .registrationId(reg.getId())
@@ -227,6 +229,9 @@ public class FinalService {
                     .institutionName(reg.getInstitution() != null ? reg.getInstitution().getName() : "")
                     .groupCode(reg.getGroupCode())
                     .scoreForm(reg.getFinalScoreForm())
+                    .reviewerId(reviewer != null ? reviewer.getId() : null)
+                    .reviewerName(reviewer != null ? reviewer.getName() : null)
+                    .reviewerPhone(reviewer != null ? reviewer.getPhone() : null)
                     .status(t.getStatus().name())
                     .total(score != null ? score.getTotal() : null)
                     .scoreItems(buildScoreItems(score))
@@ -290,6 +295,7 @@ public class FinalService {
 
     // ── 管理侧：评分汇总 ──────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public List<FinalTaskItem> adminScoreSummary(Long competitionId, String sessionCode) {
         List<ReviewTask> tasks = sessionCode != null
                 ? reviewTaskRepository.findWithDetailsByStageAndCompetitionId(ReviewStage.FINAL, competitionId)
@@ -307,6 +313,7 @@ public class FinalService {
         return tasks.stream().map(t -> {
             Registration reg = t.getRegistration();
             ReviewScore score = scoreByTaskId.get(t.getId());
+            UserAccount reviewer = t.getReviewer();
             return FinalTaskItem.builder()
                     .taskId(t.getId())
                     .registrationId(reg.getId())
@@ -316,6 +323,9 @@ public class FinalService {
                     .institutionName(reg.getInstitution() != null ? reg.getInstitution().getName() : "")
                     .groupCode(reg.getGroupCode())
                     .scoreForm(reg.getFinalScoreForm())
+                    .reviewerId(reviewer != null ? reviewer.getId() : null)
+                    .reviewerName(reviewer != null ? reviewer.getName() : null)
+                    .reviewerPhone(reviewer != null ? reviewer.getPhone() : null)
                     .status(t.getStatus().name())
                     .total(score != null ? score.getTotal() : null)
                     .scoreItems(buildScoreItems(score))
