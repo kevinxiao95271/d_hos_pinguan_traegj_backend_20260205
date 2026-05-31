@@ -731,11 +731,11 @@ public class FinalService {
             items.add(new FinalScoreItem("整体运作", 15, s.getOperation()));
             items.add(new FinalScoreItem("现场表现", 20, s.getPresentation()));
         } else if ("QFD".equals(sf)) {
-            items.add(new FinalScoreItem("圈活动特征", 15, s.getPlan()));
-            items.add(new FinalScoreItem("课题明确化", 25, s.getProblem()));
-            items.add(new FinalScoreItem("方策拟定",   25, s.getAction()));
-            items.add(new FinalScoreItem("执行力成果", 25, s.getSuccess()));
-            items.add(new FinalScoreItem("现场发表",   10, s.getReview()));
+            items.add(new FinalScoreItem("圈活动特征",             10, s.getPlan()));
+            items.add(new FinalScoreItem("质量规划与课题明确化",   30, s.getProblem()));
+            items.add(new FinalScoreItem("质量设计与方策拟定",     35, s.getAction()));
+            items.add(new FinalScoreItem("执行力及活动成果",       20, s.getSuccess()));
+            items.add(new FinalScoreItem("现场发表",                5, s.getReview()));
         } else if ("NON_QCC".equals(sf)) {
             items.add(new FinalScoreItem("选题",    15, s.getPlan()));
             items.add(new FinalScoreItem("原因分析", 10, s.getProblem()));

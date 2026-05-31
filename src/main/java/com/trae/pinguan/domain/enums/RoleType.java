@@ -5,5 +5,6 @@ public enum RoleType {
     REVIEWER,
     COMMITTEE,
     COMMITTEE_ADMIN,
-    OPS
+    OPS,
+    OPERATOR
 }

@@ -1,5 +1,12 @@
 package com.trae.pinguan.web;
 
+import com.trae.pinguan.domain.entity.ReviewTask;
+import com.trae.pinguan.domain.entity.StaffSessionAssignment;
+import com.trae.pinguan.domain.enums.ReviewStatus;
+import com.trae.pinguan.repository.ReviewScoreRepository;
+import com.trae.pinguan.repository.ReviewTaskRepository;
+import com.trae.pinguan.repository.StaffSessionAssignmentRepository;
+import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.service.FinalService;
 import com.trae.pinguan.web.dto.ApiResponse;
 import com.trae.pinguan.web.dto.FinalProjectItem;
@@ -15,10 +22,15 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/admin/final")
@@ -28,6 +40,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class AdminFinalController {
 
     private final FinalService finalService;
+    private final StaffSessionAssignmentRepository staffSessionRepo;
+    private final ReviewTaskRepository reviewTaskRepository;
+    private final ReviewScoreRepository reviewScoreRepository;
+    private final UserAccountRepository userAccountRepository;
+    private final HttpServletRequest request;
 
     // ── 导入专场分组 ──────────────────────────────────────────────────────────
 
@@ -36,6 +53,7 @@ public class AdminFinalController {
     public ApiResponse<String> importSessions(
             @RequestParam Long competitionId,
             @Parameter(description = "分组 xlsx 文件") @RequestParam MultipartFile file) throws Exception {
+        requireAdminRole();
         String msg = finalService.importSessions(competitionId, file);
         return ApiResponse.ok(msg);
     }
@@ -76,6 +94,7 @@ public class AdminFinalController {
             @RequestParam Long competitionId,
             @PathVariable String sessionCode,
             @RequestParam Long reviewerId) {
+        requireAdminRole();
         String msg = finalService.assignReviewerToSession(competitionId, sessionCode, reviewerId);
         return ApiResponse.ok(msg);
     }
@@ -83,11 +102,60 @@ public class AdminFinalController {
     // ── 评分汇总 ──────────────────────────────────────────────────────────────
 
     @GetMapping("/scores")
-    @Operation(summary = "评分汇总（管理侧）", description = "查看指定竞赛/专场的所有评分任务与评分结果")
+    @Operation(summary = "评分汇总（管理侧）",
+               description = "查看指定竞赛/专场的所有评分任务与评分结果。" +
+                             "OPERATOR 角色只能查看其被分配的会场；ADMIN/OPS 可查所有。")
     public ApiResponse<List<FinalTaskItem>> scoreSummary(
             @RequestParam Long competitionId,
             @RequestParam(required = false) String sessionCode) {
+        String role = getCurrentRole();
+        if ("OPERATOR".equals(role)) {
+            Long staffId = getCurrentUserId();
+            List<String> assignedSessions = staffSessionRepo.findByStaffId(staffId)
+                    .stream().map(StaffSessionAssignment::getSessionCode).collect(Collectors.toList());
+            if (sessionCode != null && !assignedSessions.contains(sessionCode)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权查看该会场");
+            }
+            if (sessionCode == null) {
+                return ApiResponse.ok(assignedSessions.stream()
+                        .flatMap(sc -> finalService.adminScoreSummary(competitionId, sc).stream())
+                        .collect(Collectors.toList()));
+            }
+        }
         return ApiResponse.ok(finalService.adminScoreSummary(competitionId, sessionCode));
+    }
+
+    // ── 驳回评分（OPERATOR/ADMIN）────────────────────────────────────────────
+
+    @PostMapping("/scores/{taskId}/reject")
+    @Transactional
+    @Operation(summary = "驳回评分",
+               description = "将已提交（SCORED）或草稿（DRAFT）的评分任务驳回为 PENDING，清除评分内容。" +
+                             "OPERATOR 只能驳回其负责会场的任务；ADMIN/OPS 无限制。")
+    public ApiResponse<String> rejectScore(@PathVariable Long taskId) {
+        ReviewTask task = reviewTaskRepository.findById(taskId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "任务不存在"));
+
+        String role = getCurrentRole();
+        if ("OPERATOR".equals(role)) {
+            Long staffId = getCurrentUserId();
+            String sessionCode = task.getRegistration() != null
+                    ? task.getRegistration().getFinalSessionCode() : null;
+            if (sessionCode == null || !staffSessionRepo.existsByStaffIdAndSessionCode(staffId, sessionCode)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权驳回该会场的评分");
+            }
+        }
+
+        if (task.getStatus() != ReviewStatus.SCORED && task.getStatus() != ReviewStatus.DRAFT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "该任务当前状态不可驳回");
+        }
+
+        reviewScoreRepository.findByReviewTaskId(taskId).ifPresent(reviewScoreRepository::delete);
+        task.setStatus(ReviewStatus.PENDING);
+        task.setUpdatedAt(java.time.LocalDateTime.now());
+        reviewTaskRepository.save(task);
+
+        return ApiResponse.ok("驳回成功，任务已重置为待评分状态");
     }
 
     // ── 计算排名 ──────────────────────────────────────────────────────────────
@@ -96,6 +164,7 @@ public class AdminFinalController {
     @Operation(summary = "计算现场竞赛排名",
                description = "幂等接口：先清空旧快照，以专场为单位去极值后重新计算排名并持久化")
     public ApiResponse<String> computeRanking(@RequestParam Long competitionId) {
+        requireAdminRole();
         return ApiResponse.ok(finalService.computeRanking(competitionId));
     }
 
@@ -133,5 +202,25 @@ public class AdminFinalController {
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + filename);
         response.getOutputStream().write(bytes);
+    }
+
+    // ── 工具方法 ──────────────────────────────────────────────────────────────
+
+    private Long getCurrentUserId() {
+        Object userId = request.getAttribute("userId");
+        if (userId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
+        return Long.parseLong(userId.toString());
+    }
+
+    private String getCurrentRole() {
+        Object role = request.getAttribute("role");
+        return role != null ? role.toString() : "";
+    }
+
+    private void requireAdminRole() {
+        String role = getCurrentRole();
+        if (!"ADMIN".equals(role) && !"OPS".equals(role) && !"COMMITTEE_ADMIN".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权限");
+        }
     }
 }
