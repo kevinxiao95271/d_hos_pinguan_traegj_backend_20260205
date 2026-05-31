@@ -160,6 +160,7 @@ public class FinalService {
                         .groupCode(r.getGroupCode())
                         .scoreForm(r.getFinalScoreForm())
                         .build())
+                .sorted((a, b) -> compareNullable(a.getSessionOrder(), b.getSessionOrder()))
                 .collect(Collectors.toList());
     }
 
@@ -331,6 +332,10 @@ public class FinalService {
                     .scoreItems(buildScoreItems(score))
                     .draftScore(score != null ? toScoreRequest(score) : null)
                     .build();
+        }).sorted((a, b) -> {
+            int c = compareNullable(a.getSessionCode(), b.getSessionCode());
+            if (c != 0) return c;
+            return compareNullable(a.getSessionOrder(), b.getSessionOrder());
         }).collect(Collectors.toList());
     }
 
