@@ -32,7 +32,7 @@ public class AuthController {
      * 当前系统启用的须知 key，与前端 src/config/integrityNotices.js 顺序对齐。
      * 新增须知时在此处追加，无需改数据库结构。
      */
-    private static final List<String> ACTIVE_NOTICE_KEYS = Arrays.asList("BOOK", "INTERVIEW");
+    private static final List<String> ACTIVE_NOTICE_KEYS = Arrays.asList("BOOK", "INTERVIEW", "FINAL");
 
     private final UserService userService;
     private final JwtService jwtService;
