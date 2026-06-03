@@ -265,6 +265,9 @@ public class FinalService {
         ReviewScore score = reviewScoreRepository.findByReviewTaskId(taskId)
                 .orElse(ReviewScore.builder().reviewTask(task).build());
 
+        // 若前端只传 total 未传分项，按权重反推各分项；返回 true 表示已按比例分发
+        boolean distributedFromTotal = distributeIfItemsMissing(req);
+
         score.setScoreForm(req.getScoreForm());
         score.setPlan(req.getPlan());
         score.setProblem(req.getProblem());
@@ -274,7 +277,8 @@ public class FinalService {
         score.setOperation(req.getOperation());
         score.setPresentation(req.getPresentation());
         score.setItem8(req.getItem8());
-        score.setTotal(computeTotal(req));
+        // 分项为比例近似值，total 以专家输入的原始值为准
+        score.setTotal(distributedFromTotal ? req.getTotal() : computeTotal(req));
         score.setHighlight(req.getHighlight());
         score.setWeakness(req.getWeakness());
 
@@ -642,16 +646,66 @@ public class FinalService {
 
     // ── 内部工具方法 ──────────────────────────────────────────────────────────
 
+    /**
+     * 当前端只传 total 而未传各分项时，按评分表权重比例反推各分项得分。
+     * 若分项已有值则不覆盖。
+     */
+    private boolean distributeIfItemsMissing(FinalScoreRequest r) {
+        if (r.getTotal() == null || r.getTotal() <= 0) return false;
+        boolean anyItemSet = r.getPlan() != null || r.getProblem() != null
+                || r.getAction() != null || r.getSuccess() != null
+                || r.getReview() != null || r.getOperation() != null
+                || r.getPresentation() != null || r.getItem8() != null;
+        if (anyItemSet) return false;
+
+        double t = r.getTotal();
+        String sf = r.getScoreForm();
+        if ("QCC".equals(sf)) {
+            r.setPlan(       round2(t * 10.0 / 100));
+            r.setProblem(    round2(t * 15.0 / 100));
+            r.setAction(     round2(t * 15.0 / 100));
+            r.setSuccess(    round2(t * 20.0 / 100));
+            r.setReview(     round2(t *  5.0 / 100));
+            r.setOperation(  round2(t * 15.0 / 100));
+            r.setPresentation(round2(t * 20.0 / 100));
+        } else if ("QFD".equals(sf)) {
+            r.setPlan(    round2(t * 10.0 / 100));
+            r.setProblem( round2(t * 30.0 / 100));
+            r.setAction(  round2(t * 35.0 / 100));
+            r.setSuccess( round2(t * 20.0 / 100));
+            r.setReview(  round2(t *  5.0 / 100));
+        } else if ("NON_QCC".equals(sf)) {
+            r.setPlan(        round2(t * 15.0 / 100));
+            r.setProblem(     round2(t * 10.0 / 100));
+            r.setAction(      round2(t * 10.0 / 100));
+            r.setSuccess(     round2(t * 20.0 / 100));
+            r.setReview(      round2(t * 10.0 / 100));
+            r.setOperation(   round2(t * 10.0 / 100));
+            r.setPresentation(round2(t * 15.0 / 100));
+            r.setItem8(       round2(t * 10.0 / 100));
+        }
+        return true;
+    }
+
+    private double round2(double v) {
+        return Math.round(v * 2.0) / 2.0;
+    }
+
     private double computeTotal(FinalScoreRequest r) {
         double sum = 0;
-        if (r.getPlan() != null) sum += r.getPlan();
-        if (r.getProblem() != null) sum += r.getProblem();
-        if (r.getAction() != null) sum += r.getAction();
-        if (r.getSuccess() != null) sum += r.getSuccess();
-        if (r.getReview() != null) sum += r.getReview();
-        if (r.getOperation() != null) sum += r.getOperation();
-        if (r.getPresentation() != null) sum += r.getPresentation();
-        if (r.getItem8() != null) sum += r.getItem8();
+        boolean anyItemSet = false;
+        if (r.getPlan() != null)         { sum += r.getPlan();         anyItemSet = true; }
+        if (r.getProblem() != null)      { sum += r.getProblem();      anyItemSet = true; }
+        if (r.getAction() != null)       { sum += r.getAction();       anyItemSet = true; }
+        if (r.getSuccess() != null)      { sum += r.getSuccess();      anyItemSet = true; }
+        if (r.getReview() != null)       { sum += r.getReview();       anyItemSet = true; }
+        if (r.getOperation() != null)    { sum += r.getOperation();    anyItemSet = true; }
+        if (r.getPresentation() != null) { sum += r.getPresentation(); anyItemSet = true; }
+        if (r.getItem8() != null)        { sum += r.getItem8();        anyItemSet = true; }
+        // 若前端只传了 total（未传分项），直接使用前端传入的 total
+        if (!anyItemSet && r.getTotal() != null) {
+            return r.getTotal();
+        }
         return sum;
     }
 
