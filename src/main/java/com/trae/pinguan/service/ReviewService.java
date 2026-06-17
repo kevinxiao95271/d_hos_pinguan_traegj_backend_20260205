@@ -1099,7 +1099,24 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<ReviewSummaryItem> summaryByStage(Long competitionId, ReviewStage stage) {
+        return summaryByStage(competitionId, stage, null);
+    }
+
+    public List<ReviewSummaryItem> summaryByStage(Long competitionId, ReviewStage stage, String reviewerName) {
         List<ReviewTask> tasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
+
+        // 若指定评委姓名，只保留该评委承接的任务对应的项目（任意状态，只要有分配即可见）
+        Set<Long> filteredRegIds = null;
+        if (reviewerName != null && !reviewerName.trim().isEmpty()) {
+            String name = reviewerName.trim();
+            filteredRegIds = tasks.stream()
+                    .filter(t -> t.getReviewer() != null
+                            && name.equals(t.getReviewer().getName()))
+                    .map(t -> t.getRegistration().getId())
+                    .collect(Collectors.toSet());
+        }
+        final Set<Long> regIdFilter = filteredRegIds;
+
         Set<Long> scoredTaskIds = tasks.stream()
                 .filter(t -> t.getStatus() == ReviewStatus.SCORED)
                 .map(ReviewTask::getId)
@@ -1123,6 +1140,7 @@ public class ReviewService {
             Double total = totalByTaskId.get(task.getId());
             if (total == null) continue;
             Long registrationId = task.getRegistration().getId();
+            if (regIdFilter != null && !regIdFilter.contains(registrationId)) continue;
             SummaryAccumulator acc = accumulators.computeIfAbsent(registrationId, id -> new SummaryAccumulator(task));
             acc.add(total);
         }
@@ -1353,12 +1371,38 @@ public class ReviewService {
             }
 
             // 6. 计算全大组均分 B（去极值）
-            List<Double> allScoresForB = groupTypeTasks.stream()
-                    .map(t -> taskScores.get(t.getId()))
-                    .filter(s -> s != null && s >= 65 && s <= 95)
-                    .collect(Collectors.toList());
-            double overallAvg = allScoresForB.isEmpty() ? 0.0
-                    : allScoresForB.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+            // 综合组书审：B 按5个工具池分别计算，其他组/阶段统一用全量均值
+            Map<String, Double> poolOverallAvgMap = new HashMap<>();
+            double overallAvg;
+            if (groupType == GroupType.COMPREHENSIVE && stage == ReviewStage.BOOK) {
+                // 按工具池分组，分别计算各池 B 值
+                Map<String, List<ReviewTask>> byPool = groupTypeTasks.stream()
+                        .collect(Collectors.groupingBy(t ->
+                                comprehensiveToolPool(t.getRegistration().getGroupCode())));
+                for (Map.Entry<String, List<ReviewTask>> pe : byPool.entrySet()) {
+                    List<Double> poolScores = pe.getValue().stream()
+                            .map(t -> taskScores.get(t.getId()))
+                            .filter(s -> s != null && s >= 65 && s <= 95)
+                            .collect(Collectors.toList());
+                    double poolB = poolScores.isEmpty() ? 0.0
+                            : poolScores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+                    poolOverallAvgMap.put(pe.getKey(), poolB);
+                }
+                // overallAvg 取全体综合组均值，仅作 fallback（正常不用）
+                List<Double> allScoresForB = groupTypeTasks.stream()
+                        .map(t -> taskScores.get(t.getId()))
+                        .filter(s -> s != null && s >= 65 && s <= 95)
+                        .collect(Collectors.toList());
+                overallAvg = allScoresForB.isEmpty() ? 0.0
+                        : allScoresForB.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+            } else {
+                List<Double> allScoresForB = groupTypeTasks.stream()
+                        .map(t -> taskScores.get(t.getId()))
+                        .filter(s -> s != null && s >= 65 && s <= 95)
+                        .collect(Collectors.toList());
+                overallAvg = allScoresForB.isEmpty() ? 0.0
+                        : allScoresForB.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+            }
 
             // 7. 按 groupCode 分组，计算各小组均分 An 及系数 Cn
             Map<String, List<ReviewTask>> byGroupCode = groupTypeTasks.stream()
@@ -1370,14 +1414,18 @@ public class ReviewService {
             Map<String, Double> groupAvgs = new HashMap<>();
             for (Map.Entry<String, List<ReviewTask>> entry : byGroupCode.entrySet()) {
                 String gc = entry.getKey();
+                // 综合组书审：用该小组所属工具池的 B；其他情况用全量 overallAvg
+                double b = (groupType == GroupType.COMPREHENSIVE && stage == ReviewStage.BOOK)
+                        ? poolOverallAvgMap.getOrDefault(comprehensiveToolPool(gc), overallAvg)
+                        : overallAvg;
                 List<Double> groupScores = entry.getValue().stream()
                         .map(t -> taskScores.get(t.getId()))
                         .filter(s -> s != null && s >= 65 && s <= 95)
                         .collect(Collectors.toList());
-                double groupAvg = groupScores.isEmpty() ? overallAvg
-                        : groupScores.stream().mapToDouble(Double::doubleValue).average().orElse(overallAvg);
+                double groupAvg = groupScores.isEmpty() ? b
+                        : groupScores.stream().mapToDouble(Double::doubleValue).average().orElse(b);
                 groupAvgs.put(gc, groupAvg);
-                double cn = (overallAvg > 0) ? groupAvg / overallAvg : 1.0;
+                double cn = (b > 0) ? groupAvg / b : 1.0;
                 groupCoefficients.put(gc, cn);
             }
 
@@ -1403,6 +1451,9 @@ public class ReviewService {
                 String gc = reg.getGroupCode() != null ? reg.getGroupCode() : "__NONE__";
                 double cn = groupCoefficients.getOrDefault(gc, 1.0);
                 double groupAvgVal = groupAvgs.getOrDefault(gc, overallAvg);
+                double poolB = (groupType == GroupType.COMPREHENSIVE && stage == ReviewStage.BOOK)
+                        ? poolOverallAvgMap.getOrDefault(comprehensiveToolPool(gc), overallAvg)
+                        : overallAvg;
                 double adjustedScore = cn > 0 ? rawAvg / cn : rawAvg;
 
                 groupSnapshots.add(ScoringSnapshot.builder()
@@ -1413,7 +1464,7 @@ public class ReviewService {
                         .groupType(groupType)
                         .rawAvg(rawAvg)
                         .groupAvg(groupAvgVal)
-                        .overallAvg(overallAvg)
+                        .overallAvg(poolB)
                         .coefficient(cn)
                         .adjustedScore(adjustedScore)
                         .calculatedAt(now)
@@ -1437,6 +1488,34 @@ public class ReviewService {
         if (jobId != null) {
             computeJobTracker.progress(jobId, percent, msg);
         }
+    }
+
+    /**
+     * 综合组书审：根据 groupCode 判断所属工具池（共5类）。
+     * 工具池范围来源于《综合组分为5大组别》：
+     *   B1–B3   十大安全目标
+     *   B4–B9   问题解决型
+     *   B10–B14 课题达成型及QFD
+     *   B15–B19 PDCA循环
+     *   B20–B22 综合工具
+     */
+    static String comprehensiveToolPool(String groupCode) {
+        if (groupCode == null) return "UNKNOWN";
+        // 提取数字部分，如 "B3" -> 3
+        String numStr = groupCode.replaceAll("[^0-9]", "");
+        if (numStr.isEmpty()) return "UNKNOWN";
+        int n;
+        try {
+            n = Integer.parseInt(numStr);
+        } catch (NumberFormatException e) {
+            return "UNKNOWN";
+        }
+        if (n <= 3)  return "十大安全目标";
+        if (n <= 9)  return "问题解决型";
+        if (n <= 14) return "课题达成型及QFD";
+        if (n <= 19) return "PDCA循环";
+        if (n <= 22) return "综合工具";
+        return "UNKNOWN";
     }
 
     private static String groupTypeLabel(GroupType gt) {
@@ -1924,8 +2003,10 @@ public class ReviewService {
         }
 
         // 导出只需正式提交（SCORED）的评委个人分，独立查询不依赖 scoreListByStage
+        // INTERVIEW_ONLY 快照的原始任务数据来源为 INTERVIEW stage
+        ReviewStage taskStage = (stage == ReviewStage.INTERVIEW_ONLY) ? ReviewStage.INTERVIEW : stage;
         List<ReviewTask> allTasks = reviewTaskRepository
-                .findWithDetailsByStageAndCompetitionId(stage, competitionId);
+                .findWithDetailsByStageAndCompetitionId(taskStage, competitionId);
         Set<Long> scoredTaskIds = allTasks.stream()
                 .filter(t -> t.getStatus() == ReviewStatus.SCORED)
                 .map(ReviewTask::getId)
@@ -1938,7 +2019,7 @@ public class ReviewService {
         // taskId -> total 分
         Map<Long, Double> taskTotalMap = new HashMap<>();
         if (!scoredTaskIds.isEmpty()) {
-            if (stage == ReviewStage.INTERVIEW) {
+            if (taskStage == ReviewStage.INTERVIEW) {
                 interviewScoreRepository.findByReviewTaskIdIn(scoredTaskIds)
                         .forEach(s -> taskTotalMap.put(s.getReviewTaskId(), s.getTotal()));
             } else {

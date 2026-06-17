@@ -38,4 +38,6 @@ public class ReviewerExportRow {
     private Long taskDraft;
     private Long taskPending;
     private Long taskRecused;
+    /** 已分配的决赛专场代码（逗号分隔，需传 competitionId 时才填充） */
+    private String finalSessionCodes;
 }

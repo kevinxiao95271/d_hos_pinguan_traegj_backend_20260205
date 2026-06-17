@@ -80,4 +80,23 @@ public class Registration {
     /** 现场竞赛评分表类型：QCC / NON_QCC / QFD */
     @Column(name = "final_score_form", length = 10)
     private String finalScoreForm;
+
+    /**
+     * 项目编号：仅在报名提交（SUBMITTED）后生成，草稿期间为 null。
+     * 赛事内唯一，按提交顺序从 1 开始递增。
+     */
+    @Column(name = "registration_code", unique = true)
+    private Integer registrationCode;
+
+    /** 项目负责人姓名 */
+    @Column(name = "project_leader_name", length = 60)
+    private String projectLeaderName;
+
+    /** 项目负责人联系电话 */
+    @Column(name = "project_leader_phone", length = 20)
+    private String projectLeaderPhone;
+
+    /** 项目负责人职务/职称 */
+    @Column(name = "project_leader_title", length = 60)
+    private String projectLeaderTitle;
 }

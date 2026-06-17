@@ -41,11 +41,15 @@ public class MaterialController {
     }
     
     @GetMapping("/{id}/download")
-    @Operation(summary = "下载材料文件")
+    @Operation(summary = "下载材料文件（REVIEWER 角色无权限，请使用 /preview）")
     public ResponseEntity<InputStreamResource> download(@PathVariable Long id, HttpServletRequest request) {
         MaterialFile material = materialService.getById(id);
         
-        // 权限检查
+        // 权限检查（REVIEWER 不允许下载，只能预览）
+        String role = (String) request.getAttribute("role");
+        if ("REVIEWER".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "评委不允许下载原始文件，请使用预览接口");
+        }
         checkDownloadPermission(material, request);
         
         // 从 MinIO 获取文件流
@@ -68,6 +72,44 @@ public class MaterialController {
             .header(HttpHeaders.CONTENT_DISPOSITION, 
                     "attachment; filename*=UTF-8''" + encodedFilename)
             .body(new InputStreamResource(inputStream));
+    }
+
+    @GetMapping("/{id}/preview")
+    @Operation(summary = "在线预览材料文件（inline 方式，评委专用）",
+               description = "以 inline Content-Disposition 返回，浏览器可直接渲染 PDF 等文件。" +
+                       "权限规则与 /download 相同（评委只能预览分配给自己的项目材料）。")
+    public ResponseEntity<InputStreamResource> preview(@PathVariable Long id, HttpServletRequest request) {
+        MaterialFile material = materialService.getById(id);
+        checkDownloadPermission(material, request);
+
+        String bucketName = minioProperties.getBucket().getRegistrationFiles();
+        InputStream inputStream = fileStorageService.getInputStream(material.getFileUrl(), bucketName);
+
+        // 根据文件名判断 MIME 类型
+        String filename = material.getFileName() != null ? material.getFileName().toLowerCase() : "";
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (filename.endsWith(".pdf")) {
+            mediaType = MediaType.APPLICATION_PDF;
+        } else if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
+            mediaType = MediaType.IMAGE_JPEG;
+        } else if (filename.endsWith(".png")) {
+            mediaType = MediaType.IMAGE_PNG;
+        } else if (filename.endsWith(".gif")) {
+            mediaType = MediaType.IMAGE_GIF;
+        }
+
+        String encodedFilename;
+        try {
+            encodedFilename = URLEncoder.encode(material.getFileName() != null ? material.getFileName() : "file", "UTF-8")
+                    .replace("+", "%20");
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException("UTF-8 encoding not supported", e);
+        }
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''" + encodedFilename)
+                .body(new InputStreamResource(inputStream));
     }
     
     /**

@@ -55,14 +55,15 @@ public class AdminReviewerController {
     private final HttpServletRequest request;
 
     @GetMapping
-    @Operation(summary = "评委列表")
+    @Operation(summary = "评委列表",
+               description = "传 competitionId 时返回该赛事下每位评委已分配的决赛专场列表（finalSessionCodes）")
     public ApiResponse<List<ReviewerListItem>> list(@RequestParam(required = false) Long competitionId,
                                                     @RequestParam(required = false) Long institutionId,
                                                     @RequestParam(required = false) String reviewerGroupCode,
                                                     @RequestParam(required = false) String interviewGroupCode,
                                                     @RequestParam(required = false) String expertBackground) {
         requireCommitteeOrOps();
-        return ApiResponse.ok(reviewerService.list(institutionId, reviewerGroupCode, interviewGroupCode, expertBackground));
+        return ApiResponse.ok(reviewerService.list(competitionId, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground));
     }
 
     @GetMapping("/list")
@@ -73,7 +74,7 @@ public class AdminReviewerController {
                                                           @RequestParam(required = false) String interviewGroupCode,
                                                           @RequestParam(required = false) String expertBackground) {
         requireCommitteeOrOps();
-        return ApiResponse.ok(reviewerService.list(institutionId, reviewerGroupCode, interviewGroupCode, expertBackground));
+        return ApiResponse.ok(reviewerService.list(competitionId, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground));
     }
 
     @GetMapping("/{id}")
@@ -133,10 +134,12 @@ public class AdminReviewerController {
     }
 
     @GetMapping("/export")
-    @Operation(summary = "批量导出评审专家信息为 Excel")
-    public void export(HttpServletResponse response) throws IOException {
+    @Operation(summary = "批量导出评审专家信息为 Excel",
+               description = "传 competitionId 时额外导出「分配场次」列")
+    public void export(@RequestParam(required = false) Long competitionId,
+                       HttpServletResponse response) throws IOException {
         requireCommitteeOrOps();
-        List<ReviewerExportRow> rows = reviewerService.buildExportRows();
+        List<ReviewerExportRow> rows = reviewerService.buildExportRows(competitionId);
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String filename = URLEncoder.encode("评审专家_" + date + ".xlsx", StandardCharsets.UTF_8.name());
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -163,7 +166,8 @@ public class AdminReviewerController {
                 "熟悉工具", "熟悉工具(其他)",
                 "擅长主题", "擅长主题(其他)",
                 "品管经验",
-                "已提交", "草稿中", "待评审", "已规避"
+                "已提交", "草稿中", "待评审", "已规避",
+                "分配决赛场次"
             };
             Row header = sheet.createRow(0);
             for (int i = 0; i < headers.length; i++) {
@@ -201,6 +205,7 @@ public class AdminReviewerController {
                 row.createCell(col++).setCellValue(r.getTaskDraft()  != null ? r.getTaskDraft()  : 0L);
                 row.createCell(col++).setCellValue(r.getTaskPending()!= null ? r.getTaskPending(): 0L);
                 row.createCell(col++).setCellValue(r.getTaskRecused()!= null ? r.getTaskRecused(): 0L);
+                row.createCell(col).setCellValue(s(r.getFinalSessionCodes()));
             }
             for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
             wb.write(response.getOutputStream());

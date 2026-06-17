@@ -17,4 +17,13 @@ public class RegistrationUpdateRequest {
     
     @Schema(description = "机构ID（一般不建议修改，仅特殊情况使用）", example = "123")
     private Long institutionId;
+
+    @Schema(description = "项目负责人姓名")
+    private String projectLeaderName;
+
+    @Schema(description = "项目负责人联系电话")
+    private String projectLeaderPhone;
+
+    @Schema(description = "项目负责人职务/职称")
+    private String projectLeaderTitle;
 }

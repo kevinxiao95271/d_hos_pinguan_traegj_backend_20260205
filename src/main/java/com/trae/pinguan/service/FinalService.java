@@ -4,13 +4,16 @@ import com.trae.pinguan.domain.entity.FinalRankingSnapshot;
 import com.trae.pinguan.domain.entity.Registration;
 import com.trae.pinguan.domain.entity.ReviewScore;
 import com.trae.pinguan.domain.entity.ReviewTask;
+import com.trae.pinguan.domain.entity.ScoringSnapshot;
 import com.trae.pinguan.domain.entity.UserAccount;
+import com.trae.pinguan.domain.enums.GroupType;
 import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.domain.enums.ReviewStatus;
 import com.trae.pinguan.repository.FinalRankingSnapshotRepository;
 import com.trae.pinguan.repository.RegistrationRepository;
 import com.trae.pinguan.repository.ReviewScoreRepository;
 import com.trae.pinguan.repository.ReviewTaskRepository;
+import com.trae.pinguan.repository.ScoringSnapshotRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.web.dto.FinalProjectItem;
 import com.trae.pinguan.web.dto.FinalRankingItem;
@@ -52,6 +55,7 @@ public class FinalService {
     private final ReviewScoreRepository reviewScoreRepository;
     private final UserAccountRepository userAccountRepository;
     private final FinalRankingSnapshotRepository finalRankingSnapshotRepository;
+    private final ScoringSnapshotRepository scoringSnapshotRepository;
 
     // ── 导入专场分组 ──────────────────────────────────────────────────────────
 
@@ -343,6 +347,22 @@ public class FinalService {
         }).collect(Collectors.toList());
     }
 
+    /** 按 reviewerId 或 reviewerName 过滤，查询该评委的所有现场竞赛任务 */
+    public List<FinalTaskItem> adminScoreSummaryByReviewer(Long competitionId, Long reviewerId, String reviewerName) {
+        List<FinalTaskItem> all = adminScoreSummary(competitionId, null);
+        return all.stream()
+                .filter(item -> {
+                    if (reviewerId != null) {
+                        return reviewerId.equals(item.getReviewerId());
+                    }
+                    if (reviewerName != null && !reviewerName.trim().isEmpty()) {
+                        return reviewerName.trim().equals(item.getReviewerName());
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+    }
+
     // ── 计算排名 ──────────────────────────────────────────────────────────────
 
     /**
@@ -395,43 +415,16 @@ public class FinalService {
                     .findByReviewTaskIdIn(taskIds).stream()
                     .collect(Collectors.toMap(ReviewScore::getReviewTaskId, s -> s));
 
-            // 大分数池：所有 total 分（跳过无评分记录的任务）
-            List<double[]> pool = new ArrayList<>(); // [registrationId, total]
+            // 所有已评分任务的分数，直接取均值，不做去极值处理
+            Map<Long, List<Double>> scoresByReg = new java.util.LinkedHashMap<>();
             for (ReviewTask t : tasks) {
                 ReviewScore s = scoreByTaskId.get(t.getId());
                 if (s == null || s.getTotal() == null) continue;
-                pool.add(new double[]{t.getRegistration().getId(), s.getTotal()});
+                scoresByReg.computeIfAbsent(t.getRegistration().getId(), k -> new ArrayList<>())
+                        .add(s.getTotal());
             }
 
-            if (pool.isEmpty()) continue;
-
-            // 找极值
-            Double removedMax = null;
-            Double removedMin = null;
-            boolean trimmed = pool.size() >= 3;
-            List<double[]> effective = new ArrayList<>(pool);
-
-            if (trimmed) {
-                double maxVal = pool.stream().mapToDouble(a -> a[1]).max().getAsDouble();
-                double minVal = pool.stream().mapToDouble(a -> a[1]).min().getAsDouble();
-                removedMax = maxVal;
-                removedMin = minVal;
-                // 各去掉一个（只去一次，用标志位）
-                boolean maxRemoved = false, minRemoved = false;
-                List<double[]> filtered = new ArrayList<>();
-                for (double[] entry : pool) {
-                    if (!maxRemoved && entry[1] == maxVal) { maxRemoved = true; continue; }
-                    if (!minRemoved && entry[1] == minVal) { minRemoved = true; continue; }
-                    filtered.add(entry);
-                }
-                effective = filtered;
-            }
-
-            // 按 registrationId 分组取均值
-            Map<Long, List<Double>> scoresByReg = new java.util.LinkedHashMap<>();
-            for (double[] e : effective) {
-                scoresByReg.computeIfAbsent((long) e[0], k -> new ArrayList<>()).add(e[1]);
-            }
+            if (scoresByReg.isEmpty()) continue;
 
             // 构建快照（先不排名）
             List<FinalRankingSnapshot> snapshots = new ArrayList<>();
@@ -451,8 +444,8 @@ public class FinalService {
                         .sessionOrder(reg.getFinalSessionOrder())
                         .scoreForm(reg.getFinalScoreForm())
                         .judgeScoreCount(cnt)
-                        .sessionRemovedMax(removedMax)
-                        .sessionRemovedMin(removedMin)
+                        .sessionRemovedMax(null)
+                        .sessionRemovedMin(null)
                         .trimmedAvg(trimmedAvg)
                         .calculatedAt(now)
                         .build());
@@ -475,6 +468,135 @@ public class FinalService {
         return String.format("排名计算完成，共处理 %d 个专场，写入 %d 条记录", sessionCodes.size(), totalSaved);
     }
 
+    // ── 总分合并排名 ──────────────────────────────────────────────────────────
+
+    /**
+     * 基于已有的现场竞赛快照（final_ranking_snapshots）和书审/面谈快照（scoring_snapshots），
+     * 计算综合总分并按专场排名，结果回写到 final_ranking_snapshots 的 total_score / total_rank 字段。
+     *
+     * <p>算法：
+     * <ul>
+     *   <li>BASIC / COMPREHENSIVE：总分 = 书审D × 40% + 现场均分 × 60%</li>
+     *   <li>ADVANCED：总分 = 面谈合并D × 40% + 现场均分 × 60%（面谈合并D 来自 stage=INTERVIEW）</li>
+     * </ul>
+     * 书审D 来自 scoring_snapshots(stage=BOOK).adjusted_score；
+     * 面谈合并D 来自 scoring_snapshots(stage=INTERVIEW).adjusted_score（interviewOnly=false 时写入）。
+     */
+    @Transactional
+    public String computeTotalRanking(Long competitionId) {
+        List<FinalRankingSnapshot> finalSnaps =
+                finalRankingSnapshotRepository.findByCompetitionIdOrderBySessionCodeAscSessionRankAsc(competitionId);
+        if (finalSnaps.isEmpty()) {
+            return "无现场竞赛快照，请先执行[计算现场排名]";
+        }
+
+        List<Long> regIds = finalSnaps.stream()
+                .map(FinalRankingSnapshot::getRegistrationId)
+                .collect(Collectors.toList());
+
+        // 取书审 D 值（BASIC/COMPREHENSIVE/ADVANCED 均需要）
+        Map<Long, Double> bookScoreByReg = scoringSnapshotRepository
+                .findByCompetitionIdAndStageAndRegistrationIdIn(competitionId, ReviewStage.BOOK, regIds)
+                .stream()
+                .collect(Collectors.toMap(ScoringSnapshot::getRegistrationId,
+                        ScoringSnapshot::getAdjustedScore, (a, b) -> a));
+
+        // 取面谈快照完整对象（进阶组），用 rawAvg/coefficient 反算纯面谈 D 值
+        Map<Long, ScoringSnapshot> interviewSnapByReg = scoringSnapshotRepository
+                .findByCompetitionIdAndStageAndRegistrationIdIn(competitionId, ReviewStage.INTERVIEW, regIds)
+                .stream()
+                .filter(s -> s.getGroupType() == GroupType.ADVANCED)
+                .collect(Collectors.toMap(ScoringSnapshot::getRegistrationId, s -> s, (a, b) -> a));
+
+        // 查 registration groupType
+        Map<Long, GroupType> groupTypeByReg = registrationRepository.findByIdInWithInstitution(regIds)
+                .stream()
+                .filter(r -> r.getGroupType() != null)
+                .collect(Collectors.toMap(Registration::getId, Registration::getGroupType, (a, b) -> a));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        for (FinalRankingSnapshot snap : finalSnaps) {
+            Long regId = snap.getRegistrationId();
+            Double finalAvg = snap.getTrimmedAvg();
+            if (finalAvg == null) {
+                snap.setTotalScore(null);
+                snap.setBookReviewScore(null);
+                snap.setCalculatedAt(now);
+                continue;
+            }
+
+            GroupType gt = groupTypeByReg.get(regId);
+
+            if (gt == GroupType.ADVANCED) {
+                // 进阶组：书审D×30% + 面谈D×40% + 现场均分×30%
+                ScoringSnapshot intSnap = interviewSnapByReg.get(regId);
+                if (intSnap == null) {
+                    snap.setBookReviewScore(null);
+                    snap.setBookScoreD(null);
+                    snap.setInterviewScoreD(null);
+                    snap.setTotalScore(null);
+                } else {
+                    double iRaw = intSnap.getRawAvg() != null ? intSnap.getRawAvg() : 0;
+                    double cn = (intSnap.getCoefficient() != null && intSnap.getCoefficient() > 0)
+                            ? intSnap.getCoefficient() : 1.0;
+                    double dInterview = iRaw / cn;
+                    Double bookD = bookScoreByReg.get(regId);
+                    if (bookD != null) {
+                        // 三阶段完整：书审D×30% + 面谈D×40% + 现场×30%
+                        snap.setBookScoreD(bookD);
+                        snap.setInterviewScoreD(dInterview);
+                        snap.setBookReviewScore(null);
+                        snap.setTotalScore(bookD * 0.3 + dInterview * 0.4 + finalAvg * 0.3);
+                    } else {
+                        // 仅有面谈数据（无书审），退化为两阶段：面谈D×40% + 现场×60%
+                        snap.setBookScoreD(null);
+                        snap.setInterviewScoreD(dInterview);
+                        snap.setBookReviewScore(dInterview);
+                        snap.setTotalScore(dInterview * 0.4 + finalAvg * 0.6);
+                    }
+                }
+            } else {
+                // BASIC / COMPREHENSIVE：书审D×40% + 现场均分×60%
+                Double bookD = bookScoreByReg.get(regId);
+                if (bookD == null) {
+                    snap.setBookReviewScore(null);
+                    snap.setBookScoreD(null);
+                    snap.setInterviewScoreD(null);
+                    snap.setTotalScore(null);
+                } else {
+                    snap.setBookReviewScore(bookD);
+                    snap.setBookScoreD(bookD);
+                    snap.setInterviewScoreD(null);
+                    snap.setTotalScore(bookD * 0.4 + finalAvg * 0.6);
+                }
+            }
+            snap.setCalculatedAt(now);
+        }
+
+        // 按专场分组，对有总分的项目按 totalScore 降序排名
+        Map<String, List<FinalRankingSnapshot>> bySession = finalSnaps.stream()
+                .collect(Collectors.groupingBy(FinalRankingSnapshot::getSessionCode));
+        for (List<FinalRankingSnapshot> group : bySession.values()) {
+            List<FinalRankingSnapshot> ranked = group.stream()
+                    .filter(s -> s.getTotalScore() != null)
+                    .sorted((a, b) -> Double.compare(b.getTotalScore(), a.getTotalScore()))
+                    .collect(Collectors.toList());
+            int rank = 1;
+            for (int i = 0; i < ranked.size(); i++) {
+                if (i > 0 && !ranked.get(i).getTotalScore().equals(ranked.get(i - 1).getTotalScore())) {
+                    rank = i + 1;
+                }
+                ranked.get(i).setTotalRank(rank);
+            }
+            // 无总分的项目排名置 null
+            group.stream().filter(s -> s.getTotalScore() == null).forEach(s -> s.setTotalRank(null));
+        }
+
+        finalRankingSnapshotRepository.saveAll(finalSnaps);
+        return String.format("总分排名计算完成，共处理 %d 条记录", finalSnaps.size());
+    }
+
     // ── 查询排名 ──────────────────────────────────────────────────────────────
 
     public List<FinalRankingItem> getRanking(Long competitionId, String sessionCode) {
@@ -492,11 +614,14 @@ public class FinalService {
 
         return snapshots.stream().map(s -> {
             Registration reg = regMap.get(s.getRegistrationId());
+            boolean threeStage = s.getBookScoreD() != null && s.getInterviewScoreD() != null;
+            boolean hasSingleD  = s.getBookScoreD() != null || s.getInterviewScoreD() != null;
             return FinalRankingItem.builder()
                     .sessionDate(s.getSessionDate())
                     .sessionCode(s.getSessionCode())
                     .rank(s.getSessionRank())
                     .registrationId(s.getRegistrationId())
+                    .registrationCode(reg != null ? reg.getRegistrationCode() : null)
                     .sessionOrder(s.getSessionOrder())
                     .projectName(reg != null ? reg.getProjectName() : "")
                     .institutionName(reg != null && reg.getInstitution() != null
@@ -504,9 +629,16 @@ public class FinalService {
                     .scoreForm(s.getScoreForm())
                     .judgeCount(s.getJudgeScoreCount() != null ? s.getJudgeScoreCount() : 0)
                     .trimmedAvg(s.getTrimmedAvg())
-                    .note(s.getSessionRemovedMax() == null
-                            ? "分数不足3个，未去极值"
-                            : String.format("去掉最高%.1f、最低%.1f", s.getSessionRemovedMax(), s.getSessionRemovedMin()))
+                    .finalAvg(s.getTrimmedAvg())
+                    .bookReviewScore(s.getBookReviewScore())
+                    .bookScoreD(s.getBookScoreD())
+                    .interviewScoreD(s.getInterviewScoreD())
+                    .bookWeight(threeStage ? 0.3 : (hasSingleD ? 0.4 : null))
+                    .interviewWeight(threeStage ? 0.4 : null)
+                    .finalWeight(threeStage ? 0.3 : (hasSingleD ? 0.6 : null))
+                    .scoreFormula(buildScoreFormula(s))
+                    .totalScore(s.getTotalScore())
+                    .totalRank(s.getTotalRank())
                     .build();
         }).collect(Collectors.toList());
     }
@@ -545,11 +677,14 @@ public class FinalService {
                 if (!same) rank = i + 1;
             }
             Registration reg = regMap.get(s.getRegistrationId());
+            boolean threeStage = s.getBookScoreD() != null && s.getInterviewScoreD() != null;
+            boolean hasSingleD  = s.getBookScoreD() != null || s.getInterviewScoreD() != null;
             result.add(FinalRankingItem.builder()
                     .sessionDate(s.getSessionDate())
                     .sessionCode(s.getSessionCode())
                     .rank(rank)
                     .registrationId(s.getRegistrationId())
+                    .registrationCode(reg != null ? reg.getRegistrationCode() : null)
                     .sessionOrder(s.getSessionOrder())
                     .projectName(reg != null ? reg.getProjectName() : "")
                     .institutionName(reg != null && reg.getInstitution() != null
@@ -557,10 +692,16 @@ public class FinalService {
                     .scoreForm(s.getScoreForm())
                     .judgeCount(s.getJudgeScoreCount() != null ? s.getJudgeScoreCount() : 0)
                     .trimmedAvg(s.getTrimmedAvg())
-                    .note(s.getSessionRemovedMax() == null
-                            ? "分数不足3个，未去极值"
-                            : String.format("去掉最高%.1f、最低%.1f",
-                                    s.getSessionRemovedMax(), s.getSessionRemovedMin()))
+                    .finalAvg(s.getTrimmedAvg())
+                    .bookReviewScore(s.getBookReviewScore())
+                    .bookScoreD(s.getBookScoreD())
+                    .interviewScoreD(s.getInterviewScoreD())
+                    .bookWeight(threeStage ? 0.3 : (hasSingleD ? 0.4 : null))
+                    .interviewWeight(threeStage ? 0.4 : null)
+                    .finalWeight(threeStage ? 0.3 : (hasSingleD ? 0.6 : null))
+                    .scoreFormula(buildScoreFormula(s))
+                    .totalScore(s.getTotalScore())
+                    .totalRank(s.getTotalRank())
                     .build());
         }
         return result;
@@ -613,8 +754,8 @@ public class FinalService {
                                    CellStyle headerStyle, boolean includeSessionCol) {
         // 列头
         String[] headers = includeSessionCol
-                ? new String[]{"专场", "排名", "上台顺序", "项目名称", "机构名称", "评分表", "参与评委数", "去极值均分", "备注"}
-                : new String[]{"排名", "上台顺序", "项目名称", "机构名称", "评分表", "参与评委数", "去极值均分", "备注"};
+                ? new String[]{"专场", "项目编号", "专场排名", "上台顺序", "项目名称", "机构名称", "评分表", "参与评委数", "现场均分", "书审D值", "面谈D值", "书审权重", "面谈权重", "现场权重", "得分算式", "综合总分", "总分排名"}
+                : new String[]{"项目编号", "专场排名", "上台顺序", "项目名称", "机构名称", "评分表", "参与评委数", "现场均分", "书审D值", "面谈D值", "书审权重", "面谈权重", "现场权重", "得分算式", "综合总分", "总分排名"};
 
         Row hRow = sheet.createRow(0);
         for (int i = 0; i < headers.length; i++) {
@@ -625,22 +766,37 @@ public class FinalService {
         }
         sheet.setColumnWidth(includeSessionCol ? 3 : 2, 14000); // 项目名称列宽
         sheet.setColumnWidth(includeSessionCol ? 4 : 3, 10000); // 机构名称列宽
-        sheet.setColumnWidth(includeSessionCol ? 8 : 7, 10000); // 备注列宽
 
         int rowNum = 1;
         for (FinalRankingItem item : items) {
             Row row = sheet.createRow(rowNum++);
             int col = 0;
             if (includeSessionCol) row.createCell(col++).setCellValue(item.getSessionCode());
-            row.createCell(col++).setCellValue(item.getRank());
+            row.createCell(col++).setCellValue(item.getRegistrationCode() != null ? item.getRegistrationCode() : 0);
+            row.createCell(col++).setCellValue(item.getRank() != null ? item.getRank() : 0);
             row.createCell(col++).setCellValue(item.getSessionOrder() != null ? item.getSessionOrder() : 0);
             row.createCell(col++).setCellValue(item.getProjectName());
             row.createCell(col++).setCellValue(item.getInstitutionName());
-            row.createCell(col++).setCellValue(item.getScoreForm());
+            row.createCell(col++).setCellValue(item.getScoreForm() != null ? item.getScoreForm() : "");
             row.createCell(col++).setCellValue(item.getJudgeCount());
             Cell avgCell = row.createCell(col++);
             if (item.getTrimmedAvg() != null) avgCell.setCellValue(item.getTrimmedAvg());
-            row.createCell(col).setCellValue(item.getNote() != null ? item.getNote() : "");
+            Cell bookDCell = row.createCell(col++);
+            if (item.getBookScoreD() != null) bookDCell.setCellValue(item.getBookScoreD());
+            Cell intDCell = row.createCell(col++);
+            if (item.getInterviewScoreD() != null) intDCell.setCellValue(item.getInterviewScoreD());
+            Cell bwCell = row.createCell(col++);
+            if (item.getBookWeight() != null) bwCell.setCellValue(item.getBookWeight());
+            Cell iwCell = row.createCell(col++);
+            if (item.getInterviewWeight() != null) iwCell.setCellValue(item.getInterviewWeight());
+            Cell fwCell = row.createCell(col++);
+            if (item.getFinalWeight() != null) fwCell.setCellValue(item.getFinalWeight());
+            Cell formulaCell = row.createCell(col++);
+            if (item.getScoreFormula() != null) formulaCell.setCellValue(item.getScoreFormula());
+            Cell totalCell = row.createCell(col++);
+            if (item.getTotalScore() != null) totalCell.setCellValue(item.getTotalScore());
+            Cell totalRankCell = row.createCell(col);
+            if (item.getTotalRank() != null) totalRankCell.setCellValue(item.getTotalRank());
         }
     }
 
@@ -806,6 +962,32 @@ public class FinalService {
             items.add(new FinalScoreItem("现场表现", 10, s.getItem8()));
         }
         return items;
+    }
+
+    /**
+     * 生成算式字符串，供前端直接展示。
+     * 示例：bookScoreD 非 null  -> "82.50 x 40% + 89.10 x 60% = 86.46"
+     *       interviewScoreD 非 null -> "79.30 x 40% + 89.10 x 60% = 85.18"
+     * 任意一方为 null 返回 null。
+     */
+    private String buildScoreFormula(FinalRankingSnapshot s) {
+        Double bookD = s.getBookScoreD();
+        Double intD  = s.getInterviewScoreD();
+        Double avg   = s.getTrimmedAvg();
+        Double total = s.getTotalScore();
+        if (avg == null || total == null) return null;
+        if (bookD != null && intD != null) {
+            // 进阶组三阶段：书审D×30% + 面谈D×40% + 现场×30%
+            return String.format("%.2f x 30%% + %.2f x 40%% + %.2f x 30%% = %.2f",
+                    bookD, intD, avg, total);
+        } else if (bookD != null) {
+            // BASIC/COMPREHENSIVE：书审D×40% + 现场×60%
+            return String.format("%.2f x 40%% + %.2f x 60%% = %.2f", bookD, avg, total);
+        } else if (intD != null) {
+            // 进阶组两阶段退化：面谈D×40% + 现场×60%
+            return String.format("%.2f x 40%% + %.2f x 60%% = %.2f", intD, avg, total);
+        }
+        return null;
     }
 
     private <T extends Comparable<T>> int compareNullable(T a, T b) {

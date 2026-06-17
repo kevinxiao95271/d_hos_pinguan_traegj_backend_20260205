@@ -56,8 +56,12 @@ public class StatsService {
         Competition competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
 
-        // 一次性加载所有报名及其机构（JOIN FETCH，避免N次懒加载）
-        List<Registration> registrations = registrationRepository.findByCompetitionIdWithInstitution(competitionId);
+        // 一次性加载已提交/已通过的报名及其机构（排除草稿和退回，统计数据仅计有效报名）
+        List<Registration> registrations = registrationRepository.findByCompetitionIdWithInstitution(competitionId)
+                .stream()
+                .filter(r -> r.getStatus() == com.trae.pinguan.domain.enums.RegistrationStatus.SUBMITTED
+                          || r.getStatus() == com.trae.pinguan.domain.enums.RegistrationStatus.APPROVED)
+                .collect(java.util.stream.Collectors.toList());
         // 报名机构去重总数
         long institutionCount = registrations.stream()
                 .filter(r -> r.getInstitution() != null)

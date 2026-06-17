@@ -125,6 +125,15 @@ public class RegistrationService {
                     .orElseThrow(() -> new IllegalArgumentException("机构不存在"));
             registration.setInstitution(institution);
         }
+        if (request.getProjectLeaderName() != null) {
+            registration.setProjectLeaderName(request.getProjectLeaderName());
+        }
+        if (request.getProjectLeaderPhone() != null) {
+            registration.setProjectLeaderPhone(request.getProjectLeaderPhone());
+        }
+        if (request.getProjectLeaderTitle() != null) {
+            registration.setProjectLeaderTitle(request.getProjectLeaderTitle());
+        }
 
         validateBasicGroupEligibility(registration.getInstitution(), registration.getGroupType());
         return registrationRepository.save(registration);
@@ -196,6 +205,15 @@ public class RegistrationService {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new IllegalArgumentException("报名不存在"));
         validateRequiredMaterialsBeforeSubmit(registrationId);
+        // 首次提交时生成项目编号（退回后再次提交不重新生成）
+        if (registration.getRegistrationCode() == null) {
+            Long competitionId = registration.getCompetition().getId();
+            int nextCode = registrationRepository
+                    .findMaxRegistrationCodeByCompetitionId(competitionId)
+                    .map(max -> max + 1)
+                    .orElse(1);
+            registration.setRegistrationCode(nextCode);
+        }
         registration.setStatus(RegistrationStatus.SUBMITTED);
         registration.setSubmittedAt(LocalDateTime.now());
         return registrationRepository.save(registration);
@@ -374,6 +392,7 @@ public class RegistrationService {
                                                             com.trae.pinguan.domain.enums.RegistrationStatus status,
                                                             com.trae.pinguan.domain.enums.GroupType groupType,
                                                             String groupCode,
+                                                            Integer registrationCode,
                                                             String projectName,
                                                             String institutionName,
                                                             String methodCode,
@@ -393,6 +412,7 @@ public class RegistrationService {
                 status,
                 groupType,
                 groupCodeValue,
+                registrationCode,
                 projectNameValue,
                 institutionNameValue,
                 methodCodeValue,
@@ -723,5 +743,66 @@ public class RegistrationService {
         registrationRepository.deleteById(registrationId);
 
         log.info("OPS已删除报名 id={} 及所有关联数据", registrationId);
+    }
+
+    // ── 相似项目检测 ──────────────────────────────────────────────────────────
+
+    /**
+     * 检测同赛事内同机构是否存在与 projectName 高度相似的已有项目（基于二字组 Jaccard 相似度）。
+     *
+     * @param competitionId 赛事 ID
+     * @param institutionId 申请机构 ID
+     * @param projectName   待检测项目名称
+     * @param selfId        当前报名 ID（更新时排除自身，创建时传 null）
+     * @return 相似度最高的条目列表（相似度 ≥ 0.5 的结果，最多 5 条）
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> checkDuplicate(Long competitionId, Long institutionId,
+                                                     String projectName, Long selfId) {
+        if (projectName == null || projectName.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Registration> candidates = registrationRepository.findByCompetitionId(competitionId)
+                .stream()
+                .filter(r -> r.getInstitution() != null
+                        && r.getInstitution().getId().equals(institutionId))
+                .filter(r -> selfId == null || !r.getId().equals(selfId))
+                .filter(r -> r.getStatus() != RegistrationStatus.DRAFT)
+                .collect(Collectors.toList());
+
+        java.util.Set<String> queryBigrams = bigrams(projectName);
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (Registration r : candidates) {
+            java.util.Set<String> targetBigrams = bigrams(r.getProjectName());
+            double sim = jaccardSimilarity(queryBigrams, targetBigrams);
+            if (sim >= 0.5) {
+                Map<String, Object> item = new java.util.LinkedHashMap<>();
+                item.put("registrationId", r.getId());
+                item.put("projectName", r.getProjectName());
+                item.put("status", r.getStatus());
+                item.put("similarity", Math.round(sim * 1000) / 10.0); // 百分比，保留1位
+                results.add(item);
+            }
+        }
+        results.sort((a, b) -> Double.compare(
+                (double) b.get("similarity"), (double) a.get("similarity")));
+        return results.stream().limit(5).collect(Collectors.toList());
+    }
+
+    private static java.util.Set<String> bigrams(String text) {
+        java.util.Set<String> set = new java.util.HashSet<>();
+        if (text == null || text.length() < 2) return set;
+        for (int i = 0; i < text.length() - 1; i++) {
+            set.add(text.substring(i, i + 2));
+        }
+        return set;
+    }
+
+    private static double jaccardSimilarity(java.util.Set<String> a, java.util.Set<String> b) {
+        if (a.isEmpty() && b.isEmpty()) return 1.0;
+        if (a.isEmpty() || b.isEmpty()) return 0.0;
+        long intersection = a.stream().filter(b::contains).count();
+        long union = a.size() + b.size() - intersection;
+        return union == 0 ? 0.0 : (double) intersection / union;
     }
 }

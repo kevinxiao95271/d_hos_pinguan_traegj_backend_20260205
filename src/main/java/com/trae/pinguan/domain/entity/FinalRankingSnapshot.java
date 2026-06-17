@@ -67,13 +67,45 @@ public class FinalRankingSnapshot {
     @Column(name = "session_removed_min")
     private Double sessionRemovedMin;
 
-    /** 去极值后该项目所有评委打分的平均分（最终排名依据） */
+    /** 现场竞赛直接均分（计算总分依据，不再去极值） */
     @Column(name = "trimmed_avg")
     private Double trimmedAvg;
 
-    /** 专场内排名（1 名最高） */
+    /** 专场内排名（按 trimmedAvg；1 名最高） */
     @Column(name = "session_rank")
     private Integer sessionRank;
+
+    /**
+     * 书审 D 值（BASIC/COMPREHENSIVE）或书审+面谈合并 D（ADVANCED）。
+     * 由 computeTotalRanking 填入，来源于 scoring_snapshots.adjusted_score。
+     */
+    @Column(name = "book_review_score")
+    private Double bookReviewScore;
+
+    /**
+     * 综合总分：bookReviewScore × 40% + trimmedAvg × 60%。
+     * 由 computeTotalRanking 填入。
+     */
+    @Column(name = "total_score")
+    private Double totalScore;
+
+    /** 专场内总分排名（按 totalScore；1 名最高）。由 computeTotalRanking 填入。 */
+    @Column(name = "total_rank")
+    private Integer totalRank;
+
+    /**
+     * 书审标化D值（BASIC / COMPREHENSIVE 组有值，ADVANCED 组为 null）。
+     * 由 computeTotalRanking 填入，来源于 scoring_snapshots(stage=BOOK).adjusted_score。
+     */
+    @Column(name = "book_score_d")
+    private Double bookScoreD;
+
+    /**
+     * 面谈合并D值（ADVANCED 组有值，BASIC / COMPREHENSIVE 组为 null）。
+     * 由 computeTotalRanking 填入，来源于 scoring_snapshots(stage=INTERVIEW).adjusted_score。
+     */
+    @Column(name = "interview_score_d")
+    private Double interviewScoreD;
 
     @Column(name = "calculated_at", nullable = false)
     private LocalDateTime calculatedAt;

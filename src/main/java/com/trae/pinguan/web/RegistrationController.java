@@ -81,6 +81,19 @@ public class RegistrationController {
         return ApiResponse.ok(registrationService.returnForEdit(id));
     }
 
+    @GetMapping("/check-duplicate")
+    @Operation(summary = "同机构相似项目检测",
+               description = "用二字组 Jaccard 相似度检测同赛事同机构内是否存在相似项目（相似度 ≥50%），返回最多5条。" +
+                       "selfId 在编辑时传入以排除自身。")
+    public ApiResponse<List<java.util.Map<String, Object>>> checkDuplicate(
+            @RequestParam Long competitionId,
+            @RequestParam Long institutionId,
+            @RequestParam String projectName,
+            @RequestParam(required = false) Long selfId) {
+        return ApiResponse.ok(registrationService.checkDuplicate(
+                competitionId, institutionId, projectName, selfId));
+    }
+
     @PostMapping("/{id}/approve")
     @Operation(summary = "通过报名")
     public ApiResponse<Registration> approve(@PathVariable Long id) {

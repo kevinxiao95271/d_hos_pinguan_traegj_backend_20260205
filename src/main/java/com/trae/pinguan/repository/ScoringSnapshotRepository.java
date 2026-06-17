@@ -34,4 +34,8 @@ public interface ScoringSnapshotRepository extends JpaRepository<ScoringSnapshot
 
     List<ScoringSnapshot> findByCompetitionIdAndStageAndGroupCodeOrderByIrankAsc(
             Long competitionId, ReviewStage stage, String groupCode);
+
+    /** 批量按 registrationId 查找指定阶段的快照（用于总分合并计算） */
+    List<ScoringSnapshot> findByCompetitionIdAndStageAndRegistrationIdIn(
+            Long competitionId, ReviewStage stage, List<Long> registrationIds);
 }

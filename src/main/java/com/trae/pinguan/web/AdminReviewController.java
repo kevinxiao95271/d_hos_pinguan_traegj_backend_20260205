@@ -81,10 +81,12 @@ public class AdminReviewController {
     }
 
     @GetMapping("/summary")
-    @Operation(summary = "后台评分汇总")
+    @Operation(summary = "后台评分汇总",
+               description = "reviewerName 不传则返回所有项目；传入时仅返回含该评委任务的项目")
     public ApiResponse<List<ReviewSummaryItem>> summary(@RequestParam Long competitionId,
-                                                        @RequestParam ReviewStage stage) {
-        return ApiResponse.ok(reviewService.summaryByStage(competitionId, stage));
+                                                        @RequestParam ReviewStage stage,
+                                                        @RequestParam(required = false) String reviewerName) {
+        return ApiResponse.ok(reviewService.summaryByStage(competitionId, stage, reviewerName));
     }
 
     @PostMapping("/compute-ranking")
@@ -363,7 +365,8 @@ public class AdminReviewController {
 
     @GetMapping("/score-export")
     @Operation(summary = "导出打分快照为 Excel",
-               description = "需先触发 compute-ranking 生成快照，再调用本接口导出。" +
+               description = "需先触发 compute-ranking 生成快照，再调用本接口导出。\n" +
+                             "stage 可选值：BOOK（书审）、INTERVIEW（面谈合并分，进阶组含书审权重）、INTERVIEW_ONLY（纯面谈标化分）。\n" +
                              "列：排名 / 组别 / 小组 / 项目编号 / 项目名称 / 医院名称 / 评审1..N / " +
                              "平均分 / 小组均分(An) / 全组均分(B) / 系数(Cn) / 调整后分数(D)")
     public void scoreExport(@RequestParam Long competitionId,
@@ -375,7 +378,14 @@ public class AdminReviewController {
                 .mapToInt(r -> r.getReviewerScores() != null ? r.getReviewerScores().size() : 0)
                 .max().orElse(0);
 
-        String stageName = ReviewStage.BOOK == stage ? "书审" : "面谈";
+        String stageName;
+        if (stage == ReviewStage.BOOK) {
+            stageName = "书审";
+        } else if (stage == ReviewStage.INTERVIEW_ONLY) {
+            stageName = "面谈标化";
+        } else {
+            stageName = "面谈";
+        }
         String filename = URLEncoder.encode("打分数据-" + stageName + ".xlsx", StandardCharsets.UTF_8.name());
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + filename);

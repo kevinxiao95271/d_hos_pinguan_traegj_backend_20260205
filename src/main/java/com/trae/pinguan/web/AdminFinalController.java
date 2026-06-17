@@ -125,6 +125,20 @@ public class AdminFinalController {
         return ApiResponse.ok(finalService.adminScoreSummary(competitionId, sessionCode));
     }
 
+    // ── 按评委查询任务 ────────────────────────────────────────────────────────
+
+    @GetMapping("/reviewer-tasks")
+    @Operation(summary = "按评委查询现场竞赛任务",
+               description = "返回指定评委在该竞赛中的所有现场竞赛任务（含打分状态和得分）。" +
+                       "reviewerId 和 reviewerName 至少传一个；两者同时传时以 reviewerId 优先。")
+    public ApiResponse<List<FinalTaskItem>> reviewerTasks(
+            @RequestParam Long competitionId,
+            @RequestParam(required = false) Long reviewerId,
+            @RequestParam(required = false) String reviewerName) {
+        requireAdminRole();
+        return ApiResponse.ok(finalService.adminScoreSummaryByReviewer(competitionId, reviewerId, reviewerName));
+    }
+
     // ── 驳回评分（OPERATOR/ADMIN）────────────────────────────────────────────
 
     @PostMapping("/scores/{taskId}/reject")
@@ -162,10 +176,19 @@ public class AdminFinalController {
 
     @PostMapping("/compute-ranking")
     @Operation(summary = "计算现场竞赛排名",
-               description = "幂等接口：先清空旧快照，以专场为单位去极值后重新计算排名并持久化")
+               description = "幂等接口：先清空旧快照，以专场为单位直接均分计算排名并持久化")
     public ApiResponse<String> computeRanking(@RequestParam Long competitionId) {
         requireAdminRole();
         return ApiResponse.ok(finalService.computeRanking(competitionId));
+    }
+
+    @PostMapping("/compute-total-ranking")
+    @Operation(summary = "计算综合总分排名",
+               description = "依赖已完成的书审/面谈快照和现场竞赛快照，" +
+                       "按 书审D*40%+现场均分*60% 合并总分，专场内排名，结果回写 final_ranking_snapshots")
+    public ApiResponse<String> computeTotalRanking(@RequestParam Long competitionId) {
+        requireAdminRole();
+        return ApiResponse.ok(finalService.computeTotalRanking(competitionId));
     }
 
     // ── 查询排名 ──────────────────────────────────────────────────────────────

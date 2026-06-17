@@ -2,9 +2,11 @@ package com.trae.pinguan.service;
 
 import com.trae.pinguan.config.MinioProperties;
 import com.trae.pinguan.domain.entity.Institution;
+import com.trae.pinguan.domain.entity.ReviewTask;
 import com.trae.pinguan.domain.entity.ReviewerInstitutionChange;
 import com.trae.pinguan.domain.entity.ReviewerProfile;
 import com.trae.pinguan.domain.entity.UserAccount;
+import com.trae.pinguan.domain.enums.ReviewStage;
 import com.trae.pinguan.domain.enums.ReviewStatus;
 import com.trae.pinguan.domain.enums.RoleType;
 import com.trae.pinguan.repository.InstitutionRepository;
@@ -48,6 +50,33 @@ public class ReviewerService {
                                        String reviewerGroupCode,
                                        String interviewGroupCode,
                                        String expertBackground) {
+        return list(null, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground);
+    }
+
+    public List<ReviewerListItem> list(Long competitionId,
+                                       Long institutionId,
+                                       String reviewerGroupCode,
+                                       String interviewGroupCode,
+                                       String expertBackground) {
+        // 预加载评委决赛任务（仅当传入 competitionId 时查询）
+        Map<Long, List<String>> finalSessionsByReviewer = new HashMap<>();
+        if (competitionId != null) {
+            List<ReviewTask> finalTasks = reviewTaskRepository
+                    .findWithDetailsByStageAndCompetitionId(ReviewStage.FINAL, competitionId);
+            for (ReviewTask t : finalTasks) {
+                if (t.getReviewer() == null) continue;
+                String sessionCode = t.getRegistration() != null
+                        ? t.getRegistration().getFinalSessionCode() : null;
+                if (sessionCode == null) continue;
+                finalSessionsByReviewer
+                        .computeIfAbsent(t.getReviewer().getId(), k -> new ArrayList<>())
+                        .add(sessionCode);
+            }
+            // 每个评委的 sessionCodes 去重排序
+            finalSessionsByReviewer.replaceAll((k, v) ->
+                    v.stream().distinct().sorted().collect(Collectors.toList()));
+        }
+
         // 优化：使用JOIN FETCH一次性加载所有关联数据，避免N+1问题
         List<UserAccount> reviewers = userAccountRepository.findByRoleWithInstitution(RoleType.REVIEWER);
         return reviewers.stream()
@@ -66,7 +95,8 @@ public class ReviewerService {
                         user.getInstitution() == null ? null : user.getInstitution().getName(),
                         user.getReviewerGroupCode(),
                         user.getInterviewGroupCode(),
-                        user.getExpertBackground()
+                        user.getExpertBackground(),
+                        finalSessionsByReviewer.getOrDefault(user.getId(), new ArrayList<>())
                 ))
                 .collect(Collectors.toList());
     }
@@ -341,6 +371,10 @@ public class ReviewerService {
      */
     @Transactional(readOnly = true)
     public List<ReviewerExportRow> buildExportRows() {
+        return buildExportRows(null);
+    }
+
+    public List<ReviewerExportRow> buildExportRows(Long competitionId) {
         List<UserAccount> reviewers = userAccountRepository.findByRoleWithInstitution(RoleType.REVIEWER);
         Map<Long, ReviewerProfile> profileMap = reviewerProfileRepository.findAll().stream()
                 .collect(Collectors.toMap(ReviewerProfile::getUserId, p -> p, (a, b) -> a));
@@ -352,6 +386,23 @@ public class ReviewerService {
             ReviewStatus status = (ReviewStatus) row[1];
             long count = ((Number) row[2]).longValue();
             statsMap.computeIfAbsent(reviewerId, k -> new HashMap<>()).put(status, count);
+        }
+
+        // 决赛分配场次统计（可选）
+        Map<Long, String> finalSessionsTextByReviewer = new HashMap<>();
+        if (competitionId != null) {
+            List<ReviewTask> finalTasks = reviewTaskRepository
+                    .findWithDetailsByStageAndCompetitionId(ReviewStage.FINAL, competitionId);
+            Map<Long, List<String>> byReviewer = new HashMap<>();
+            for (ReviewTask t : finalTasks) {
+                if (t.getReviewer() == null) continue;
+                String sc = t.getRegistration() != null ? t.getRegistration().getFinalSessionCode() : null;
+                if (sc == null) continue;
+                byReviewer.computeIfAbsent(t.getReviewer().getId(), k -> new ArrayList<>()).add(sc);
+            }
+            byReviewer.forEach((rid, list) ->
+                    finalSessionsTextByReviewer.put(rid,
+                            list.stream().distinct().sorted().collect(Collectors.joining(","))));
         }
 
         List<ReviewerExportRow> result = new ArrayList<>();
@@ -384,6 +435,7 @@ public class ReviewerService {
                     .taskDraft(stats.getOrDefault(ReviewStatus.DRAFT, 0L))
                     .taskPending(stats.getOrDefault(ReviewStatus.PENDING, 0L))
                     .taskRecused(stats.getOrDefault(ReviewStatus.RECUSED, 0L))
+                    .finalSessionCodes(finalSessionsTextByReviewer.get(u.getId()))
                     .build());
         }
         result.sort((a, b) -> {

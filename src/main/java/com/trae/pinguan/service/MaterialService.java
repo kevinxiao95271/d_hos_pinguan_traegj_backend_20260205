@@ -80,6 +80,23 @@ public class MaterialService {
         if (!isAllowedExtension(extension)) {
             throw new IllegalArgumentException("不支持的文件类型，仅支持: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar, jpg, jpeg, png, gif");
         }
+        // MIME 类型校验：非图片/支付凭证的主文件必须为 PDF
+        if (!isPaymentProof && !EVIDENCE_TYPE.equalsIgnoreCase(normalizedType)) {
+            String contentType = file.getContentType();
+            if (contentType != null && !contentType.contains("pdf")
+                    && !contentType.contains("msword")
+                    && !contentType.contains("wordprocessingml")
+                    && !contentType.contains("spreadsheetml")
+                    && !contentType.contains("presentationml")
+                    && !contentType.contains("ms-powerpoint")
+                    && !contentType.contains("ms-excel")
+                    && !contentType.contains("zip")
+                    && !contentType.contains("rar")
+                    && !contentType.contains("octet-stream")
+                    && !contentType.contains("image/")) {
+                throw new IllegalArgumentException("不支持的 MIME 类型: " + contentType);
+            }
+        }
 
         String fileHash = isPaymentProof ? computeSha256(file) : null;
         validateTypeAndHashRule(normalizedType, fileHash);

@@ -16,7 +16,15 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
     @Query("SELECT rt FROM ReviewTask rt LEFT JOIN FETCH rt.registration r LEFT JOIN FETCH r.institution WHERE rt.reviewer.id = :reviewerId")
     List<ReviewTask> findByReviewerId(@Param("reviewerId") Long reviewerId);
     
-    List<ReviewTask> findByReviewerIdAndStage(Long reviewerId, ReviewStage stage);
+    @Query("SELECT rt FROM ReviewTask rt " +
+           "LEFT JOIN FETCH rt.registration r " +
+           "LEFT JOIN FETCH r.institution " +
+           "LEFT JOIN FETCH rt.reviewer rv " +
+           "WHERE rt.reviewer.id = :reviewerId AND rt.stage = :stage " +
+           "ORDER BY r.finalSessionCode ASC NULLS LAST, r.finalSessionOrder ASC NULLS LAST")
+    List<ReviewTask> findByReviewerIdAndStage(
+            @Param("reviewerId") Long reviewerId,
+            @Param("stage") ReviewStage stage);
     List<ReviewTask> findByStageAndRegistrationCompetitionId(ReviewStage stage, Long competitionId);
     List<ReviewTask> findByStageAndStatusAndRegistrationCompetitionId(ReviewStage stage, ReviewStatus status, Long competitionId);
 
