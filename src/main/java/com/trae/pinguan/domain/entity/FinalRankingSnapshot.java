@@ -107,6 +107,15 @@ public class FinalRankingSnapshot {
     @Column(name = "interview_score_d")
     private Double interviewScoreD;
 
+    /**
+     * 奖项等级：GOLD / SILVER / BRONZE / null（未入奖）。
+     * 由 computeTotalRanking 按专场 + 组别 totalRank 填入。
+     * 进阶组：1~2=GOLD，3~6=SILVER，7~12=BRONZE；
+     * 综合组/基层组：1=GOLD，2~4=SILVER，5~10=BRONZE。
+     */
+    @Column(name = "award_level", length = 10)
+    private String awardLevel;
+
     @Column(name = "calculated_at", nullable = false)
     private LocalDateTime calculatedAt;
 }

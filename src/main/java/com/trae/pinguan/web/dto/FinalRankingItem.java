@@ -72,6 +72,9 @@ public class FinalRankingItem {
     @Schema(description = "专场内总分排名")
     private Integer totalRank;
 
+    @Schema(description = "奖项等级：GOLD / SILVER / BRONZE，未入奖为 null")
+    private String awardLevel;
+
     @Schema(description = "说明备注")
     private String note;
 }

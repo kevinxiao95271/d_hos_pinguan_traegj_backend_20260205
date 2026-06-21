@@ -14,6 +14,12 @@ public interface FinalRankingSnapshotRepository extends JpaRepository<FinalRanki
     List<FinalRankingSnapshot> findByCompetitionIdAndSessionCodeOrderBySessionRankAsc(
             Long competitionId, String sessionCode);
 
+    /** 按专场 + 综合总分排名升序（null 排最后由 Service 层处理） */
+    List<FinalRankingSnapshot> findByCompetitionIdOrderBySessionCodeAsc(Long competitionId);
+
+    List<FinalRankingSnapshot> findByCompetitionIdAndSessionCode(
+            Long competitionId, String sessionCode);
+
     @Modifying
     @Query("DELETE FROM FinalRankingSnapshot f WHERE f.competitionId = :competitionId")
     void deleteByCompetitionId(@Param("competitionId") Long competitionId);

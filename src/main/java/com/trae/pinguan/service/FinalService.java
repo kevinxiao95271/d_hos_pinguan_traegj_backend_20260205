@@ -25,6 +25,7 @@ import com.trae.pinguan.web.dto.FinalTaskItem;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -593,6 +594,34 @@ public class FinalService {
             group.stream().filter(s -> s.getTotalScore() == null).forEach(s -> s.setTotalRank(null));
         }
 
+        // 按专场分配金银铜奖项（以专场 sessionCode 判断组别，同一专场用统一规则）
+        // 进阶组专场（sessionCode 含"进阶"）：1~2=GOLD，3~6=SILVER，7~12=BRONZE
+        // 综合组/基层组专场：1=GOLD，2~4=SILVER，5~10=BRONZE
+        Map<String, Boolean> sessionIsAdvanced = finalSnaps.stream()
+                .collect(Collectors.toMap(
+                        FinalRankingSnapshot::getSessionCode,
+                        s -> s.getSessionCode() != null && s.getSessionCode().contains("进阶"),
+                        (a, b) -> a));
+        for (FinalRankingSnapshot snap : finalSnaps) {
+            Integer tr = snap.getTotalRank();
+            if (tr == null) {
+                snap.setAwardLevel(null);
+                continue;
+            }
+            boolean isAdvanced = Boolean.TRUE.equals(sessionIsAdvanced.get(snap.getSessionCode()));
+            if (isAdvanced) {
+                if (tr <= 2)       snap.setAwardLevel("GOLD");
+                else if (tr <= 6)  snap.setAwardLevel("SILVER");
+                else if (tr <= 12) snap.setAwardLevel("BRONZE");
+                else               snap.setAwardLevel(null);
+            } else {
+                if (tr == 1)       snap.setAwardLevel("GOLD");
+                else if (tr <= 4)  snap.setAwardLevel("SILVER");
+                else if (tr <= 10) snap.setAwardLevel("BRONZE");
+                else               snap.setAwardLevel(null);
+            }
+        }
+
         finalRankingSnapshotRepository.saveAll(finalSnaps);
         return String.format("总分排名计算完成，共处理 %d 条记录", finalSnaps.size());
     }
@@ -602,9 +631,15 @@ public class FinalService {
     public List<FinalRankingItem> getRanking(Long competitionId, String sessionCode) {
         List<FinalRankingSnapshot> snapshots = sessionCode != null
                 ? finalRankingSnapshotRepository
-                        .findByCompetitionIdAndSessionCodeOrderBySessionRankAsc(competitionId, sessionCode)
+                        .findByCompetitionIdAndSessionCode(competitionId, sessionCode)
                 : finalRankingSnapshotRepository
-                        .findByCompetitionIdOrderBySessionCodeAscSessionRankAsc(competitionId);
+                        .findByCompetitionIdOrderBySessionCodeAsc(competitionId);
+        // 按专场内综合总分排名升序，null 排最后
+        snapshots.sort(Comparator
+                .comparing(FinalRankingSnapshot::getSessionCode,
+                        Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(FinalRankingSnapshot::getTotalRank,
+                        Comparator.nullsLast(Comparator.naturalOrder())));
 
         // 取 registration 信息（项目名称、机构）
         List<Long> regIds = snapshots.stream().map(FinalRankingSnapshot::getRegistrationId)
@@ -639,6 +674,7 @@ public class FinalService {
                     .scoreFormula(buildScoreFormula(s))
                     .totalScore(s.getTotalScore())
                     .totalRank(s.getTotalRank())
+                    .awardLevel(s.getAwardLevel())
                     .build();
         }).collect(Collectors.toList());
     }
@@ -702,6 +738,7 @@ public class FinalService {
                     .scoreFormula(buildScoreFormula(s))
                     .totalScore(s.getTotalScore())
                     .totalRank(s.getTotalRank())
+                    .awardLevel(s.getAwardLevel())
                     .build());
         }
         return result;
@@ -754,8 +791,8 @@ public class FinalService {
                                    CellStyle headerStyle, boolean includeSessionCol) {
         // 列头
         String[] headers = includeSessionCol
-                ? new String[]{"专场", "项目编号", "专场排名", "上台顺序", "项目名称", "机构名称", "评分表", "参与评委数", "现场均分", "书审D值", "面谈D值", "书审权重", "面谈权重", "现场权重", "得分算式", "综合总分", "总分排名"}
-                : new String[]{"项目编号", "专场排名", "上台顺序", "项目名称", "机构名称", "评分表", "参与评委数", "现场均分", "书审D值", "面谈D值", "书审权重", "面谈权重", "现场权重", "得分算式", "综合总分", "总分排名"};
+                ? new String[]{"专场", "项目编号", "专场排名", "上台顺序", "项目名称", "机构名称", "评分表", "参与评委数", "现场均分", "书审D值", "面谈D值", "书审权重", "面谈权重", "现场权重", "得分算式", "综合总分", "总分排名", "奖项"}
+                : new String[]{"项目编号", "专场排名", "上台顺序", "项目名称", "机构名称", "评分表", "参与评委数", "现场均分", "书审D值", "面谈D值", "书审权重", "面谈权重", "现场权重", "得分算式", "综合总分", "总分排名", "奖项"};
 
         Row hRow = sheet.createRow(0);
         for (int i = 0; i < headers.length; i++) {
@@ -795,8 +832,10 @@ public class FinalService {
             if (item.getScoreFormula() != null) formulaCell.setCellValue(item.getScoreFormula());
             Cell totalCell = row.createCell(col++);
             if (item.getTotalScore() != null) totalCell.setCellValue(item.getTotalScore());
-            Cell totalRankCell = row.createCell(col);
+            Cell totalRankCell = row.createCell(col++);
             if (item.getTotalRank() != null) totalRankCell.setCellValue(item.getTotalRank());
+            Cell awardCell = row.createCell(col);
+            if (item.getAwardLevel() != null) awardCell.setCellValue(item.getAwardLevel());
         }
     }
 
