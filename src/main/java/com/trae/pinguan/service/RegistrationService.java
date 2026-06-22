@@ -204,7 +204,22 @@ public class RegistrationService {
     public Registration submit(Long registrationId) {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new IllegalArgumentException("报名不存在"));
+        // 服务端相似度拦截：与同机构已提交记录对比，≥80% 直接拒绝（先于材料检查，让用户优先处理名称冲突）
+        if (registration.getInstitution() != null && registration.getProjectName() != null) {
+            Long compId = registration.getCompetition().getId();
+            Long instId = registration.getInstitution().getId();
+            List<Map<String, Object>> hits = checkDuplicate(compId, instId,
+                    registration.getProjectName(), registrationId);
+            List<Map<String, Object>> blocked = hits.stream()
+                    .filter(h -> ((Number) h.get("similarity")).doubleValue() >= 80.0)
+                    .collect(Collectors.toList());
+            if (!blocked.isEmpty()) {
+                throw new com.trae.pinguan.exception.DuplicateProjectNameException(blocked);
+            }
+        }
+
         validateRequiredMaterialsBeforeSubmit(registrationId);
+
         // 首次提交时生成项目编号（退回后再次提交不重新生成）
         if (registration.getRegistrationCode() == null) {
             Long competitionId = registration.getCompetition().getId();
