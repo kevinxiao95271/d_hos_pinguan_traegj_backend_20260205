@@ -130,13 +130,23 @@ public class AdminFinalController {
     @GetMapping("/reviewer-tasks")
     @Operation(summary = "按评委查询现场竞赛任务",
                description = "返回指定评委在该竞赛中的所有现场竞赛任务（含打分状态和得分）。" +
-                       "reviewerId 和 reviewerName 至少传一个；两者同时传时以 reviewerId 优先。")
+                       "reviewerId 和 reviewerName 至少传一个；两者同时传时以 reviewerId 优先。" +
+                       "OPERATOR 只能查询其负责会场内的评委任务；ADMIN/OPS 无限制。")
     public ApiResponse<List<FinalTaskItem>> reviewerTasks(
             @RequestParam Long competitionId,
             @RequestParam(required = false) Long reviewerId,
             @RequestParam(required = false) String reviewerName) {
-        requireAdminRole();
-        return ApiResponse.ok(finalService.adminScoreSummaryByReviewer(competitionId, reviewerId, reviewerName));
+        String role = getCurrentRole();
+        List<String> allowedSessions = null;
+        if ("OPERATOR".equals(role)) {
+            Long staffId = getCurrentUserId();
+            allowedSessions = staffSessionRepo.findByStaffId(staffId)
+                    .stream().map(StaffSessionAssignment::getSessionCode).collect(Collectors.toList());
+        } else {
+            requireAdminRole();
+        }
+        return ApiResponse.ok(finalService.adminScoreSummaryByReviewer(
+                competitionId, reviewerId, reviewerName, allowedSessions));
     }
 
     // ── 驳回评分（OPERATOR/ADMIN）────────────────────────────────────────────

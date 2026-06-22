@@ -344,15 +344,24 @@ public class FinalService {
         }).sorted((a, b) -> {
             int c = compareNullable(a.getSessionCode(), b.getSessionCode());
             if (c != 0) return c;
-            return compareNullable(a.getSessionOrder(), b.getSessionOrder());
+            int c2 = compareNullable(a.getSessionOrder(), b.getSessionOrder());
+            if (c2 != 0) return c2;
+            // 同项目内评委按 reviewerId 固定排序，保证跨项目顺序一致
+            return compareNullable(a.getReviewerId(), b.getReviewerId());
         }).collect(Collectors.toList());
     }
 
-    /** 按 reviewerId 或 reviewerName 过滤，查询该评委的所有现场竞赛任务 */
-    public List<FinalTaskItem> adminScoreSummaryByReviewer(Long competitionId, Long reviewerId, String reviewerName) {
+    /** 按 reviewerId 或 reviewerName 过滤，查询该评委的所有现场竞赛任务。
+     *  allowedSessionCodes 不为 null 时只返回指定会场内的任务（供 OPERATOR 鉴权）。 */
+    public List<FinalTaskItem> adminScoreSummaryByReviewer(
+            Long competitionId, Long reviewerId, String reviewerName,
+            List<String> allowedSessionCodes) {
         List<FinalTaskItem> all = adminScoreSummary(competitionId, null);
         return all.stream()
                 .filter(item -> {
+                    if (allowedSessionCodes != null && !allowedSessionCodes.contains(item.getSessionCode())) {
+                        return false;
+                    }
                     if (reviewerId != null) {
                         return reviewerId.equals(item.getReviewerId());
                     }
@@ -362,6 +371,11 @@ public class FinalService {
                     return true;
                 })
                 .collect(Collectors.toList());
+    }
+
+    /** 兼容旧调用：不限制会场 */
+    public List<FinalTaskItem> adminScoreSummaryByReviewer(Long competitionId, Long reviewerId, String reviewerName) {
+        return adminScoreSummaryByReviewer(competitionId, reviewerId, reviewerName, null);
     }
 
     // ── 计算排名 ──────────────────────────────────────────────────────────────
