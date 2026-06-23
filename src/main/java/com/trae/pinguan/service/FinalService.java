@@ -542,6 +542,7 @@ public class FinalService {
             }
 
             GroupType gt = groupTypeByReg.get(regId);
+            snap.setGroupType(gt);
 
             if (gt == GroupType.ADVANCED) {
                 // 进阶组：书审D×30% + 面谈D×40% + 现场均分×30%
@@ -663,8 +664,15 @@ public class FinalService {
 
         return snapshots.stream().map(s -> {
             Registration reg = regMap.get(s.getRegistrationId());
-            boolean threeStage = s.getBookScoreD() != null && s.getInterviewScoreD() != null;
-            boolean hasSingleD  = s.getBookScoreD() != null || s.getInterviewScoreD() != null;
+            GroupType gt = s.getGroupType();
+            boolean isAdvanced  = gt == GroupType.ADVANCED;
+            boolean hasTotal    = s.getTotalScore() != null;
+            // 三阶段：ADVANCED + 书审 + 面谈 + 总分均有效
+            boolean threeStage  = hasTotal && isAdvanced && s.getBookScoreD() != null && s.getInterviewScoreD() != null;
+            // 两阶段进阶：ADVANCED + 无书审 + 有面谈 + 总分有效
+            boolean twoStageAdv = hasTotal && isAdvanced && s.getBookScoreD() == null && s.getInterviewScoreD() != null;
+            // 基础/综合：有书审 + 总分有效
+            boolean basicOrComp = hasTotal && !isAdvanced && s.getBookScoreD() != null;
             return FinalRankingItem.builder()
                     .sessionDate(s.getSessionDate())
                     .sessionCode(s.getSessionCode())
@@ -682,9 +690,9 @@ public class FinalService {
                     .bookReviewScore(s.getBookReviewScore())
                     .bookScoreD(s.getBookScoreD())
                     .interviewScoreD(s.getInterviewScoreD())
-                    .bookWeight(threeStage ? 0.3 : (hasSingleD ? 0.4 : null))
-                    .interviewWeight(threeStage ? 0.4 : null)
-                    .finalWeight(threeStage ? 0.3 : (hasSingleD ? 0.6 : null))
+                    .bookWeight(threeStage ? (Double)0.3 : (basicOrComp ? (Double)0.4 : null))
+                    .interviewWeight(threeStage || twoStageAdv ? (Double)0.4 : null)
+                    .finalWeight(threeStage ? (Double)0.3 : (twoStageAdv || basicOrComp ? (Double)0.6 : null))
                     .scoreFormula(buildScoreFormula(s))
                     .totalScore(s.getTotalScore())
                     .totalRank(s.getTotalRank())
@@ -727,8 +735,12 @@ public class FinalService {
                 if (!same) rank = i + 1;
             }
             Registration reg = regMap.get(s.getRegistrationId());
-            boolean threeStage = s.getBookScoreD() != null && s.getInterviewScoreD() != null;
-            boolean hasSingleD  = s.getBookScoreD() != null || s.getInterviewScoreD() != null;
+            GroupType gt2 = s.getGroupType();
+            boolean isAdv2       = gt2 == GroupType.ADVANCED;
+            boolean hasTotal2    = s.getTotalScore() != null;
+            boolean threeStage2  = hasTotal2 && isAdv2 && s.getBookScoreD() != null && s.getInterviewScoreD() != null;
+            boolean twoStageAdv2 = hasTotal2 && isAdv2 && s.getBookScoreD() == null && s.getInterviewScoreD() != null;
+            boolean basicOrComp2 = hasTotal2 && !isAdv2 && s.getBookScoreD() != null;
             result.add(FinalRankingItem.builder()
                     .sessionDate(s.getSessionDate())
                     .sessionCode(s.getSessionCode())
@@ -746,9 +758,9 @@ public class FinalService {
                     .bookReviewScore(s.getBookReviewScore())
                     .bookScoreD(s.getBookScoreD())
                     .interviewScoreD(s.getInterviewScoreD())
-                    .bookWeight(threeStage ? 0.3 : (hasSingleD ? 0.4 : null))
-                    .interviewWeight(threeStage ? 0.4 : null)
-                    .finalWeight(threeStage ? 0.3 : (hasSingleD ? 0.6 : null))
+                    .bookWeight(threeStage2 ? (Double)0.3 : (basicOrComp2 ? (Double)0.4 : null))
+                    .interviewWeight(threeStage2 || twoStageAdv2 ? (Double)0.4 : null)
+                    .finalWeight(threeStage2 ? (Double)0.3 : (twoStageAdv2 || basicOrComp2 ? (Double)0.6 : null))
                     .scoreFormula(buildScoreFormula(s))
                     .totalScore(s.getTotalScore())
                     .totalRank(s.getTotalRank())

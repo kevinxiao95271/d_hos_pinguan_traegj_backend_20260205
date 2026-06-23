@@ -1,0 +1,61 @@
+==================================================================
+  正交覆盖自测报告  |  2026-06-23 16:52:57
+==================================================================
+
+================================================================
+  Step 0: 登录
+================================================================
+
+================================================================
+  Step 1: 获取各组别 registration_id 池
+================================================================
+  COMPREHENSIVE → 162 条可用 reg_id，前3: [1, 4, 10]
+  BASIC → 58 条可用 reg_id，前3: [31, 33, 45]
+  ADVANCED → 60 条可用 reg_id，前3: [20260106, 20260114, 20260130]
+
+================================================================
+  Step 2: 写入 13 个测试快照
+================================================================
+  已写入 13 条测试快照（session_code 含 SELFTEST_GT 标记）
+
+================================================================
+  Step 3: GET /admin/final/ranking 取回测试记录
+================================================================
+  API 返回 279 条，其中测试记录 13 条
+
+================================================================
+  Step 4: 逐 case 断言
+================================================================
+  [PASS]  TC01 [ADVANCED | QCC]
+       > totalScore: exp=87.7 got=87.7  bw: 0.3→0.3  iw: 0.4→0.4  fw: 0.3→0.3
+  [PASS]  TC02 [ADVANCED | NON_QCC]
+       > totalScore: exp=87.7 got=87.7  bw: 0.3→0.3  iw: 0.4→0.4  fw: 0.3→0.3
+  [PASS]  TC03 [ADVANCED | QFD]
+       > totalScore: exp=87.7 got=87.7  bw: 0.3→0.3  iw: 0.4→0.4  fw: 0.3→0.3
+  [PASS]  TC04 [ADVANCED | QCC]
+       > totalScore: exp=89.2 got=89.2  bw: None→None  iw: 0.4→0.4  fw: 0.6→0.6
+  [PASS]  TC05 [ADVANCED | QCC]
+       > totalScore: exp=None got=None  bw: None→None  iw: None→None  fw: None→None
+  [PASS]  TC06 [ADVANCED | QCC]
+       > totalScore: exp=None got=None  bw: None→None  iw: None→None  fw: None→None
+  [PASS]  TC07 [BASIC | QCC]
+       > totalScore: exp=88.0 got=88.0  bw: 0.4→0.4  iw: None→None  fw: 0.6→0.6
+  [PASS]  TC08 [BASIC | NON_QCC]
+       > totalScore: exp=88.0 got=88.0  bw: 0.4→0.4  iw: None→None  fw: 0.6→0.6
+  [PASS]  TC09 [BASIC | QFD]
+       > totalScore: exp=88.0 got=88.0  bw: 0.4→0.4  iw: None→None  fw: 0.6→0.6
+  [PASS]  TC10 [BASIC | QCC] | BASIC有面谈脏数据，面谈应被忽略
+       > totalScore: exp=88.0 got=88.0  bw: 0.4→0.4  iw: None→None  fw: 0.6→0.6
+  [PASS]  TC11 [COMPREHENSIVE | NON_QCC] | COMPREHENSIVE有面谈脏数据，面谈应被忽略
+       > totalScore: exp=88.0 got=88.0  bw: 0.4→0.4  iw: None→None  fw: 0.6→0.6
+  [PASS]  TC12 [BASIC | QCC] | book=0.0 不应被视为无数据
+       > totalScore: exp=54.0 got=54.0  bw: 0.4→0.4  iw: None→None  fw: 0.6→0.6
+  [PASS]  TC13 [BASIC | QCC] | 无现场均分，整条记录为脏数据
+       > totalScore: exp=None got=None  bw: None→None  iw: None→None  fw: None→None
+
+================================================================
+  汇总
+================================================================
+  PASS: 13  FAIL: 0
+  [OK] 所有 case 通过 -- group_type 权重/公式/脏数据规避逻辑闭环验证完毕
+  测试数据已清理

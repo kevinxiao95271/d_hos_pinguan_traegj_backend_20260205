@@ -1,5 +1,6 @@
 package com.trae.pinguan.domain.entity;
 
+import com.trae.pinguan.domain.enums.GroupType;
 import java.time.LocalDateTime;
 import javax.persistence.*;
 import lombok.AllArgsConstructor;
@@ -45,6 +46,11 @@ public class FinalRankingSnapshot {
     /** 专场内上台顺序（来自 registrations.final_session_order） */
     @Column(name = "session_order")
     private Integer sessionOrder;
+
+    /** 组别（BASIC / COMPREHENSIVE / ADVANCED），由 computeTotalRanking 写入 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "group_type", length = 32)
+    private GroupType groupType;
 
     /** 评分表类型（QCC / NON_QCC / QFD） */
     @Column(name = "score_form", length = 10)

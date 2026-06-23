@@ -41,4 +41,25 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleConstraint(ConstraintViolationException ex) {
         return ApiResponse.fail("参数校验失败");
     }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiResponse<String> handleGeneral(Exception ex) {
+        StringBuilder msg = new StringBuilder(ex.getClass().getSimpleName())
+                .append(": ").append(ex.getMessage());
+        // 只取第一个属于我们代码的栈帧，精确定位 NPE 位置
+        for (StackTraceElement ste : ex.getStackTrace()) {
+            if (ste.getClassName().startsWith("com.trae.pinguan")) {
+                msg.append(" @ ").append(ste.getClassName())
+                   .append(".").append(ste.getMethodName())
+                   .append("(").append(ste.getFileName())
+                   .append(":").append(ste.getLineNumber()).append(")");
+                break;
+            }
+        }
+        if (ex.getCause() != null) {
+            msg.append(" | cause: ").append(ex.getCause().getClass().getSimpleName());
+        }
+        return ApiResponse.fail(msg.toString());
+    }
 }

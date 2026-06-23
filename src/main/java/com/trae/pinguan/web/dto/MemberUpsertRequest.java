@@ -2,6 +2,7 @@ package com.trae.pinguan.web.dto;
 
 import com.trae.pinguan.domain.enums.MemberRole;
 import java.util.List;
+import javax.validation.Valid;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
@@ -9,6 +10,7 @@ import lombok.Data;
 @Data
 public class MemberUpsertRequest {
     private Long registrationId;
+    @Valid
     @NotEmpty(message = "成员列表不能为空")
     private List<MemberItem> members;  // 改为members，更符合前端习惯
 
