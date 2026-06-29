@@ -20,7 +20,7 @@ public interface InstitutionRepository extends JpaRepository<Institution, Long>,
      * 排序规则：等级优先（三级>二级>一级>其他），然后按名称
      */
     @Query("SELECT i FROM Institution i WHERE " +
-           "(:keyword IS NULL OR i.name LIKE %:keyword% OR i.region LIKE %:keyword%) AND " +
+           "(:keyword IS NULL OR i.name LIKE %:keyword%) AND " +
            "(:region IS NULL OR i.region = :region) AND " +
            "(:level IS NULL OR i.level = :level) " +
            "ORDER BY " +
