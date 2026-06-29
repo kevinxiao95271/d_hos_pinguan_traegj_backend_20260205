@@ -203,7 +203,8 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<com.trae.pinguan.web.dto.AdminReviewTaskItem> listTasksForAdmin(Long competitionId, ReviewStage stage, ReviewStatus status) {
+    public List<com.trae.pinguan.web.dto.AdminReviewTaskItem> listTasksForAdmin(
+            Long competitionId, ReviewStage stage, ReviewStatus status, String reviewerName) {
         List<ReviewTask> tasks;
         if (status == null) {
             tasks = reviewTaskRepository.findWithDetailsByStageAndCompetitionId(stage, competitionId);
@@ -212,6 +213,12 @@ public class ReviewService {
         }
 
         return tasks.stream()
+                .filter(task -> {
+                    if (reviewerName == null || reviewerName.trim().isEmpty()) return true;
+                    UserAccount reviewer = task.getReviewer();
+                    return reviewer != null && reviewer.getName() != null
+                            && reviewer.getName().contains(reviewerName.trim());
+                })
                 .map(task -> {
                     Registration reg = task.getRegistration();
                     UserAccount reviewer = task.getReviewer();

@@ -76,8 +76,9 @@ public class AdminReviewController {
     public ApiResponse<List<com.trae.pinguan.web.dto.AdminReviewTaskItem>> listTasks(
             @RequestParam Long competitionId,
             @RequestParam ReviewStage stage,
-            @RequestParam(required = false) ReviewStatus status) {
-        return ApiResponse.ok(reviewService.listTasksForAdmin(competitionId, stage, status));
+            @RequestParam(required = false) ReviewStatus status,
+            @RequestParam(required = false) String reviewerName) {
+        return ApiResponse.ok(reviewService.listTasksForAdmin(competitionId, stage, status, reviewerName));
     }
 
     @GetMapping("/summary")
