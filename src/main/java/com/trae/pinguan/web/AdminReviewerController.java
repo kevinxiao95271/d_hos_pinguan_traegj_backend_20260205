@@ -107,6 +107,25 @@ public class AdminReviewerController {
         return ApiResponse.ok(null);
     }
 
+    @PutMapping("/{id}/enabled")
+    @Operation(summary = "启用或禁用账号（enabled=true/false）",
+               description = "将指定账号设置为启用或禁用状态。禁用后该账号无法登录。")
+    public ApiResponse<UserAccount> setEnabled(@PathVariable Long id,
+                                               @RequestParam boolean enabled) {
+        requireCommitteeOrOps();
+        return ApiResponse.ok(reviewerService.setEnabled(id, enabled));
+    }
+
+    @PostMapping("/batch-disable")
+    @Operation(summary = "批量禁用指定角色的全部账号",
+               description = "role 可选值：REVIEWER（评审专家）、STAFF（工作人员）。" +
+                       "用于赛后清理临时账号，禁用后账号保留数据但无法登录。")
+    public ApiResponse<Integer> batchDisable(@RequestParam com.trae.pinguan.domain.enums.RoleType role) {
+        requireCommitteeOrOps();
+        int count = reviewerService.batchDisableByRole(role);
+        return ApiResponse.ok(count);
+    }
+
     @GetMapping("/{id}/profile")
     @Operation(summary = "评审专家扩展档案详情")
     public ApiResponse<ReviewerProfileDto> profile(@PathVariable Long id) {

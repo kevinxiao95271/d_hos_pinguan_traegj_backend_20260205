@@ -30,6 +30,8 @@ public class MaterialService {
     private static final int EVIDENCE_MAX_COUNT = 5;
     private static final String REGISTRATION_FORM_DOC_TYPE = "REGISTRATION_FORM_DOC";
     private static final String REGISTRATION_FORM_PDF_TYPE = "REGISTRATION_FORM_PDF";
+    /** 成果报告书类型，仅允许 PDF */
+    private static final String REPORT_TYPE = "REPORT";
     private static final String[] ALLOWED_EXTENSIONS = {
         "pdf", "doc", "docx", "xls", "xlsx", 
         "ppt", "pptx", "zip", "rar", 
@@ -180,6 +182,9 @@ public class MaterialService {
         if (REGISTRATION_FORM_PDF_TYPE.equalsIgnoreCase(type)
                 && !REG_FORM_PDF_ALLOWED_EXTENSIONS.contains(ext)) {
             throw new IllegalArgumentException("REGISTRATION_FORM_PDF 仅支持 PDF");
+        }
+        if (REPORT_TYPE.equalsIgnoreCase(type) && !"pdf".equals(ext)) {
+            throw new IllegalArgumentException("成果报告书（REPORT）仅支持 PDF 格式，请将文件转换为 PDF 后重新上传");
         }
     }
 

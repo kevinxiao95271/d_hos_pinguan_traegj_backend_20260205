@@ -147,6 +147,7 @@ public class ReviewService {
             return com.trae.pinguan.web.dto.ReviewTaskItem.builder()
                     .id(task.getId())
                     .registrationId(reg != null ? reg.getId() : null)
+                    .registrationCode(reg != null ? reg.getRegistrationCode() : null)
                     .projectName(reg != null ? reg.getProjectName() : null)
                     .institutionName(reg != null && reg.getInstitution() != null
                             ? reg.getInstitution().getName() : null)
@@ -1913,8 +1914,14 @@ public class ReviewService {
                 reviewerScores.add(b.build());
             }
 
+            // 评委排序固定按 reviewerId 升序，确保同专家在不同项目里位置一致
+            reviewerScores.sort(java.util.Comparator.comparingLong(
+                    rd -> rd.getReviewerId() != null ? rd.getReviewerId() : Long.MAX_VALUE));
+
             result.add(ScoreListItem.builder()
                     .registrationId(regId)
+                    .registrationCode(reg.getRegistrationCode())
+                    .finalSessionOrder(reg.getFinalSessionOrder())
                     .projectName(reg.getProjectName())
                     .institutionName(reg.getInstitution() != null ? reg.getInstitution().getName() : null)
                     .institutionLevel(reg.getInstitution() != null ? reg.getInstitution().getLevel() : null)

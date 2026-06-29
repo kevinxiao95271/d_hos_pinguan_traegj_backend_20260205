@@ -173,6 +173,24 @@ public class ReviewerService {
         userAccountRepository.delete(user);
     }
 
+    /** 启用/禁用账号（单个） */
+    @Transactional
+    public UserAccount setEnabled(Long id, boolean enabled) {
+        UserAccount user = userAccountRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("账号不存在"));
+        user.setEnabled(enabled);
+        return userAccountRepository.save(user);
+    }
+
+    /** 批量禁用指定角色的所有账号（用于赛后清理临时账号） */
+    @Transactional
+    public int batchDisableByRole(RoleType role) {
+        List<UserAccount> users = userAccountRepository.findByRole(role);
+        users.forEach(u -> u.setEnabled(false));
+        userAccountRepository.saveAll(users);
+        return users.size();
+    }
+
     @Transactional(readOnly = true)
     public ReviewerProfileDto getProfile(Long reviewerId) {
         UserAccount user = get(reviewerId);
