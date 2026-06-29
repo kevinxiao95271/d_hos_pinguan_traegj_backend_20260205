@@ -67,6 +67,25 @@ public class CompetitionController {
         return ApiResponse.ok(competitionService.updateConfig(id, request));
     }
 
+    @PostMapping("/{id}/activate")
+    @Operation(summary = "激活赛事（DRAFT → ACTIVE，同年唯一）")
+    public ApiResponse<Competition> activate(@PathVariable Long id) {
+        return ApiResponse.ok(competitionService.activate(id));
+    }
+
+    @PostMapping("/{id}/deactivate")
+    @Operation(summary = "撤回激活（ACTIVE → DRAFT，前提：无报名记录）")
+    public ApiResponse<Competition> deactivate(@PathVariable Long id) {
+        return ApiResponse.ok(competitionService.deactivate(id));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "删除赛事（仅限 DRAFT 且无报名记录）")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        competitionService.delete(id);
+        return ApiResponse.ok(null);
+    }
+
     @PostMapping("/merge")
     @Operation(summary = "合并赛事")
     public ApiResponse<CompetitionMergeResponse> merge(@Valid @RequestBody CompetitionMergeRequest request) {

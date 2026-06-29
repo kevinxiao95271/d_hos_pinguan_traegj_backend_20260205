@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface RegistrationRepository extends JpaRepository<Registration, Long> {
     List<Registration> findByCompetitionId(Long competitionId);
+    long countByCompetitionId(Long competitionId);
     List<Registration> findByCompetitionIdAndStatus(Long competitionId, RegistrationStatus status);
     List<Registration> findByApplicantId(Long applicantId);
     List<Registration> findByInstitutionId(Long institutionId);

@@ -1,6 +1,7 @@
 package com.trae.pinguan.domain.entity;
 
 import com.trae.pinguan.domain.enums.CompetitionStage;
+import com.trae.pinguan.domain.enums.CompetitionStatus;
 import java.time.LocalDateTime;
 import javax.persistence.*;
 import lombok.AllArgsConstructor;
@@ -37,6 +38,12 @@ public class Competition {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    /** 赛事状态：DRAFT（草稿）/ ACTIVE（激活，同年唯一） */
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 16)
+    private CompetitionStatus status = CompetitionStatus.DRAFT;
 
     /** 基层组分组前缀，默认 A */
     @Column(name = "basic_group_prefix", length = 8)
