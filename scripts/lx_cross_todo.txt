@@ -1,0 +1,6 @@
+Host:     gz-cdb-bq7gk3k5.sql.tencentcdb.com
+Port:     63606
+Database: lx_cross
+Username: root
+Password: Yiguo9527_
+
