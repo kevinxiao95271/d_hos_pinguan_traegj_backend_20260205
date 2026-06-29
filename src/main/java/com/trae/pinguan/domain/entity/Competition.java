@@ -37,4 +37,16 @@ public class Competition {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    /** 基层组分组前缀，默认 A */
+    @Column(name = "basic_group_prefix", length = 8)
+    private String basicGroupPrefix = "A";
+
+    /** 综合组分组前缀，默认 B */
+    @Column(name = "comprehensive_group_prefix", length = 8)
+    private String comprehensiveGroupPrefix = "B";
+
+    /** 进阶组分组前缀，默认 C */
+    @Column(name = "advanced_group_prefix", length = 8)
+    private String advancedGroupPrefix = "C";
 }

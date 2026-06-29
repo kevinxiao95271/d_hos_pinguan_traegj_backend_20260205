@@ -35,4 +35,13 @@ public class CompetitionConfigRequest {
 
     @Schema(description = "决赛结束时间")
     private LocalDateTime finalEnd;
+
+    @Schema(description = "基层组分组前缀，如 A")
+    private String basicGroupPrefix;
+
+    @Schema(description = "综合组分组前缀，如 B")
+    private String comprehensiveGroupPrefix;
+
+    @Schema(description = "进阶组分组前缀，如 C")
+    private String advancedGroupPrefix;
 }

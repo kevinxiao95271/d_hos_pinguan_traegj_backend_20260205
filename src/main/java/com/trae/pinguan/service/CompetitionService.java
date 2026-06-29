@@ -43,9 +43,16 @@ public class CompetitionService {
                 .interviewEnd(request.getInterviewEnd())
                 .finalStart(request.getFinalStart())
                 .finalEnd(request.getFinalEnd())
+                .basicGroupPrefix(normalizePrefix(request.getBasicGroupPrefix(), "A"))
+                .comprehensiveGroupPrefix(normalizePrefix(request.getComprehensiveGroupPrefix(), "B"))
+                .advancedGroupPrefix(normalizePrefix(request.getAdvancedGroupPrefix(), "C"))
                 .createdAt(LocalDateTime.now())
                 .build();
         return competitionRepository.save(competition);
+    }
+
+    private String normalizePrefix(String raw, String defaultVal) {
+        return (raw != null && !raw.trim().isEmpty()) ? raw.trim().toUpperCase() : defaultVal;
     }
 
     @Transactional
@@ -69,6 +76,9 @@ public class CompetitionService {
         if (req.getInterviewEnd()    != null) competition.setInterviewEnd(req.getInterviewEnd());
         if (req.getFinalStart()      != null) competition.setFinalStart(req.getFinalStart());
         if (req.getFinalEnd()        != null) competition.setFinalEnd(req.getFinalEnd());
+        if (req.getBasicGroupPrefix()         != null) competition.setBasicGroupPrefix(req.getBasicGroupPrefix().trim().toUpperCase());
+        if (req.getComprehensiveGroupPrefix() != null) competition.setComprehensiveGroupPrefix(req.getComprehensiveGroupPrefix().trim().toUpperCase());
+        if (req.getAdvancedGroupPrefix()      != null) competition.setAdvancedGroupPrefix(req.getAdvancedGroupPrefix().trim().toUpperCase());
         return competitionRepository.save(competition);
     }
 }

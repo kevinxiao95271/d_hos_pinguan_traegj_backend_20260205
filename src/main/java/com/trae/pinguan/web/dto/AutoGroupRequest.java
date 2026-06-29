@@ -17,9 +17,9 @@ public class AutoGroupRequest {
             + "不指定时对所有组别执行分组，分组前缀由系统自动推导", example = "BASIC")
     private GroupType groupType;
 
-    @Schema(description = "分组前缀（可选）：A=基层组, B=综合组, C=进阶组。"
-            + "不传时由系统根据 groupType 自动推导；传入时必须是合法值且须与 groupType 一致",
-            example = "A", allowableValues = {"A", "B", "C"})
+    @Schema(description = "分组前缀（可选）。不传时由系统根据 groupType 及赛事配置自动推导；"
+            + "传入时须与 groupType 一致且为该赛事配置的有效前缀",
+            example = "A")
     private String groupPrefix;
 
     @NotNull

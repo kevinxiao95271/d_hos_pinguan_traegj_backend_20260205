@@ -506,9 +506,11 @@ public class RegistrationService {
     @Transactional
     public List<Registration> batchClassify(BatchClassificationRequest request) {
         List<Registration> registrations = registrationRepository.findAllById(request.getRegistrationIds());
+        if (registrations.isEmpty()) return registrations;
+        Competition competition = registrations.get(0).getCompetition();
         String newGroupCode = request.getGroupCode();
         for (Registration registration : registrations) {
-            String expectedPrefix = groupTypeToPrefix(registration.getGroupType());
+            String expectedPrefix = groupTypeToPrefix(registration.getGroupType(), competition);
             if (!newGroupCode.startsWith(expectedPrefix)) {
                 throw new IllegalArgumentException(
                         "项目 [" + registration.getProjectName() + "] 属于" +
@@ -522,14 +524,25 @@ public class RegistrationService {
         return registrationRepository.saveAll(registrations);
     }
 
-    private String groupTypeToPrefix(com.trae.pinguan.domain.enums.GroupType groupType) {
+    private String groupTypeToPrefix(com.trae.pinguan.domain.enums.GroupType groupType, Competition competition) {
         if (groupType == null) return "";
         switch (groupType) {
-            case BASIC:         return "A";
-            case COMPREHENSIVE: return "B";
-            case ADVANCED:      return "C";
-            default:            return "";
+            case BASIC:
+                return competition.getBasicGroupPrefix() != null ? competition.getBasicGroupPrefix().toUpperCase() : "A";
+            case COMPREHENSIVE:
+                return competition.getComprehensiveGroupPrefix() != null ? competition.getComprehensiveGroupPrefix().toUpperCase() : "B";
+            case ADVANCED:
+                return competition.getAdvancedGroupPrefix() != null ? competition.getAdvancedGroupPrefix().toUpperCase() : "C";
+            default: return "";
         }
+    }
+
+    private java.util.Set<String> validPrefixes(Competition competition) {
+        return new java.util.HashSet<>(java.util.Arrays.asList(
+            competition.getBasicGroupPrefix()         != null ? competition.getBasicGroupPrefix().toUpperCase()         : "A",
+            competition.getComprehensiveGroupPrefix() != null ? competition.getComprehensiveGroupPrefix().toUpperCase() : "B",
+            competition.getAdvancedGroupPrefix()      != null ? competition.getAdvancedGroupPrefix().toUpperCase()      : "C"
+        ));
     }
 
     private String groupTypeLabel(com.trae.pinguan.domain.enums.GroupType groupType) {
@@ -542,26 +555,25 @@ public class RegistrationService {
         }
     }
 
-    private static final java.util.Set<String> VALID_PREFIXES =
-            java.util.Collections.unmodifiableSet(new java.util.HashSet<>(java.util.Arrays.asList("A", "B", "C")));
-
     @Transactional
     public List<Registration> autoGroup(AutoGroupRequest request) {
+        Competition competition = competitionRepository.findById(request.getCompetitionId())
+                .orElseThrow(() -> new IllegalArgumentException("赛事不存在: " + request.getCompetitionId()));
+
         // ── 前缀校验与推导 ──────────────────────────────────────────────────────
         String resolvedPrefix;
         if (request.getGroupPrefix() != null) {
             String p = request.getGroupPrefix().trim().toUpperCase();
-            if (!VALID_PREFIXES.contains(p)) {
-                throw new IllegalArgumentException(
-                        "groupPrefix 非法：'" + request.getGroupPrefix() + "'，只允许 A（基层组）/ B（综合组）/ C（进阶组）");
-            }
             if (request.getGroupType() != null) {
-                String expected = groupTypeToPrefix(request.getGroupType());
+                String expected = groupTypeToPrefix(request.getGroupType(), competition);
                 if (!p.equals(expected)) {
                     throw new IllegalArgumentException(
                             "groupPrefix '" + p + "' 与 groupType " + groupTypeLabel(request.getGroupType())
-                            + " 不匹配，应为 '" + expected + "'");
+                            + " 不匹配，该赛事配置应为 '" + expected + "'");
                 }
+            } else if (!validPrefixes(competition).contains(p)) {
+                throw new IllegalArgumentException(
+                        "groupPrefix 非法：'" + p + "'，该赛事有效前缀为 " + validPrefixes(competition));
             }
             resolvedPrefix = p;
         } else {
@@ -569,7 +581,7 @@ public class RegistrationService {
                 throw new IllegalArgumentException(
                         "groupType 与 groupPrefix 不能同时为空，请至少指定其中一个");
             }
-            resolvedPrefix = groupTypeToPrefix(request.getGroupType());
+            resolvedPrefix = groupTypeToPrefix(request.getGroupType(), competition);
         }
 
         // ── 查询报名记录 ────────────────────────────────────────────────────────

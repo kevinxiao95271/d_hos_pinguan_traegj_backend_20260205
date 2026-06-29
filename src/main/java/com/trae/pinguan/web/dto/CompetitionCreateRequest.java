@@ -16,4 +16,11 @@ public class CompetitionCreateRequest {
     private LocalDateTime interviewEnd;
     private LocalDateTime finalStart;
     private LocalDateTime finalEnd;
+
+    /** 基层组分组前缀，不填默认 A */
+    private String basicGroupPrefix;
+    /** 综合组分组前缀，不填默认 B */
+    private String comprehensiveGroupPrefix;
+    /** 进阶组分组前缀，不填默认 C */
+    private String advancedGroupPrefix;
 }
