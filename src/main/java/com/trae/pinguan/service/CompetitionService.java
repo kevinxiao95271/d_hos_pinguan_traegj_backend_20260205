@@ -3,6 +3,7 @@ package com.trae.pinguan.service;
 import com.trae.pinguan.domain.entity.Competition;
 import com.trae.pinguan.domain.enums.CompetitionStage;
 import com.trae.pinguan.domain.enums.CompetitionStatus;
+import com.trae.pinguan.exception.PrefixLockedByGroupingException;
 import com.trae.pinguan.repository.CompetitionRepository;
 import com.trae.pinguan.repository.RegistrationRepository;
 import com.trae.pinguan.web.dto.CompetitionConfigRequest;
@@ -129,6 +130,12 @@ public class CompetitionService {
         if (req.getInterviewEnd()    != null) competition.setInterviewEnd(req.getInterviewEnd());
         if (req.getFinalStart()      != null) competition.setFinalStart(req.getFinalStart());
         if (req.getFinalEnd()        != null) competition.setFinalEnd(req.getFinalEnd());
+        boolean wantChangePrefix = req.getBasicGroupPrefix() != null
+                || req.getComprehensiveGroupPrefix() != null
+                || req.getAdvancedGroupPrefix() != null;
+        if (wantChangePrefix && registrationRepository.existsGroupedByCompetitionId(id)) {
+            throw new PrefixLockedByGroupingException(id);
+        }
         if (req.getBasicGroupPrefix()         != null) competition.setBasicGroupPrefix(req.getBasicGroupPrefix().trim().toUpperCase());
         if (req.getComprehensiveGroupPrefix() != null) competition.setComprehensiveGroupPrefix(req.getComprehensiveGroupPrefix().trim().toUpperCase());
         if (req.getAdvancedGroupPrefix()      != null) competition.setAdvancedGroupPrefix(req.getAdvancedGroupPrefix().trim().toUpperCase());

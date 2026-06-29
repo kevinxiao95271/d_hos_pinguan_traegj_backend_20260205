@@ -15,6 +15,10 @@ import org.springframework.data.repository.query.Param;
 public interface RegistrationRepository extends JpaRepository<Registration, Long> {
     List<Registration> findByCompetitionId(Long competitionId);
     long countByCompetitionId(Long competitionId);
+
+    /** 判断该赛事下是否已有任何已分组记录（group_code 非空） */
+    @Query("SELECT COUNT(r) > 0 FROM Registration r WHERE r.competition.id = :competitionId AND r.groupCode IS NOT NULL AND r.groupCode <> ''")
+    boolean existsGroupedByCompetitionId(@Param("competitionId") Long competitionId);
     List<Registration> findByCompetitionIdAndStatus(Long competitionId, RegistrationStatus status);
     List<Registration> findByApplicantId(Long applicantId);
     List<Registration> findByInstitutionId(Long institutionId);

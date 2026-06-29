@@ -1,6 +1,7 @@
 package com.trae.pinguan.web;
 
 import com.trae.pinguan.exception.DuplicateProjectNameException;
+import com.trae.pinguan.exception.PrefixLockedByGroupingException;
 import com.trae.pinguan.web.dto.ApiResponse;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,15 @@ public class GlobalExceptionHandler {
                 DuplicateProjectNameException.ERROR_CODE,
                 ex.getMessage(),
                 ex.getMatches());
+    }
+
+    @ExceptionHandler(PrefixLockedByGroupingException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ApiResponse<Void> handlePrefixLocked(PrefixLockedByGroupingException ex) {
+        return ApiResponse.failWithCode(
+                PrefixLockedByGroupingException.ERROR_CODE,
+                ex.getMessage(),
+                null);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
