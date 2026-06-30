@@ -220,15 +220,6 @@ public class RegistrationService {
 
         validateRequiredMaterialsBeforeSubmit(registrationId);
 
-        // 首次提交时生成项目编号（退回后再次提交不重新生成）
-        if (registration.getRegistrationCode() == null) {
-            Long competitionId = registration.getCompetition().getId();
-            int nextCode = registrationRepository
-                    .findMaxRegistrationCodeByCompetitionId(competitionId)
-                    .map(max -> max + 1)
-                    .orElse(1);
-            registration.setRegistrationCode(nextCode);
-        }
         registration.setStatus(RegistrationStatus.SUBMITTED);
         registration.setSubmittedAt(LocalDateTime.now());
         return registrationRepository.save(registration);
@@ -407,7 +398,6 @@ public class RegistrationService {
                                                             com.trae.pinguan.domain.enums.RegistrationStatus status,
                                                             com.trae.pinguan.domain.enums.GroupType groupType,
                                                             String groupCode,
-                                                            Integer registrationCode,
                                                             String projectName,
                                                             String institutionName,
                                                             String methodCode,
@@ -420,14 +410,13 @@ public class RegistrationService {
         String institutionNameValue = institutionName == null || institutionName.trim().isEmpty() ? null : institutionName.trim();
         String methodCodeValue = methodCode == null || methodCode.trim().isEmpty() ? null : methodCode.trim();
         String subjectTypeCodeValue = subjectTypeCode == null || subjectTypeCode.trim().isEmpty() ? null : subjectTypeCode.trim();
-        // page 参数从1开始，转为0-based传给JPA
-        PageRequest pageable = PageRequest.of(Math.max(0, page - 1), size, Sort.by(Sort.Direction.ASC, "id"));
+        // page 参数从0开始（0-indexed），直接传给JPA
+        PageRequest pageable = PageRequest.of(Math.max(0, page), size, Sort.by(Sort.Direction.ASC, "id"));
         Page<RegistrationFilterItem> pageResult = registrationRepository.filterRegistrations(
                 competitionId,
                 status,
                 groupType,
                 groupCodeValue,
-                registrationCode,
                 projectNameValue,
                 institutionNameValue,
                 methodCodeValue,

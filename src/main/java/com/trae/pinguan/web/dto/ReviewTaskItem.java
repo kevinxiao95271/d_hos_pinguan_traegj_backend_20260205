@@ -16,7 +16,6 @@ public class ReviewTaskItem {
     private Long id;
     private Long registrationId;
     /** 项目编号（提交成功后生成的唯一序号） */
-    private Integer registrationCode;
     private String projectName;
     private String institutionName;
     private String institutionLevel;

@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -38,6 +39,17 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleIllegalArgument(IllegalArgumentException ex) {
         return ApiResponse.fail(ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String msg = "参数 [" + ex.getName() + "] 值非法: " + ex.getValue();
+        if (ex.getRequiredType() != null && ex.getRequiredType().isEnum()) {
+            Object[] constants = ex.getRequiredType().getEnumConstants();
+            msg += "，合法值: " + java.util.Arrays.toString(constants);
+        }
+        return ApiResponse.fail(msg);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

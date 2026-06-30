@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 public class ShortlistItem {
     private Integer irank;
     private Long registrationId;
+    /** 项目编号（提交后生成，旧数据为 null） */
     private String projectName;
     private String institutionName;
     private GroupType groupType;

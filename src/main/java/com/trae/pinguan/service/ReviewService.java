@@ -147,7 +147,6 @@ public class ReviewService {
             return com.trae.pinguan.web.dto.ReviewTaskItem.builder()
                     .id(task.getId())
                     .registrationId(reg != null ? reg.getId() : null)
-                    .registrationCode(reg != null ? reg.getRegistrationCode() : null)
                     .projectName(reg != null ? reg.getProjectName() : null)
                     .institutionName(reg != null && reg.getInstitution() != null
                             ? reg.getInstitution().getName() : null)
@@ -1920,7 +1919,6 @@ public class ReviewService {
 
             result.add(ScoreListItem.builder()
                     .registrationId(regId)
-                    .registrationCode(reg.getRegistrationCode())
                     .finalSessionOrder(reg.getFinalSessionOrder())
                     .projectName(reg.getProjectName())
                     .institutionName(reg.getInstitution() != null ? reg.getInstitution().getName() : null)

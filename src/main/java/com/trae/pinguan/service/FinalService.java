@@ -678,7 +678,6 @@ public class FinalService {
                     .sessionCode(s.getSessionCode())
                     .rank(s.getSessionRank())
                     .registrationId(s.getRegistrationId())
-                    .registrationCode(reg != null ? reg.getRegistrationCode() : null)
                     .sessionOrder(s.getSessionOrder())
                     .projectName(reg != null ? reg.getProjectName() : "")
                     .institutionName(reg != null && reg.getInstitution() != null
@@ -746,7 +745,6 @@ public class FinalService {
                     .sessionCode(s.getSessionCode())
                     .rank(rank)
                     .registrationId(s.getRegistrationId())
-                    .registrationCode(reg != null ? reg.getRegistrationCode() : null)
                     .sessionOrder(s.getSessionOrder())
                     .projectName(reg != null ? reg.getProjectName() : "")
                     .institutionName(reg != null && reg.getInstitution() != null

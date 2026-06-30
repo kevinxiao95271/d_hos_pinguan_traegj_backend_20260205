@@ -5,7 +5,6 @@ import com.trae.pinguan.domain.enums.GroupType;
 import com.trae.pinguan.domain.enums.RegistrationStatus;
 import com.trae.pinguan.web.dto.RegistrationFilterItem;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
@@ -61,37 +60,37 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
 
     @Query(value = "select new com.trae.pinguan.web.dto.RegistrationFilterItem(" +
             "r.id, r.projectName, i.name, i.level, r.groupType, r.groupCode, r.status, r.submittedAt, " +
-            "a.subjectTypeCode, a.methodCode, '', '', r.applicant.name) " +
+            "(select a.subjectTypeCode from ActivityInfo a where a.registration = r), " +
+            "(select a.methodCode from ActivityInfo a where a.registration = r), " +
+            "'', '', ap.name) " +
             "from Registration r " +
             "join r.institution i " +
-            "left join ActivityInfo a on a.registration = r " +
+            "left join r.applicant ap " +
             "where r.competition.id = :competitionId " +
             "and r.status <> com.trae.pinguan.domain.enums.RegistrationStatus.DRAFT " +
             "and (:status is null or r.status = :status) " +
             "and (:groupType is null or r.groupType = :groupType) " +
             "and (:groupCode is null or r.groupCode = :groupCode) " +
-            "and (:registrationCode is null or r.registrationCode = :registrationCode) " +
             "and (:projectName is null or r.projectName like concat('%', :projectName, '%')) " +
             "and (:institutionName is null or i.name like concat('%', :institutionName, '%')) " +
-            "and (:methodCode is null or a.methodCode = :methodCode) " +
-            "and (:subjectTypeCode is null or a.subjectTypeCode = :subjectTypeCode) " +
+            "and (:methodCode is null or exists (select 1 from ActivityInfo a where a.registration = r and a.methodCode = :methodCode)) " +
+            "and (:subjectTypeCode is null or exists (select 1 from ActivityInfo a where a.registration = r and a.subjectTypeCode = :subjectTypeCode)) " +
             "and (:hasPaymentProof is null or " +
             "(:hasPaymentProof = true and exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')) or " +
             "(:hasPaymentProof = false and not exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')))",
             countQuery = "select count(r) " +
             "from Registration r " +
             "join r.institution i " +
-            "left join ActivityInfo a on a.registration = r " +
+            "left join r.applicant ap " +
             "where r.competition.id = :competitionId " +
             "and r.status <> com.trae.pinguan.domain.enums.RegistrationStatus.DRAFT " +
             "and (:status is null or r.status = :status) " +
             "and (:groupType is null or r.groupType = :groupType) " +
             "and (:groupCode is null or r.groupCode = :groupCode) " +
-            "and (:registrationCode is null or r.registrationCode = :registrationCode) " +
             "and (:projectName is null or r.projectName like concat('%', :projectName, '%')) " +
             "and (:institutionName is null or i.name like concat('%', :institutionName, '%')) " +
-            "and (:methodCode is null or a.methodCode = :methodCode) " +
-            "and (:subjectTypeCode is null or a.subjectTypeCode = :subjectTypeCode) " +
+            "and (:methodCode is null or exists (select 1 from ActivityInfo a where a.registration = r and a.methodCode = :methodCode)) " +
+            "and (:subjectTypeCode is null or exists (select 1 from ActivityInfo a where a.registration = r and a.subjectTypeCode = :subjectTypeCode)) " +
             "and (:hasPaymentProof is null or " +
             "(:hasPaymentProof = true and exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')) or " +
             "(:hasPaymentProof = false and not exists (select 1 from MaterialFile m where m.registration = r and m.type = 'payment_proof')))")
@@ -99,15 +98,10 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
                                                      @Param("status") RegistrationStatus status,
                                                      @Param("groupType") GroupType groupType,
                                                      @Param("groupCode") String groupCode,
-                                                     @Param("registrationCode") Integer registrationCode,
                                                      @Param("projectName") String projectName,
                                                      @Param("institutionName") String institutionName,
                                                      @Param("methodCode") String methodCode,
                                                      @Param("subjectTypeCode") String subjectTypeCode,
                                                      @Param("hasPaymentProof") Boolean hasPaymentProof,
                                                      Pageable pageable);
-
-    /** 按赛事获取当前最大 registrationCode（用于生成下一个编号），无已提交记录时返回 empty */
-    @Query("select max(r.registrationCode) from Registration r where r.competition.id = :competitionId")
-    Optional<Integer> findMaxRegistrationCodeByCompetitionId(@Param("competitionId") Long competitionId);
 }
