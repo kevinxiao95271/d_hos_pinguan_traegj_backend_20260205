@@ -10,6 +10,10 @@ import java.util.List;
 public interface CompetitionRepository extends JpaRepository<Competition, Long> {
     java.util.Optional<Competition> findTop1ByOrderByIdDesc();
 
+    boolean existsByNameAndIdNot(String name, Long id);
+
+    boolean existsByName(String name);
+
     /** 查同年同状态的赛事（用于同年 ACTIVE 唯一性校验） */
     @Query("SELECT c FROM Competition c WHERE c.status = :status AND YEAR(c.createdAt) = :year AND c.id <> :excludeId")
     List<Competition> findByStatusAndYearExcluding(

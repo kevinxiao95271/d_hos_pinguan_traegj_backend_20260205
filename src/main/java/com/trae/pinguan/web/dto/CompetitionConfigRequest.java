@@ -9,6 +9,9 @@ import lombok.Data;
 @Schema(description = "赛事配置更新请求（时间窗口 + 阶段，字段均可选，仅更新传入的非 null 字段）")
 public class CompetitionConfigRequest {
 
+    @Schema(description = "赛事名称，唯一，传入则覆盖原名称")
+    private String name;
+
     @Schema(description = "赛事阶段：REGISTER / BOOK_REVIEW / INTERVIEW / FINAL")
     private CompetitionStage stage;
 

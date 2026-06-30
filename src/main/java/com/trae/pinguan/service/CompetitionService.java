@@ -36,6 +36,9 @@ public class CompetitionService {
 
     @Transactional
     public Competition create(CompetitionCreateRequest request) {
+        if (competitionRepository.existsByName(request.getName())) {
+            throw new IllegalArgumentException("赛事名称「" + request.getName() + "」已存在，请使用不同名称");
+        }
         Competition competition = Competition.builder()
                 .name(request.getName())
                 .stage(CompetitionStage.REGISTER)
@@ -121,6 +124,13 @@ public class CompetitionService {
     public Competition updateConfig(Long id, CompetitionConfigRequest req) {
         Competition competition = competitionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
+        if (req.getName() != null && !req.getName().trim().isEmpty()) {
+            String newName = req.getName().trim();
+            if (competitionRepository.existsByNameAndIdNot(newName, id)) {
+                throw new IllegalArgumentException("赛事名称「" + newName + "」已存在，请使用不同名称");
+            }
+            competition.setName(newName);
+        }
         if (req.getStage()           != null) competition.setStage(req.getStage());
         if (req.getRegisterStart()   != null) competition.setRegisterStart(req.getRegisterStart());
         if (req.getRegisterEnd()     != null) competition.setRegisterEnd(req.getRegisterEnd());
