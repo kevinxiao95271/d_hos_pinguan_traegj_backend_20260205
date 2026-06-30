@@ -16,8 +16,6 @@ public class ScoreListItem {
     @Schema(description = "报名 ID")
     private Long registrationId;
 
-    @Schema(description = "项目编号（提交后生成，唯一递增序号）")
-
     @Schema(description = "专场上台顺序（决赛阶段有值）")
     private Integer finalSessionOrder;
 

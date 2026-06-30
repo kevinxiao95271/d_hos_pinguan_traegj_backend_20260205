@@ -50,7 +50,7 @@ public class ReviewerService {
                                        String reviewerGroupCode,
                                        String interviewGroupCode,
                                        String expertBackground) {
-        return list(null, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground);
+        return list(null, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground, null);
     }
 
     public List<ReviewerListItem> list(Long competitionId,
@@ -58,6 +58,15 @@ public class ReviewerService {
                                        String reviewerGroupCode,
                                        String interviewGroupCode,
                                        String expertBackground) {
+        return list(competitionId, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground, null);
+    }
+
+    public List<ReviewerListItem> list(Long competitionId,
+                                       Long institutionId,
+                                       String reviewerGroupCode,
+                                       String interviewGroupCode,
+                                       String expertBackground,
+                                       String name) {
         // 预加载评委决赛任务（仅当传入 competitionId 时查询）
         Map<Long, List<String>> finalSessionsByReviewer = new HashMap<>();
         if (competitionId != null) {
@@ -86,6 +95,8 @@ public class ReviewerService {
                 .filter(user -> reviewerGroupCode == null || reviewerGroupCode.equals(user.getReviewerGroupCode()))
                 .filter(user -> interviewGroupCode == null || interviewGroupCode.equals(user.getInterviewGroupCode()))
                 .filter(user -> expertBackground == null || expertBackground.equals(user.getExpertBackground()))
+                .filter(user -> name == null || name.trim().isEmpty()
+                        || (user.getName() != null && user.getName().contains(name.trim())))
                 .map(user -> new ReviewerListItem(
                         user.getId(),
                         user.getPhone(),

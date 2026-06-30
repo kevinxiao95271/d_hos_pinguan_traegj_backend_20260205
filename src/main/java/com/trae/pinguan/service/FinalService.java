@@ -833,7 +833,7 @@ public class FinalService {
             Row row = sheet.createRow(rowNum++);
             int col = 0;
             if (includeSessionCol) row.createCell(col++).setCellValue(item.getSessionCode());
-            row.createCell(col++).setCellValue(item.getRegistrationCode() != null ? item.getRegistrationCode() : 0);
+            row.createCell(col++).setCellValue(item.getRegistrationId() != null ? item.getRegistrationId() : 0);
             row.createCell(col++).setCellValue(item.getRank() != null ? item.getRank() : 0);
             row.createCell(col++).setCellValue(item.getSessionOrder() != null ? item.getSessionOrder() : 0);
             row.createCell(col++).setCellValue(item.getProjectName());

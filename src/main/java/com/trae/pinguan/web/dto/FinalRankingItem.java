@@ -21,8 +21,6 @@ public class FinalRankingItem {
     @Schema(description = "报名 ID")
     private Long registrationId;
 
-    @Schema(description = "项目编号（提交后生成）")
-
     @Schema(description = "专场内上台顺序")
     private Integer sessionOrder;
 

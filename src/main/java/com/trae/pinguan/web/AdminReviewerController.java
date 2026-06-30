@@ -56,14 +56,15 @@ public class AdminReviewerController {
 
     @GetMapping
     @Operation(summary = "评委列表",
-               description = "传 competitionId 时返回该赛事下每位评委已分配的决赛专场列表（finalSessionCodes）")
+               description = "传 competitionId 时返回该赛事下每位评委已分配的决赛专场列表（finalSessionCodes）；name 支持姓名模糊搜索")
     public ApiResponse<List<ReviewerListItem>> list(@RequestParam(required = false) Long competitionId,
                                                     @RequestParam(required = false) Long institutionId,
                                                     @RequestParam(required = false) String reviewerGroupCode,
                                                     @RequestParam(required = false) String interviewGroupCode,
-                                                    @RequestParam(required = false) String expertBackground) {
+                                                    @RequestParam(required = false) String expertBackground,
+                                                    @RequestParam(required = false) String name) {
         requireCommitteeOrOps();
-        return ApiResponse.ok(reviewerService.list(competitionId, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground));
+        return ApiResponse.ok(reviewerService.list(competitionId, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground, name));
     }
 
     @GetMapping("/list")
@@ -72,9 +73,10 @@ public class AdminReviewerController {
                                                           @RequestParam(required = false) Long institutionId,
                                                           @RequestParam(required = false) String reviewerGroupCode,
                                                           @RequestParam(required = false) String interviewGroupCode,
-                                                          @RequestParam(required = false) String expertBackground) {
+                                                          @RequestParam(required = false) String expertBackground,
+                                                          @RequestParam(required = false) String name) {
         requireCommitteeOrOps();
-        return ApiResponse.ok(reviewerService.list(competitionId, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground));
+        return ApiResponse.ok(reviewerService.list(competitionId, institutionId, reviewerGroupCode, interviewGroupCode, expertBackground, name));
     }
 
     @GetMapping("/{id}")
