@@ -124,13 +124,21 @@ public class CompetitionService {
     public Competition updateConfig(Long id, CompetitionConfigRequest req) {
         Competition competition = competitionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
+        boolean isActive = competition.getStatus() == CompetitionStatus.ACTIVE;
+
+        // 名称和分组前缀在 ACTIVE 后锁定
         if (req.getName() != null && !req.getName().trim().isEmpty()) {
+            if (isActive) {
+                throw new IllegalStateException("赛事已激活，名称不可修改");
+            }
             String newName = req.getName().trim();
             if (competitionRepository.existsByNameAndIdNot(newName, id)) {
                 throw new IllegalArgumentException("赛事名称「" + newName + "」已存在，请使用不同名称");
             }
             competition.setName(newName);
         }
+
+        // 阶段和时间窗口 ACTIVE 后仍可调整
         if (req.getStage()           != null) competition.setStage(req.getStage());
         if (req.getRegisterStart()   != null) competition.setRegisterStart(req.getRegisterStart());
         if (req.getRegisterEnd()     != null) competition.setRegisterEnd(req.getRegisterEnd());
@@ -140,11 +148,17 @@ public class CompetitionService {
         if (req.getInterviewEnd()    != null) competition.setInterviewEnd(req.getInterviewEnd());
         if (req.getFinalStart()      != null) competition.setFinalStart(req.getFinalStart());
         if (req.getFinalEnd()        != null) competition.setFinalEnd(req.getFinalEnd());
+
         boolean wantChangePrefix = req.getBasicGroupPrefix() != null
                 || req.getComprehensiveGroupPrefix() != null
                 || req.getAdvancedGroupPrefix() != null;
-        if (wantChangePrefix && registrationRepository.existsGroupedByCompetitionId(id)) {
-            throw new PrefixLockedByGroupingException(id);
+        if (wantChangePrefix) {
+            if (isActive) {
+                throw new IllegalStateException("赛事已激活，分组前缀不可修改");
+            }
+            if (registrationRepository.existsGroupedByCompetitionId(id)) {
+                throw new PrefixLockedByGroupingException(id);
+            }
         }
         if (req.getBasicGroupPrefix()         != null) competition.setBasicGroupPrefix(req.getBasicGroupPrefix().trim().toUpperCase());
         if (req.getComprehensiveGroupPrefix() != null) competition.setComprehensiveGroupPrefix(req.getComprehensiveGroupPrefix().trim().toUpperCase());
