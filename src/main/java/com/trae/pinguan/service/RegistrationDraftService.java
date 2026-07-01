@@ -368,7 +368,15 @@ public class RegistrationDraftService {
 
     @Transactional(readOnly = true)
     public List<MyRegistrationItem> listMyDrafts(Long applicantId) {
+        return listMyDrafts(applicantId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyRegistrationItem> listMyDrafts(Long applicantId, Long competitionId) {
         return draftRepository.findByApplicantIdOrderByUpdatedAtDesc(applicantId).stream()
+                .filter(draft -> competitionId == null
+                        || (draft.getCompetition() != null
+                        && competitionId.equals(draft.getCompetition().getId())))
                 .map(draft -> {
                     Institution institution = draft.getInstitution();
                     Competition competition = draft.getCompetition();

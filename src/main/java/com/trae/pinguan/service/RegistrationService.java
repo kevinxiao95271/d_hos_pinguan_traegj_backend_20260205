@@ -15,8 +15,12 @@ import com.trae.pinguan.repository.InstitutionRepository;
 import com.trae.pinguan.repository.MaterialFileRepository;
 import com.trae.pinguan.repository.ProjectSummaryRepository;
 import com.trae.pinguan.repository.RegistrationMemberRepository;
+import com.trae.pinguan.repository.RegistrationDraftRepository;
 import com.trae.pinguan.repository.RegistrationRepository;
 import com.trae.pinguan.repository.ReviewTaskRepository;
+import com.trae.pinguan.domain.entity.RegistrationDraft;
+import com.trae.pinguan.web.dto.MyCompetitionItem;
+import com.trae.pinguan.web.dto.MyRegistrationItem;
 import com.trae.pinguan.repository.ReviewScoreRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.web.dto.ActivityInfoRequest;
@@ -52,6 +56,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RegistrationService {
     private final RegistrationRepository registrationRepository;
+    private final RegistrationDraftRepository registrationDraftRepository;
     private final RegistrationMemberRepository memberRepository;
     private final CompetitionRepository competitionRepository;
     private final InstitutionRepository institutionRepository;
@@ -330,34 +335,90 @@ public class RegistrationService {
     }
 
     @Transactional(readOnly = true)
-    public List<com.trae.pinguan.web.dto.MyRegistrationItem> listMyRegistrations(Long applicantId) {
-        List<Registration> registrations = registrationRepository.findByApplicantId(applicantId);
-        
-        return registrations.stream()
+    public List<MyRegistrationItem> listMyRegistrations(Long applicantId) {
+        return listMyRegistrations(applicantId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyRegistrationItem> listMyRegistrations(Long applicantId, Long competitionId) {
+        return registrationRepository.findByApplicantId(applicantId).stream()
                 .filter(reg -> reg.getStatus() != RegistrationStatus.DRAFT)
-                .map(reg -> {
-                    Institution institution = reg.getInstitution();
-                    Competition competition = reg.getCompetition();
-                    
-                    return com.trae.pinguan.web.dto.MyRegistrationItem.builder()
-                            .id(reg.getId())
-                            .draft(false)
-                            .projectName(reg.getProjectName())
-                            .groupType(reg.getGroupType())
-                            .groupCode(reg.getGroupCode())
-                            .status(reg.getStatus())
-                            .submittedAt(reg.getSubmittedAt())
-                            .createdAt(reg.getCreatedAt())
-                            // 机构信息
-                            .institutionId(institution != null ? institution.getId() : null)
-                            .institutionName(institution != null ? institution.getName() : null)
-                            .institutionLevel(institution != null ? institution.getLevel() : null)
-                            // 赛事信息
-                            .competitionId(competition != null ? competition.getId() : null)
-                            .competitionName(competition != null ? competition.getName() : null)
+                .filter(reg -> matchesCompetition(reg.getCompetition(), competitionId))
+                .map(this::toMyRegistrationItem)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyCompetitionItem> listMyCompetitions(Long applicantId) {
+        Long currentCompetitionId = competitionRepository.findTop1ByOrderByIdDesc()
+                .map(Competition::getId)
+                .orElse(null);
+
+        Map<Long, Competition> competitionById = new LinkedHashMap<>();
+        Map<Long, int[]> counts = new LinkedHashMap<>();
+
+        for (Registration reg : registrationRepository.findByApplicantId(applicantId)) {
+            if (reg.getStatus() == RegistrationStatus.DRAFT || reg.getCompetition() == null) {
+                continue;
+            }
+            Long cid = reg.getCompetition().getId();
+            competitionById.putIfAbsent(cid, reg.getCompetition());
+            counts.computeIfAbsent(cid, k -> new int[2])[0]++;
+        }
+
+        for (RegistrationDraft draft : registrationDraftRepository.findByApplicantIdOrderByUpdatedAtDesc(applicantId)) {
+            if (draft.getCompetition() == null) {
+                continue;
+            }
+            Long cid = draft.getCompetition().getId();
+            competitionById.putIfAbsent(cid, draft.getCompetition());
+            counts.computeIfAbsent(cid, k -> new int[2])[1]++;
+        }
+
+        return counts.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getKey(), a.getKey()))
+                .map(entry -> {
+                    Competition competition = competitionById.get(entry.getKey());
+                    int[] cnt = entry.getValue();
+                    return MyCompetitionItem.builder()
+                            .competitionId(entry.getKey())
+                            .competitionName(competition.getName())
+                            .year(competition.getCreatedAt() != null
+                                    ? competition.getCreatedAt().getYear() : null)
+                            .registrationCount(cnt[0])
+                            .draftCount(cnt[1])
+                            .current(currentCompetitionId != null
+                                    && currentCompetitionId.equals(entry.getKey()))
                             .build();
                 })
                 .collect(Collectors.toList());
+    }
+
+    private MyRegistrationItem toMyRegistrationItem(Registration reg) {
+        Institution institution = reg.getInstitution();
+        Competition competition = reg.getCompetition();
+        return MyRegistrationItem.builder()
+                .id(reg.getId())
+                .draft(false)
+                .projectName(reg.getProjectName())
+                .groupType(reg.getGroupType())
+                .groupCode(reg.getGroupCode())
+                .status(reg.getStatus())
+                .submittedAt(reg.getSubmittedAt())
+                .createdAt(reg.getCreatedAt())
+                .institutionId(institution != null ? institution.getId() : null)
+                .institutionName(institution != null ? institution.getName() : null)
+                .institutionLevel(institution != null ? institution.getLevel() : null)
+                .competitionId(competition != null ? competition.getId() : null)
+                .competitionName(competition != null ? competition.getName() : null)
+                .build();
+    }
+
+    private boolean matchesCompetition(Competition competition, Long competitionId) {
+        if (competitionId == null) {
+            return true;
+        }
+        return competition != null && competitionId.equals(competition.getId());
     }
 
     public List<Registration> listByInstitution(Long institutionId) {

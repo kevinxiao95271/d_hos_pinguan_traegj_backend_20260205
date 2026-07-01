@@ -179,12 +179,23 @@ public class RegistrationController {
         return ApiResponse.ok(registrationService.listByCompetitionAndStatus(competitionId, status));
     }
 
-    @GetMapping("/my")
-    @Operation(summary = "我的报名列表（参赛者端，含草稿与已提交）")
-    public ApiResponse<List<MyRegistrationItem>> myRegistrations() {
+    @GetMapping("/my/competitions")
+    @Operation(summary = "我参与过的赛事（按年度查历史）",
+            description = "返回当前用户有正式报名或草稿的赛事列表，按赛事 ID 降序；current=true 表示默认当前届（与登录 currentCompetitionId 一致）")
+    public ApiResponse<List<MyCompetitionItem>> myCompetitions() {
         Long applicantId = getCurrentUserId();
-        List<MyRegistrationItem> items = new ArrayList<>(registrationService.listMyRegistrations(applicantId));
-        items.addAll(registrationDraftService.listMyDrafts(applicantId));
+        return ApiResponse.ok(registrationService.listMyCompetitions(applicantId));
+    }
+
+    @GetMapping("/my")
+    @Operation(summary = "我的报名列表（参赛者端，含草稿与已提交）",
+            description = "不传 competitionId 返回全部；传 competitionId 仅返回该届数据（查历史年度）")
+    public ApiResponse<List<MyRegistrationItem>> myRegistrations(
+            @RequestParam(required = false) Long competitionId) {
+        Long applicantId = getCurrentUserId();
+        List<MyRegistrationItem> items = new ArrayList<>(
+                registrationService.listMyRegistrations(applicantId, competitionId));
+        items.addAll(registrationDraftService.listMyDrafts(applicantId, competitionId));
         items.sort(Comparator.comparing(
                 MyRegistrationItem::getCreatedAt,
                 Comparator.nullsLast(Comparator.reverseOrder())));
