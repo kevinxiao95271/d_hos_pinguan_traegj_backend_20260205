@@ -11,6 +11,7 @@ import com.trae.pinguan.web.dto.CompetitionCreateRequest;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import com.trae.pinguan.repository.SystemSettingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CompetitionService {
     private final CompetitionRepository competitionRepository;
     private final RegistrationRepository registrationRepository;
+    private final SystemSettingRepository systemSettingRepository;
 
     public List<Competition> listAll() {
         return competitionRepository.findAll();
@@ -32,6 +34,28 @@ public class CompetitionService {
     
     public Optional<Competition> getLatest() {
         return competitionRepository.findTop1ByOrderByIdDesc();
+    }
+
+    /**
+     * 返回"当前赛事"：优先使用 OPS 通过 current-competition 接口设定的全局值；
+     * 未设定时回退到 ID 最大的赛事。
+     */
+    public Optional<Competition> getCurrent() {
+        Long systemCurrentId = systemSettingRepository.findBySettingKey("currentCompetitionId")
+                .map(s -> { try { return Long.parseLong(s.getSettingValue()); } catch (Exception e) { return null; } })
+                .orElse(null);
+        if (systemCurrentId != null) {
+            Optional<Competition> c = competitionRepository.findById(systemCurrentId);
+            if (c.isPresent()) return c;
+        }
+        return competitionRepository.findTop1ByOrderByIdDesc();
+    }
+
+    /**
+     * 返回当前赛事ID，找不到返回 null。
+     */
+    public Long getCurrentId() {
+        return getCurrent().map(Competition::getId).orElse(null);
     }
 
     @Transactional

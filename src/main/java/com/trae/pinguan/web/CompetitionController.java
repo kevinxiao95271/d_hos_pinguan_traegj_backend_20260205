@@ -33,9 +33,9 @@ public class CompetitionController {
     }
     
     @GetMapping("/latest")
-    @Operation(summary = "获取最新赛事", description = "返回ID最大的赛事，用作默认选中")
+    @Operation(summary = "获取当前赛事", description = "返回OPS设定的当前赛事；未设定时回退到ID最大赛事，用作默认选中")
     public ApiResponse<Competition> latest() {
-        return competitionService.getLatest()
+        return competitionService.getCurrent()
                 .map(ApiResponse::ok)
                 .orElse(ApiResponse.fail("暂无赛事"));
     }

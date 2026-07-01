@@ -40,7 +40,7 @@ public class AdminRegistrationController {
     }
 
     @GetMapping("/filter")
-    @Operation(summary = "后台报名筛选（分页，page从0开始）")
+    @Operation(summary = "后台报名筛选（分页，page从1开始）")
     public ApiResponse<PageResult<RegistrationFilterItem>> filter(@RequestParam Long competitionId,
                                                                   @RequestParam(required = false) com.trae.pinguan.domain.enums.RegistrationStatus status,
                                                                   @RequestParam(required = false) com.trae.pinguan.domain.enums.GroupType groupType,

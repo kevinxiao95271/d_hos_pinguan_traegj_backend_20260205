@@ -95,7 +95,8 @@ public class AuthController {
     }
     
     private LoginResponse buildLoginResponse(UserAccount user) {
-        Optional<Competition> latestCompetition = competitionService.getLatest();
+        // 优先使用 OPS 设定的全局当前赛事；未设定时回退 ID 最大赛事
+        Optional<Competition> latestCompetition = competitionService.getCurrent();
 
         // pendingIntegrityNoticeKeys 仅对评审专家计算；其他角色无须弹窗，返回 null
         List<String> pendingKeys = null;

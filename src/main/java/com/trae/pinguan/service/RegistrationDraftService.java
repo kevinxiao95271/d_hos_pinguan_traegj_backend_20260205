@@ -29,6 +29,7 @@ import com.trae.pinguan.repository.RegistrationDraftProjectSummaryRepository;
 import com.trae.pinguan.repository.RegistrationDraftRepository;
 import com.trae.pinguan.repository.RegistrationMemberRepository;
 import com.trae.pinguan.repository.RegistrationRepository;
+import com.trae.pinguan.repository.SystemSettingRepository;
 import com.trae.pinguan.repository.UserAccountRepository;
 import com.trae.pinguan.web.dto.ActivityInfoDetailResponse;
 import com.trae.pinguan.web.dto.ActivityInfoRequest;
@@ -71,6 +72,7 @@ public class RegistrationDraftService {
     private final InstitutionRepository institutionRepository;
     private final UserAccountRepository userAccountRepository;
     private final DictionaryItemRepository dictionaryItemRepository;
+    private final SystemSettingRepository systemSettingRepository;
     private final RegistrationService registrationService;
 
     @Transactional
@@ -196,6 +198,52 @@ public class RegistrationDraftService {
         return draftSummaryRepository.save(summary);
     }
 
+    /**
+     * 生成年份前缀的报名编号：{YYYY}{NNNN}（8位）。
+     * 年份取赛事 registerStart 年；为 null 则取 createdAt 年；仍为 null 取当前年。
+     * 序列号通过 system_settings 中 regSeq_{year} 原子自增维护。
+     * 必须在事务内调用。
+     */
+    private long nextRegistrationId(Competition competition) {
+        int year;
+        if (competition.getRegisterStart() != null) {
+            year = competition.getRegisterStart().getYear();
+        } else if (competition.getCreatedAt() != null) {
+            year = competition.getCreatedAt().getYear();
+        } else {
+            year = java.time.LocalDate.now().getYear();
+        }
+        String seqKey = "regSeq_" + year;
+        // 先确保行存在（无锁），再用 FOR UPDATE 加锁读取，防止并发重复
+        if (!systemSettingRepository.findBySettingKey(seqKey).isPresent()) {
+            com.trae.pinguan.domain.entity.SystemSetting init =
+                    com.trae.pinguan.domain.entity.SystemSetting.builder()
+                            .settingKey(seqKey)
+                            .settingValue("0")
+                            .updatedAt(java.time.LocalDateTime.now())
+                            .build();
+            try { systemSettingRepository.saveAndFlush(init); } catch (Exception ignored) { /* 并发初始化时可能重复，忽略 */ }
+        }
+        // SELECT FOR UPDATE：锁住该行，同一时刻只有一个事务能进入
+        com.trae.pinguan.domain.entity.SystemSetting setting =
+                systemSettingRepository.findBySettingKeyForUpdate(seqKey)
+                        .orElseThrow(() -> new IllegalStateException("regSeq row missing: " + seqKey));
+        long seq = Long.parseLong(setting.getSettingValue()) + 1;
+        setting.setSettingValue(String.valueOf(seq));
+        setting.setUpdatedAt(java.time.LocalDateTime.now());
+        systemSettingRepository.save(setting);
+        long newId = (long) year * 10000L + seq;
+        // 安全检查：若 ID 已存在则继续递增（极罕见，防止与旧 auto_increment 数据冲突）
+        while (registrationRepository.existsById(newId)) {
+            seq++;
+            setting.setSettingValue(String.valueOf(seq));
+            systemSettingRepository.save(setting);
+            newId = (long) year * 10000L + seq;
+        }
+        log.info("新报名编号 year={} seq={} id={}", year, seq, newId);
+        return newId;
+    }
+
     @Transactional
     public Registration submit(Long draftId, Long applicantId) {
         RegistrationDraft draft = requireOwnedDraft(draftId, applicantId);
@@ -216,7 +264,9 @@ public class RegistrationDraftService {
         validateRequiredMaterialsBeforeSubmit(draftId);
 
         LocalDateTime now = LocalDateTime.now();
+        long newId = nextRegistrationId(draft.getCompetition());
         Registration registration = Registration.builder()
+                .id(newId)
                 .competition(draft.getCompetition())
                 .institution(draft.getInstitution())
                 .applicant(draft.getApplicant())

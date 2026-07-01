@@ -11,6 +11,7 @@ import com.trae.pinguan.domain.entity.UserAccount;
 import com.trae.pinguan.domain.enums.RegistrationStatus;
 import com.trae.pinguan.repository.ActivityInfoRepository;
 import com.trae.pinguan.repository.CompetitionRepository;
+import com.trae.pinguan.service.CompetitionService;
 import com.trae.pinguan.repository.InstitutionRepository;
 import com.trae.pinguan.repository.MaterialFileRepository;
 import com.trae.pinguan.repository.ProjectSummaryRepository;
@@ -59,6 +60,7 @@ public class RegistrationService {
     private final RegistrationDraftRepository registrationDraftRepository;
     private final RegistrationMemberRepository memberRepository;
     private final CompetitionRepository competitionRepository;
+    private final CompetitionService competitionService;
     private final InstitutionRepository institutionRepository;
     private final com.trae.pinguan.repository.DictionaryItemRepository dictionaryItemRepository;
     private final UserAccountRepository userAccountRepository;
@@ -350,9 +352,7 @@ public class RegistrationService {
 
     @Transactional(readOnly = true)
     public List<MyCompetitionItem> listMyCompetitions(Long applicantId) {
-        Long currentCompetitionId = competitionRepository.findTop1ByOrderByIdDesc()
-                .map(Competition::getId)
-                .orElse(null);
+        Long currentCompetitionId = competitionService.getCurrentId();
 
         Map<Long, Competition> competitionById = new LinkedHashMap<>();
         Map<Long, int[]> counts = new LinkedHashMap<>();
@@ -441,8 +441,9 @@ public class RegistrationService {
         String institutionNameValue = institutionName == null || institutionName.trim().isEmpty() ? null : institutionName.trim();
         String methodCodeValue = methodCode == null || methodCode.trim().isEmpty() ? null : methodCode.trim();
         String subjectTypeCodeValue = subjectTypeCode == null || subjectTypeCode.trim().isEmpty() ? null : subjectTypeCode.trim();
-        // page 参数从0开始（0-indexed），直接传给JPA
-        PageRequest pageable = PageRequest.of(Math.max(0, page), size, Sort.by(Sort.Direction.ASC, "id"));
+        // page 参数从 1 开始；兼容旧调用方传 0 时仍视为第一页
+        int pageIndex = page <= 0 ? 0 : page - 1;
+        PageRequest pageable = PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.ASC, "id"));
         Page<RegistrationFilterItem> pageResult = registrationRepository.filterRegistrations(
                 competitionId,
                 status,
