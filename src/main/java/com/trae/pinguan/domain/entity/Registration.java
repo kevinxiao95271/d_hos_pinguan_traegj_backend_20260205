@@ -81,7 +81,6 @@ public class Registration {
     @Column(name = "final_score_form", length = 10)
     private String finalScoreForm;
 
-    /**
     /** 项目负责人姓名 */
     @Column(name = "project_leader_name", length = 60)
     private String projectLeaderName;

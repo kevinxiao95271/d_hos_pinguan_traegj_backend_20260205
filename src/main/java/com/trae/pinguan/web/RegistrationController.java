@@ -4,14 +4,24 @@ import com.trae.pinguan.domain.entity.ActivityInfo;
 import com.trae.pinguan.domain.entity.MaterialFile;
 import com.trae.pinguan.domain.entity.ProjectSummary;
 import com.trae.pinguan.domain.entity.Registration;
+import com.trae.pinguan.domain.entity.RegistrationDraft;
+import com.trae.pinguan.domain.entity.RegistrationDraftActivityInfo;
+import com.trae.pinguan.domain.entity.RegistrationDraftMaterialFile;
+import com.trae.pinguan.domain.entity.RegistrationDraftMember;
+import com.trae.pinguan.domain.entity.RegistrationDraftProjectSummary;
 import com.trae.pinguan.domain.entity.RegistrationMember;
-import com.trae.pinguan.service.MaterialService;
+import com.trae.pinguan.service.DraftMaterialService;
+import com.trae.pinguan.service.RegistrationDraftCompatService;
+import com.trae.pinguan.service.RegistrationDraftService;
 import com.trae.pinguan.service.RegistrationService;
+import com.trae.pinguan.service.MaterialService;
 import com.trae.pinguan.service.ReviewService;
 import com.trae.pinguan.web.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,32 +35,45 @@ import org.springframework.web.multipart.MultipartFile;
 @SecurityRequirement(name = "BearerAuth")
 public class RegistrationController {
     private final RegistrationService registrationService;
+    private final RegistrationDraftService registrationDraftService;
+    private final RegistrationDraftCompatService registrationDraftCompatService;
     private final MaterialService materialService;
+    private final DraftMaterialService draftMaterialService;
     private final ReviewService reviewService;
     private final javax.servlet.http.HttpServletRequest request;
 
     @PostMapping
     @Operation(
         summary = "创建报名",
-        description = "创建新的项目报名。申请人ID和机构ID会自动从当前登录用户信息中获取，前端只需传入：赛事ID、项目名称、组别。"
+        description = "创建草稿；返回 Registration 形态且 status=DRAFT（id 为 draftId）。"
+                + "兼容旧前端，亦可改用 POST /api/registration-drafts。"
     )
     public ApiResponse<Registration> create(@Valid @RequestBody RegistrationCreateRequest request) {
-        // 自动从token获取当前用户ID作为申请人
         Long applicantId = getCurrentUserId();
         request.setApplicantId(applicantId);
-        // institutionId 如果前端未传，会在 Service 层自动使用用户的所属机构
-        return ApiResponse.ok(registrationService.create(request));
+        RegistrationDraft draft = registrationDraftService.create(request);
+        return ApiResponse.ok(registrationDraftCompatService.asRegistrationView(draft));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "更新报名基本信息")
     public ApiResponse<Registration> update(@PathVariable Long id, @Valid @RequestBody RegistrationUpdateRequest request) {
+        Long applicantId = getCurrentUserId();
+        if (isDraftRoute(id, applicantId)) {
+            RegistrationDraft draft = registrationDraftService.update(id, applicantId, request);
+            return ApiResponse.ok(registrationDraftCompatService.asRegistrationView(draft));
+        }
         return ApiResponse.ok(registrationService.update(id, request));
     }
 
     @PutMapping("/{id}/members")
     @Operation(summary = "提交成员信息")
     public ApiResponse<List<RegistrationMember>> upsertMembers(@PathVariable Long id, @Valid @RequestBody MemberUpsertRequest request) {
+        Long applicantId = getCurrentUserId();
+        if (isDraftRoute(id, applicantId)) {
+            List<RegistrationDraftMember> members = registrationDraftService.upsertMembers(id, applicantId, request);
+            return ApiResponse.ok(registrationDraftCompatService.mapMembers(members, id));
+        }
         request.setRegistrationId(id);
         return ApiResponse.ok(registrationService.upsertMembers(request));
     }
@@ -58,6 +81,11 @@ public class RegistrationController {
     @PutMapping("/{id}/activity")
     @Operation(summary = "提交活动说明")
     public ApiResponse<ActivityInfo> saveActivity(@PathVariable Long id, @Valid @RequestBody ActivityInfoRequest request) {
+        Long applicantId = getCurrentUserId();
+        if (isDraftRoute(id, applicantId)) {
+            RegistrationDraftActivityInfo activity = registrationDraftService.saveActivity(id, applicantId, request);
+            return ApiResponse.ok(registrationDraftCompatService.mapDraftActivity(activity, id));
+        }
         request.setRegistrationId(id);
         return ApiResponse.ok(registrationService.saveActivity(request));
     }
@@ -65,6 +93,11 @@ public class RegistrationController {
     @PutMapping("/{id}/summary")
     @Operation(summary = "提交摘要")
     public ApiResponse<ProjectSummary> saveSummary(@PathVariable Long id, @Valid @RequestBody ProjectSummaryRequest request) {
+        Long applicantId = getCurrentUserId();
+        if (isDraftRoute(id, applicantId)) {
+            RegistrationDraftProjectSummary summary = registrationDraftService.saveSummary(id, applicantId, request);
+            return ApiResponse.ok(registrationDraftCompatService.mapSummary(summary, id));
+        }
         request.setRegistrationId(id);
         return ApiResponse.ok(registrationService.saveSummary(request));
     }
@@ -72,6 +105,10 @@ public class RegistrationController {
     @PostMapping("/{id}/submit")
     @Operation(summary = "提交报名")
     public ApiResponse<Registration> submit(@PathVariable Long id) {
+        Long applicantId = getCurrentUserId();
+        if (isDraftRoute(id, applicantId)) {
+            return ApiResponse.ok(registrationDraftService.submit(id, applicantId));
+        }
         return ApiResponse.ok(registrationService.submit(id));
     }
 
@@ -83,14 +120,13 @@ public class RegistrationController {
 
     @GetMapping("/check-duplicate")
     @Operation(summary = "同机构相似项目检测",
-               description = "用二字组 Jaccard 相似度检测同赛事同机构内是否存在相似项目（相似度 ≥50%），返回最多5条。" +
-                       "selfId 在编辑时传入以排除自身。")
+               description = "兼容旧参数 selfId：编辑草稿时传 draftId 即可。")
     public ApiResponse<List<java.util.Map<String, Object>>> checkDuplicate(
             @RequestParam Long competitionId,
             @RequestParam Long institutionId,
             @RequestParam String projectName,
             @RequestParam(required = false) Long selfId) {
-        return ApiResponse.ok(registrationService.checkDuplicate(
+        return ApiResponse.ok(registrationDraftService.checkDuplicate(
                 competitionId, institutionId, projectName, selfId));
     }
 
@@ -103,6 +139,10 @@ public class RegistrationController {
     @GetMapping("/{id}")
     @Operation(summary = "报名详情")
     public ApiResponse<RegistrationDetailResponse> detail(@PathVariable Long id) {
+        Long applicantId = getCurrentUserId();
+        if (isDraftRoute(id, applicantId)) {
+            return ApiResponse.ok(registrationDraftCompatService.getDetail(id, applicantId));
+        }
         return ApiResponse.ok(registrationService.getDetail(id));
     }
 
@@ -140,11 +180,15 @@ public class RegistrationController {
     }
 
     @GetMapping("/my")
-    @Operation(summary = "我的报名列表（参赛者端）")
+    @Operation(summary = "我的报名列表（参赛者端，含草稿与已提交）")
     public ApiResponse<List<MyRegistrationItem>> myRegistrations() {
-        // 从token中获取当前登录用户ID
         Long applicantId = getCurrentUserId();
-        return ApiResponse.ok(registrationService.listMyRegistrations(applicantId));
+        List<MyRegistrationItem> items = new ArrayList<>(registrationService.listMyRegistrations(applicantId));
+        items.addAll(registrationDraftService.listMyDrafts(applicantId));
+        items.sort(Comparator.comparing(
+                MyRegistrationItem::getCreatedAt,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+        return ApiResponse.ok(items);
     }
 
     @GetMapping("/by-applicant")
@@ -152,13 +196,17 @@ public class RegistrationController {
     public ApiResponse<List<Registration>> listByApplicant(@RequestParam Long applicantId) {
         return ApiResponse.ok(registrationService.listByApplicant(applicantId));
     }
-    
+
     private Long getCurrentUserId() {
         Object userId = request.getAttribute("userId");
         if (userId == null) {
             throw new RuntimeException("未登录");
         }
         return Long.parseLong(userId.toString());
+    }
+
+    private boolean isDraftRoute(Long id, Long applicantId) {
+        return registrationDraftCompatService.isDraftRoute(id, applicantId);
     }
 
     @GetMapping("/by-institution")
@@ -179,12 +227,22 @@ public class RegistrationController {
     public ApiResponse<MaterialFile> upload(@PathVariable Long id,
                                             @RequestParam String type,
                                             @RequestPart MultipartFile file) {
+        Long applicantId = getCurrentUserId();
+        if (isDraftRoute(id, applicantId)) {
+            RegistrationDraftMaterialFile material = draftMaterialService.upload(id, type, file);
+            return ApiResponse.ok(registrationDraftCompatService.mapMaterial(material, id));
+        }
         return ApiResponse.ok(materialService.upload(id, type, file));
     }
 
     @GetMapping("/{id}/materials")
     @Operation(summary = "报名材料列表")
     public ApiResponse<List<MaterialFile>> listMaterials(@PathVariable Long id) {
+        Long applicantId = getCurrentUserId();
+        if (isDraftRoute(id, applicantId)) {
+            return ApiResponse.ok(registrationDraftCompatService.mapMaterials(
+                    draftMaterialService.list(id), id));
+        }
         return ApiResponse.ok(materialService.list(id));
     }
 }

@@ -69,40 +69,7 @@ public class RegistrationService {
 
     @Transactional
     public Registration create(RegistrationCreateRequest request) {
-        Competition competition = competitionRepository.findById(request.getCompetitionId())
-                .orElseThrow(() -> new IllegalArgumentException("赛事不存在"));
-        
-        UserAccount applicant = userAccountRepository.findById(request.getApplicantId())
-                .orElseThrow(() -> new IllegalArgumentException("报名人不存在"));
-        
-        // 机构ID：如果前端未传，则自动使用申请人的所属机构
-        Institution institution;
-        if (request.getInstitutionId() != null) {
-            // 前端指定了机构（特殊情况，如代表其他机构报名）
-            institution = institutionRepository.findById(request.getInstitutionId())
-                    .orElseThrow(() -> new IllegalArgumentException("机构不存在"));
-            log.info("创建报名：用户 {} 代表机构 {} 报名", applicant.getName(), institution.getName());
-        } else {
-            // 自动使用申请人的所属机构
-            institution = applicant.getInstitution();
-            if (institution == null) {
-                throw new IllegalArgumentException("用户未绑定机构，无法创建报名");
-            }
-            log.info("创建报名：用户 {} 使用所属机构 {} 报名", applicant.getName(), institution.getName());
-        }
-
-        validateBasicGroupEligibility(institution, request.getGroupType());
-        
-        Registration registration = Registration.builder()
-                .competition(competition)
-                .institution(institution)
-                .applicant(applicant)
-                .projectName(request.getProjectName())
-                .groupType(request.getGroupType())
-                .status(RegistrationStatus.DRAFT)
-                .createdAt(LocalDateTime.now())
-                .build();
-        return registrationRepository.save(registration);
+        throw new IllegalStateException("请使用 POST /api/registration-drafts 创建报名草稿");
     }
 
     @Transactional
@@ -337,6 +304,7 @@ public class RegistrationService {
         }
         
         return RegistrationDetailResponse.builder()
+                .draft(false)
                 .registration(registration)
                 .competitionId(competitionId)
                 .competitionName(competitionName)
@@ -366,12 +334,14 @@ public class RegistrationService {
         List<Registration> registrations = registrationRepository.findByApplicantId(applicantId);
         
         return registrations.stream()
+                .filter(reg -> reg.getStatus() != RegistrationStatus.DRAFT)
                 .map(reg -> {
                     Institution institution = reg.getInstitution();
                     Competition competition = reg.getCompetition();
                     
                     return com.trae.pinguan.web.dto.MyRegistrationItem.builder()
                             .id(reg.getId())
+                            .draft(false)
                             .projectName(reg.getProjectName())
                             .groupType(reg.getGroupType())
                             .groupCode(reg.getGroupCode())
@@ -803,6 +773,15 @@ public class RegistrationService {
         results.sort((a, b) -> Double.compare(
                 (double) b.get("similarity"), (double) a.get("similarity")));
         return results.stream().limit(5).collect(Collectors.toList());
+    }
+
+    /** 二字组 Jaccard 相似度，返回 0–100 的百分比（保留 1 位小数） */
+    public double projectNameSimilarityPercent(String projectNameA, String projectNameB) {
+        if (projectNameA == null || projectNameB == null) {
+            return 0.0;
+        }
+        double sim = jaccardSimilarity(bigrams(projectNameA), bigrams(projectNameB));
+        return Math.round(sim * 1000) / 10.0;
     }
 
     private static java.util.Set<String> bigrams(String text) {
