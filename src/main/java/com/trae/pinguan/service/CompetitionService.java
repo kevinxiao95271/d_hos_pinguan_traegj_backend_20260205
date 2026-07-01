@@ -62,7 +62,7 @@ public class CompetitionService {
         return (raw != null && !raw.trim().isEmpty()) ? raw.trim().toUpperCase() : defaultVal;
     }
 
-    /** 激活赛事：同年只允许一个 ACTIVE */
+    /** 激活赛事：同一业务年度只允许一个 ACTIVE */
     @Transactional
     public Competition activate(Long id) {
         Competition competition = competitionRepository.findById(id)
@@ -70,15 +70,32 @@ public class CompetitionService {
         if (competition.getStatus() == CompetitionStatus.ACTIVE) {
             return competition;
         }
-        int year = competition.getCreatedAt().getYear();
-        List<Competition> sameYearActive = competitionRepository.findByStatusAndYearExcluding(
-                CompetitionStatus.ACTIVE, year, id);
-        if (!sameYearActive.isEmpty()) {
-            throw new IllegalStateException(
-                    year + " 年已存在激活赛事「" + sameYearActive.get(0).getName() + "」，同年只允许一个 ACTIVE 赛事");
+        int year = resolveCompetitionYear(competition);
+        for (Competition other : competitionRepository.findByStatus(CompetitionStatus.ACTIVE)) {
+            if (other.getId().equals(id)) {
+                continue;
+            }
+            if (resolveCompetitionYear(other) == year) {
+                throw new IllegalStateException(
+                        year + " 年已存在激活赛事「" + other.getName() + "」，同一年度只允许一个 ACTIVE 赛事");
+            }
         }
         competition.setStatus(CompetitionStatus.ACTIVE);
         return competitionRepository.save(competition);
+    }
+
+    /**
+     * 赛事业务年度：优先取报名开始时间的年份，否则取创建时间年份。
+     * 避免 2026 年底创建「2027 届」赛事时被误判为 2026 年。
+     */
+    int resolveCompetitionYear(Competition competition) {
+        if (competition.getRegisterStart() != null) {
+            return competition.getRegisterStart().getYear();
+        }
+        if (competition.getCreatedAt() != null) {
+            return competition.getCreatedAt().getYear();
+        }
+        return LocalDateTime.now().getYear();
     }
 
     /** 撤回激活：仅限无报名记录时可将 ACTIVE 改回 DRAFT */

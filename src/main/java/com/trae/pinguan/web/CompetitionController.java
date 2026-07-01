@@ -46,6 +46,12 @@ public class CompetitionController {
         return ApiResponse.ok(competitionService.create(request));
     }
 
+    @PostMapping("/create")
+    @Operation(summary = "新增赛事（前端兼容路径）", description = "等价于 POST /api/competitions")
+    public ApiResponse<Competition> createCompat(@Valid @RequestBody CompetitionCreateRequest request) {
+        return ApiResponse.ok(competitionService.create(request));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "赛事详情")
     public ApiResponse<Competition> detail(@PathVariable Long id) {
