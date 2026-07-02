@@ -179,7 +179,7 @@ public class RegistrationController {
         return ApiResponse.ok(registrationService.listByCompetitionAndStatus(competitionId, status));
     }
 
-    @GetMapping("/my/competitions")
+    @GetMapping({"/my/competitions", "/my-competitions"})
     @Operation(summary = "我参与过的赛事（按年度查历史）",
             description = "返回当前用户有正式报名或草稿的赛事列表，按赛事 ID 降序；current=true 表示默认当前届（与登录 currentCompetitionId 一致）")
     public ApiResponse<List<MyCompetitionItem>> myCompetitions() {

@@ -26,9 +26,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Cell;
@@ -215,7 +217,19 @@ public class FinalService {
 
     @Transactional(readOnly = true)
     public List<FinalTaskItem> myFinalTasks(Long reviewerId) {
+        return myFinalTasks(reviewerId, null);
+    }
+
+    public List<FinalTaskItem> myFinalTasks(Long reviewerId, Long competitionId) {
         List<ReviewTask> tasks = reviewTaskRepository.findByReviewerIdAndStage(reviewerId, ReviewStage.FINAL);
+        if (competitionId != null && !tasks.isEmpty()) {
+            Set<Long> regIdsInComp = registrationRepository.findByCompetitionId(competitionId)
+                    .stream().map(Registration::getId).collect(Collectors.toSet());
+            tasks = tasks.stream()
+                    .filter(t -> t.getRegistration() != null
+                            && regIdsInComp.contains(t.getRegistration().getId()))
+                    .collect(Collectors.toList());
+        }
         if (tasks.isEmpty()) return new ArrayList<>();
 
         List<Long> taskIds = tasks.stream().map(ReviewTask::getId).collect(Collectors.toList());

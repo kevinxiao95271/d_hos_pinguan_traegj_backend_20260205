@@ -30,9 +30,10 @@ public class ReviewFinalController {
 
     @GetMapping("/my-tasks")
     @Operation(summary = "获取本人现场评分任务列表",
-               description = "按专场+顺序排序，含已保存草稿评分")
-    public ApiResponse<List<FinalTaskItem>> myTasks() {
-        return ApiResponse.ok(finalService.myFinalTasks(getCurrentUserId()));
+               description = "按专场+顺序排序，含已保存草稿评分。competitionId 不传返回全部届次")
+    public ApiResponse<List<FinalTaskItem>> myTasks(
+            @RequestParam(required = false) Long competitionId) {
+        return ApiResponse.ok(finalService.myFinalTasks(getCurrentUserId(), competitionId));
     }
 
     // ── 保存草稿 ──────────────────────────────────────────────────────────────
