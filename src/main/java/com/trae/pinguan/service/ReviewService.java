@@ -1,5 +1,6 @@
 package com.trae.pinguan.service;
 
+import com.trae.pinguan.domain.entity.Competition;
 import com.trae.pinguan.domain.entity.InterviewScore;
 import com.trae.pinguan.domain.entity.ProjectFeedback;
 import com.trae.pinguan.domain.entity.Registration;
@@ -384,20 +385,27 @@ public class ReviewService {
         if (registration.getGroupCode() != null && !registration.getGroupCode().trim().isEmpty()) {
             return registration.getGroupCode();
         }
+        // groupCode 未分配时，用赛事配置的前缀 + "1" 作为兜底（不写死字母）
         GroupType groupType = registration.getGroupType();
-        if (groupType == null) {
+        if (groupType == null || registration.getCompetition() == null) {
             return null;
         }
+        Competition competition = registration.getCompetition();
+        String prefix;
         switch (groupType) {
             case BASIC:
-                return "A1";
+                prefix = competition.getBasicGroupPrefix() != null ? competition.getBasicGroupPrefix().toUpperCase() : "A";
+                break;
             case COMPREHENSIVE:
-                return "B2";
+                prefix = competition.getComprehensiveGroupPrefix() != null ? competition.getComprehensiveGroupPrefix().toUpperCase() : "B";
+                break;
             case ADVANCED:
-                return "B2";
+                prefix = competition.getAdvancedGroupPrefix() != null ? competition.getAdvancedGroupPrefix().toUpperCase() : "C";
+                break;
             default:
                 return null;
         }
+        return prefix + "1";
     }
 
     public Optional<ReviewScore> getScore(Long reviewTaskId) {
