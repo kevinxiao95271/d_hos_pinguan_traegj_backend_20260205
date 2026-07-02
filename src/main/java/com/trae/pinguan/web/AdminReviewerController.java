@@ -119,12 +119,14 @@ public class AdminReviewerController {
     }
 
     @PostMapping("/batch-disable")
-    @Operation(summary = "批量禁用指定角色的全部账号",
-               description = "role 可选值：REVIEWER（评审专家）、STAFF（工作人员）。" +
-                       "用于赛后清理临时账号，禁用后账号保留数据但无法登录。")
-    public ApiResponse<Integer> batchDisable(@RequestParam com.trae.pinguan.domain.enums.RoleType role) {
+    @Operation(summary = "批量禁用指定账号",
+               description = "必须传 ids（账号 ID 列表），仅禁用指定账号；禁用后账号保留数据但无法登录。")
+    public ApiResponse<Integer> batchDisable(@RequestBody java.util.List<Long> ids) {
         requireCommitteeOrOps();
-        int count = reviewerService.batchDisableByRole(role);
+        if (ids == null || ids.isEmpty()) {
+            throw new IllegalArgumentException("ids 不能为空");
+        }
+        int count = reviewerService.batchDisableByIds(ids);
         return ApiResponse.ok(count);
     }
 

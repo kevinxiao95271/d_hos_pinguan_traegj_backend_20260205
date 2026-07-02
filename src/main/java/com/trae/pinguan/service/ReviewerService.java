@@ -193,10 +193,10 @@ public class ReviewerService {
         return userAccountRepository.save(user);
     }
 
-    /** 批量禁用指定角色的所有账号（用于赛后清理临时账号） */
+    /** 批量禁用指定 id 的账号 */
     @Transactional
-    public int batchDisableByRole(RoleType role) {
-        List<UserAccount> users = userAccountRepository.findByRole(role);
+    public int batchDisableByIds(List<Long> ids) {
+        List<UserAccount> users = userAccountRepository.findAllById(ids);
         users.forEach(u -> u.setEnabled(false));
         userAccountRepository.saveAll(users);
         return users.size();
