@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 public class ReviewTaskItem {
     private Long id;
     private Long registrationId;
+    private Long competitionId;
     /** 项目编号（提交成功后生成的唯一序号） */
     private String projectName;
     private String institutionName;

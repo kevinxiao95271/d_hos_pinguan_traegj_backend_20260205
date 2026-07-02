@@ -12,11 +12,15 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
     List<ReviewTask> findByRegistrationId(Long registrationId);
     List<ReviewTask> findByRegistrationIdAndStage(Long registrationId, ReviewStage stage);
     
-    // 使用JOIN FETCH优化查询，避免N+1问题
-    @Query("SELECT rt FROM ReviewTask rt LEFT JOIN FETCH rt.registration r LEFT JOIN FETCH r.institution WHERE rt.reviewer.id = :reviewerId")
+    // 使用JOIN FETCH优化查询，避免N+1问题；同时 FETCH competition 以支持 Java 层按届过滤
+    @Query("SELECT rt FROM ReviewTask rt LEFT JOIN FETCH rt.registration r LEFT JOIN FETCH r.institution LEFT JOIN FETCH r.competition WHERE rt.reviewer.id = :reviewerId")
     List<ReviewTask> findByReviewerId(@Param("reviewerId") Long reviewerId);
 
-    @Query("SELECT rt FROM ReviewTask rt LEFT JOIN FETCH rt.registration r LEFT JOIN FETCH r.institution WHERE rt.reviewer.id = :reviewerId AND r.competition.id = :competitionId")
+    @Query("SELECT rt FROM ReviewTask rt " +
+           "LEFT JOIN FETCH rt.registration r " +
+           "LEFT JOIN FETCH r.institution " +
+           "WHERE rt.reviewer.id = :reviewerId " +
+           "AND rt.registration.competition.id = :competitionId")
     List<ReviewTask> findByReviewerIdAndRegistrationCompetitionId(
             @Param("reviewerId") Long reviewerId,
             @Param("competitionId") Long competitionId);

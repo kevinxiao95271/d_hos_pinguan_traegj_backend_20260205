@@ -123,9 +123,15 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<com.trae.pinguan.web.dto.ReviewTaskItem> myTaskItems(Long reviewerId, Long competitionId) {
-        List<ReviewTask> tasks = competitionId != null
-                ? reviewTaskRepository.findByReviewerIdAndRegistrationCompetitionId(reviewerId, competitionId)
-                : reviewTaskRepository.findByReviewerId(reviewerId);
+        List<ReviewTask> tasks = reviewTaskRepository.findByReviewerId(reviewerId);
+        if (competitionId != null) {
+            Set<Long> regIdsInComp = registrationRepository.findByCompetitionId(competitionId)
+                    .stream().map(Registration::getId).collect(Collectors.toSet());
+            tasks = tasks.stream()
+                    .filter(t -> t.getRegistration() != null
+                            && regIdsInComp.contains(t.getRegistration().getId()))
+                    .collect(Collectors.toList());
+        }
         Set<Long> taskIds = tasks.stream().map(ReviewTask::getId).collect(Collectors.toSet());
 
         Map<Long, Double> totalMap = new HashMap<>();
@@ -155,6 +161,8 @@ public class ReviewService {
             return com.trae.pinguan.web.dto.ReviewTaskItem.builder()
                     .id(task.getId())
                     .registrationId(reg != null ? reg.getId() : null)
+                    .competitionId(reg != null && reg.getCompetition() != null
+                            ? reg.getCompetition().getId() : null)
                     .projectName(reg != null ? reg.getProjectName() : null)
                     .institutionName(reg != null && reg.getInstitution() != null
                             ? reg.getInstitution().getName() : null)
@@ -177,9 +185,15 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> myTaskStats(Long reviewerId, Long competitionId) {
-        List<ReviewTask> tasks = competitionId != null
-                ? reviewTaskRepository.findByReviewerIdAndRegistrationCompetitionId(reviewerId, competitionId)
-                : reviewTaskRepository.findByReviewerId(reviewerId);
+        List<ReviewTask> tasks = reviewTaskRepository.findByReviewerId(reviewerId);
+        if (competitionId != null) {
+            Set<Long> regIdsInComp = registrationRepository.findByCompetitionId(competitionId)
+                    .stream().map(Registration::getId).collect(Collectors.toSet());
+            tasks = tasks.stream()
+                    .filter(t -> t.getRegistration() != null
+                            && regIdsInComp.contains(t.getRegistration().getId()))
+                    .collect(Collectors.toList());
+        }
         long total = tasks.size();
         long scored = tasks.stream().filter(t -> t.getStatus() == ReviewStatus.SCORED).count();
         long recused = tasks.stream().filter(t -> t.getStatus() == ReviewStatus.RECUSED).count();
