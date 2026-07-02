@@ -118,7 +118,14 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<com.trae.pinguan.web.dto.ReviewTaskItem> myTaskItems(Long reviewerId) {
-        List<ReviewTask> tasks = reviewTaskRepository.findByReviewerId(reviewerId);
+        return myTaskItems(reviewerId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.trae.pinguan.web.dto.ReviewTaskItem> myTaskItems(Long reviewerId, Long competitionId) {
+        List<ReviewTask> tasks = competitionId != null
+                ? reviewTaskRepository.findByReviewerIdAndRegistrationCompetitionId(reviewerId, competitionId)
+                : reviewTaskRepository.findByReviewerId(reviewerId);
         Set<Long> taskIds = tasks.stream().map(ReviewTask::getId).collect(Collectors.toSet());
 
         Map<Long, Double> totalMap = new HashMap<>();
@@ -165,7 +172,14 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> myTaskStats(Long reviewerId) {
-        List<ReviewTask> tasks = reviewTaskRepository.findByReviewerId(reviewerId);
+        return myTaskStats(reviewerId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> myTaskStats(Long reviewerId, Long competitionId) {
+        List<ReviewTask> tasks = competitionId != null
+                ? reviewTaskRepository.findByReviewerIdAndRegistrationCompetitionId(reviewerId, competitionId)
+                : reviewTaskRepository.findByReviewerId(reviewerId);
         long total = tasks.size();
         long scored = tasks.stream().filter(t -> t.getStatus() == ReviewStatus.SCORED).count();
         long recused = tasks.stream().filter(t -> t.getStatus() == ReviewStatus.RECUSED).count();

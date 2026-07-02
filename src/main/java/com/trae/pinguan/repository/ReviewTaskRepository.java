@@ -15,6 +15,11 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTask, Long> {
     // 使用JOIN FETCH优化查询，避免N+1问题
     @Query("SELECT rt FROM ReviewTask rt LEFT JOIN FETCH rt.registration r LEFT JOIN FETCH r.institution WHERE rt.reviewer.id = :reviewerId")
     List<ReviewTask> findByReviewerId(@Param("reviewerId") Long reviewerId);
+
+    @Query("SELECT rt FROM ReviewTask rt LEFT JOIN FETCH rt.registration r LEFT JOIN FETCH r.institution WHERE rt.reviewer.id = :reviewerId AND r.competition.id = :competitionId")
+    List<ReviewTask> findByReviewerIdAndRegistrationCompetitionId(
+            @Param("reviewerId") Long reviewerId,
+            @Param("competitionId") Long competitionId);
     
     @Query("SELECT rt FROM ReviewTask rt " +
            "LEFT JOIN FETCH rt.registration r " +

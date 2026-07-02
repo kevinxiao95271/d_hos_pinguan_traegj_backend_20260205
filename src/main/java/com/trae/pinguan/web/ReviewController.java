@@ -56,10 +56,11 @@ public class ReviewController {
     }
 
     @GetMapping("/my-tasks")
-    @Operation(summary = "我的评审任务（评委端）")
-    public ApiResponse<List<ReviewTaskItem>> myTasks() {
+    @Operation(summary = "我的评审任务（评委端）", description = "不传 competitionId 返回全部届次；传 competitionId 只返回该届任务")
+    public ApiResponse<List<ReviewTaskItem>> myTasks(
+            @RequestParam(required = false) Long competitionId) {
         Long reviewerId = getCurrentUserId();
-        return ApiResponse.ok(reviewService.myTaskItems(reviewerId));
+        return ApiResponse.ok(reviewService.myTaskItems(reviewerId, competitionId));
     }
 
     @GetMapping("/tasks")
@@ -171,9 +172,10 @@ public class ReviewController {
     // ─── 统计 ────────────────────────────────────────────────────────────────
 
     @GetMapping("/my-tasks/stats")
-    @Operation(summary = "我的评审任务统计（总数、待提交数、已提交数）")
-    public ApiResponse<java.util.Map<String, Long>> myTaskStats() {
+    @Operation(summary = "我的评审任务统计（总数、待提交数、已提交数）", description = "不传 competitionId 统计全部届次")
+    public ApiResponse<java.util.Map<String, Long>> myTaskStats(
+            @RequestParam(required = false) Long competitionId) {
         Long reviewerId = getCurrentUserId();
-        return ApiResponse.ok(reviewService.myTaskStats(reviewerId));
+        return ApiResponse.ok(reviewService.myTaskStats(reviewerId, competitionId));
     }
 }
